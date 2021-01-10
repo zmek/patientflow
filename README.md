@@ -73,7 +73,12 @@ Now that we have a setup.py and have installed `setuptools` we can use them to i
 
 `pip install .`
 
-**Exercise**: Test out your install by launching the pything interpreter.
+**Exercise**: Test out your install by launching the python interpreter.
+
+```python
+#this should work!
+import test_package
+```
 
 If you have used the default package settings then you will have installed a package called `pypi-template` (version =0.1).  To uninstall use the package name:
 
