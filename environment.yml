@@ -13,3 +13,4 @@ dependencies:
   - seaborn=0.10.0
   - pip:
     - pytest-cov==2.10.0
+    - setuptools>=51.1.2
