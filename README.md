@@ -28,3 +28,57 @@ The obvious use if you want others to be able to easily install and use your sof
 
 ## Setting up a git repo for a PyPi project.
 
+I've used this structure on a previous project and it other projects I found use similar variations.  
+
+```
+pypi_template
+├── LICENSE
+├── test_package
+│   ├── __init__.py
+│   ├── test.py
+│   ├── data
+│   |   ├── test_data.csv
+├── README.md
+├── environment.yml
+├── requirements.txt
+└── setup.py
+```
+
+### environment.yml
+
+One thing I learnt from attending the Open Source project sessions at SciPy 2019 was that it is useful to include a conda environment for developers.  That is what is in `environment.yml`. One ommision in the template repo is that it is useful to install your package into the dev environment!  See for example:  https://github.com/TomMonks/forecast-tools 
+
+### setup.py
+
+This controls the installation of your package.  I've included a template in the repo.  We need to use the `setuptools` PyPI package to do the installation.  I've included `setuptools` in the dev environment, but you can install it manually:
+
+`pip install setuptools`
+
+Take a look at setup.py for details.
+
+### including data in your package
+
+One thing I learnt **the hard and annoying way** is that data is not included in your python package by default!  There are a few lines of code to include in the setup function.
+
+```python
+    #include the below if you want to include data in the package...
+    include_package_data=True,
+    package_data={"": ["pypi_template/data/*.csv"]},
+```
+
+
+### local installing and uninstalling your package
+
+Now that we have a setup.py and have installed `setuptools` we can use them to install our package locally!  Navigate to the repo on your local machine and run the command below.
+
+`pip install .`
+
+**Exercise**: Test out your install by launching the pything interpreter.
+
+If you have used the default package settings then you will have installed a package called `pypi-template` (version =0.1).  To uninstall use the package name:
+
+`pip uninstall pypi-template`
+
+
+
+
