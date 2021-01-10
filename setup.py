@@ -26,7 +26,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     #include the below if you want to include data in the package...
     include_package_data=True,
-    package_data={"": ["forecast_tools/data/*.csv"]},
+    package_data={"": ["pypi_template/data/*.csv"]},
     #these are for documentation 
     classifiers=[
         "Programming Language :: Python :: 3.6",
