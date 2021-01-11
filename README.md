@@ -10,6 +10,8 @@ T.Monks. Jan 2021.
 
 * https://nrempel.com/blog/how-publish-python-package-pypi-comprehensive-guide/
 
+* https://realpython.com/python-wheels/
+
 ## What is pip?
 
 A package management system for installing python packages from the Python package index (PyPi - pronouced Pie Pie).  Example useage:
@@ -132,12 +134,76 @@ Now that we have a setup.py and have installed `setuptools` we can use them to i
 ```python
 #this should work!
 import test_package
+print(test_package.__version__)
 ```
 
 If you have used the default package settings then you will have installed a package called `pypi-template` (version =0.1).  To uninstall use the package name:
 
 `pip uninstall pypi-template`
 
+## Publishing your package on PyPI
+
+The first thing to say is that there is a PyPI test site!  This was incredibly helpful as I found that I made mistakes the first couple of times I tried to get this to work e.g. no data was included in my package.  Once it is published on the testpypi site you can install it!
+
+You need to go to https://testpypi.python.org and create an account.  
+
+### Including source and wheel distributions
+
+It is recommended that you include both a **source** and **wheel** distribution in your python package.  
+
+> It took me a while to get my head around what a wheel distribution actually is and why it is useful!  A nice phrase I came across is that '*wheels make things go faster*' I'm yet to fully master them and particularly need to research platform specific wheels.  
+
+This site has a nice explanation: https://realpython.com/python-wheels/
+
+* A source is just what you think it is.  It is your source code!
+
+* A wheel (.whl) is a ready-to-install python package i.e. no build stage is required. This is very useful for example if you have written custom C extensions for python. The wheel contains your extensions compiled and hence skips the build step.  Wheel's therefore make installation more efficient.  
+
+> You can create universal wheel's i.e. applicable to both python 2 and 3 or pure python wheels i.e. applicable to only python 3 or python 2, but not both.
+
+To install wheel use
+
+```
+pip install wheel
+```
+
+To produce the source and the wheel run 
+
+```
+python setup.py sdist bdist_wheel
+```
+
+* Now take a look in ./dist.  You should see both a zip file containing the source code and a .whl file containing the wheel.
+
+A .whl file is named as follows:
+
+```
+{dist}-{version}-{build}-{python}-{abi}-{platform}.whl
+```
+
+### Using twine and testpypi
+
+To publish on pypi and testpypi we need to install `twine`
+
+```
+pip install twine
+```
+
+It is sensible to check for any errors before publishing!  To do this run the code below
+
+```
+twine check dist/*
+```
+This will check your source and wheel distributions for errors and report any issues.
+
+> Before we push to testpypi you need to have a unique name for your package! For this tutorial I recommend 'test_package_{random_number}. Check if it has been created first!
+
+Let's push to testpypi.  The code below will prompt you for your username and password.
+
+```
+twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+```
 
 
 
