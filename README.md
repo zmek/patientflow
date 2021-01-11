@@ -58,14 +58,34 @@ Take a look at setup.py for details.
 
 ### including data in your package
 
-One thing I learnt **the hard and annoying way** is that data is not included in your python package by default!  There are a few lines of code to include in the setup function.
+For data science project you may want to include some example or test data within your package. 
+
+As an example, the package in the template repo includes a subdirectory `test_package/data` containing a single (dummy) CSV.
+
+One thing I learnt **the hard and annoying way** is that data is not included in your python package by default!  
+
+To make sure data is included I took two steps
+
+#### Tell `setup()` that it is expecting data
+
+There are a few lines of code to include in the setup function.
 
 ```python
-    #include the below if you want to include data in the package...
+    #Tells setup to look in MANIFEST.in
     include_package_data=True,
-    package_data={"": ["pypi_template/data/*.csv"]},
+    #optional - can be used for file not found in 
+    #MANIFEST.in
+    package_data={"test_package": ["data/*.csv"]},
 ```
 
+* RTM: https://setuptools.readthedocs.io/en/latest/userguide/datafiles.html 
+
+#### Include a MANIFEST.in file
+
+```
+include *.txt
+recursive-include test_package/data *.csv
+```
 
 ### local installing and uninstalling your package
 
