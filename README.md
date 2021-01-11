@@ -68,24 +68,30 @@ To make sure data is included I took two steps
 
 #### Tell `setup()` that it is expecting data
 
-There are a few lines of code to include in the setup function.
+There are a couple of options here.  The way I have implemented this elsewhere is:
 
 ```python
     #Tells setup to look in MANIFEST.in
     include_package_data=True,
-    #optional - can be used for file not found in 
-    #MANIFEST.in
-    package_data={"test_package": ["data/*.csv"]},
 ```
 
-* RTM: https://setuptools.readthedocs.io/en/latest/userguide/datafiles.html 
-
-#### Include a MANIFEST.in file
+The above snippet tells the `setup()` function to look in a top level file called `MANIFEST.in`.  This contains a list of files to include in the package:
 
 ```
 include *.txt
 recursive-include test_package/data *.csv
 ```
+
+As an alternative you can use:
+
+```python
+    #can instead of MANIFEST.in
+    package_data={"test_package": ["data/*.csv"]},
+```
+
+I've found that this only works if `include_package_data=False`
+
+* RTM: https://setuptools.readthedocs.io/en/latest/userguide/datafiles.html 
 
 ### local installing and uninstalling your package
 

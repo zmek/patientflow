@@ -24,9 +24,10 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/TomMonks/pypi-template",
     packages=setuptools.find_packages(),
-    #include the below if you want to include data in the package...
+    #if true look in MANIFEST.in for data files to include
     include_package_data=True,
-    package_data={"": ["pypi_template/data/*.csv"]},
+    #2nd approach to include data is include_package_data=False
+    package_data={"test_package": ["data/*.csv"]},
     #these are for documentation 
     classifiers=[
         "Programming Language :: Python :: 3.6",
