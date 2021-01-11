@@ -56,6 +56,34 @@ This controls the installation of your package.  I've included a template in the
 
 Take a look at setup.py for details.
 
+### Managing the versioning your package
+
+All python packages should behave in this way:
+
+```python
+>>> import test_package
+>>> print(test_package.__version__)
+'0.1'
+```
+So we need an __init__.py file for our package to reference a version number AND we need to include a version number in the setup script.
+
+As far as I can tell there is no ideal way to set this up. See PEP 396 for discussion
+
+* https://www.python.org/dev/peps/pep-0396/#examples 
+
+For simpler packages like small scientific ones I am aiming to produce I have opted for the following pattern:
+
+1. Keep the version numbering external to the setup script.
+2. In the package __init__.py include a `__version__` string attribute and set that to the version number
+3. In setup.py I include the following code
+
+```python
+#import the version
+from test_package import __version__
+```
+
+This doesn't include any auto tick up on the version number!
+
 ### including data in your package
 
 For data science project you may want to include some example or test data within your package. 

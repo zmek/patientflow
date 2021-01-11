@@ -1,4 +1,5 @@
 import setuptools
+from test_package import __version__
 
 # Read in the requirements.txt file
 with open("requirements.txt") as f:
@@ -6,14 +7,13 @@ with open("requirements.txt") as f:
     for library in f.read().splitlines():
         requirements.append(library)
 
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="pypi-template",
     #there must be an way to auto tick up the version number...
-    version="0.1",
+    version=__version__,
     author="Thomas Monks",
     #I've created a specific email account before and forwarded to my own.
     author_email="generic@genericemail.com",
