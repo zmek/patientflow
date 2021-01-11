@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pypi-template",
+    name="pypi-template_2222",
     #there must be an way to auto tick up the version number...
     version=__version__,
     author="Thomas Monks",

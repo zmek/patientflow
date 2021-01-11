@@ -196,7 +196,7 @@ twine check dist/*
 ```
 This will check your source and wheel distributions for errors and report any issues.
 
-> Before we push to testpypi you need to have a unique name for your package! For this tutorial I recommend 'test_package_{random_number}. Check if it has been created first!
+> Before we push to testpypi you need to have a unique name for your package! For this tutorial I recommend 'pypi_template_{random_number}. Set this in setup.py. Check if it has been created and exists on testpypi first!
 
 Let's push to testpypi.  The code below will prompt you for your username and password.
 
@@ -204,6 +204,26 @@ Let's push to testpypi.  The code below will prompt you for your username and pa
 twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 ```
+Pip install from testpypi as follows:
+
+```
+pip install -i https://test.pypi.org/simple/ pypi-template-2222==0.1.0
+```
 
 
+### Publish on full fat pypi
 
+You will need a seperate account for PyPI.  (Let's not publish our test template there!)
+
+```
+twine upload dist/*
+```
+
+# Building publishing into your workflow with GitHub Actions
+
+* Github now provides template actions
+* I use the publish to PyPI action when code is merge into the 'main' branch.
+* For forecast-tools I created a maintainer account for PyPI called `forecast-tools-admin` rather than giving my main PyPI credentials to GitHub.  I'm not sure if this matters in practice or not.
+
+
+https://pypi.org/project/forecast-tools/#description
