@@ -1,5 +1,5 @@
 import setuptools
-from predict4flow import __version__
+from patientflow import __version__
 
 # Read in the requirements.txt file
 with open("requirements.txt") as f:

@@ -11,10 +11,10 @@ Other modules may follow in future.
 
 ## Key Objectives:
 
-- **Aggregate-Level prediction:** Focus on predicting the overall number of beds needed
-- **Specialty and sex Breakdown:** Provide predictions by specialty and sex, allowing for targeted resource allocation
-- **Inclusion of future arrivals:** Factor in patients who are yet to arrive, thus providing a more complete picture of demand
+- **Aggregate-level prediction:** Focus on predicting the overall number of beds needed
+- **Specialty and sex breakdown:** Provide predictions by specialty and sex, allowing for targeted resource allocation
+- **Inclusion of future arrivals:** Factor in patients who are yet to arrive, providing a more complete picture of demand
 
-## Utilization:
+## Utilisation:
 
 This package is designed for use in hospital data systems, enabling real-time prediction and analysis. The modules can be customised to align with specific hospital requirements
