@@ -1,5 +1,5 @@
 import setuptools
-from test_package import __version__
+from predict4flow import __version__
 
 # Read in the requirements.txt file
 with open("requirements.txt") as f:
@@ -16,7 +16,7 @@ setuptools.setup(
     name="pypi-template_2222",
     # set version number using value read in from __init__()
     version=__version__,
-    author="Thomas Monks",
+    author="Zella King",
     # I tend to create a package email account before and forwarded to my own.
     author_email="generic@genericemail.com",
     license="The MIT License (MIT)",
@@ -24,7 +24,7 @@ setuptools.setup(
     # read in from readme.md and will appear on PyPi
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/health-data-science-OR/pypi-template",
+    url="https://github.com/zmek/pypi-template",
     packages=setuptools.find_packages(),
     # if true look in MANIFEST.in for data files to include
     include_package_data=True,
