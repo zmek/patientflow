@@ -19,24 +19,25 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 - **Reproducible** - We follow the principles of Reproducible Analytical Pipelines, with the aim that the code can be easily adopted in other settings
 - **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. Our intention is that anyone with some knowledge of Python could understand and adapt the code for their use
-- **Modular:** The repository is structured into psubmodules, each intended to predict specific aspects of bed capacity (supply of empty beds, demand for beds and net position in 8 hours' time).
+- **Modular:** The repository is structured into submodules, each intended to predict specific aspects of bed capacity (supply of empty beds, demand for beds and net position in 8 hours' time).
 - **Interactive:** This repo will include an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub. 
 - **Practical:** We will include a dataset, derived from the work we did at University College London Hospital, which can be used to step through the modelling process. This means that, even if your hospital is not set up to do real-time prediction yet, you can still learn from our approach 
 
 ## Repository Structure:
 
+- `patientflow`: This will be a Python package contains all the necessary modules and submodules, including predictive models for emergency demand. Later, we will develop modules for predicting discharge, and net bed position
+- `notebooks`: This folder contains the notebooks with training materials to support the use of the package. The first two have been written.  
 - `LICENSE`
 - `README.md` (You are here)
 - `environment.yml`
 - `requirements.txt`
 - `setup.py`
-- `patientflow`: This package contains all the necessary modules and submodules, including predictive models for emergency demand. Later, we will develop modules for predicting discharge, and net bed position.
 
 ## Getting Started:
 
 1. **[Coming later] Installation:** Follow the instructions in `setup.py` to set up the environment and install necessary dependencies
 2. **[Coming later] Configuration:** Utilise `environment.yml` and `requirements.txt` to configure your environment to run these models
-3. **Exploration:** Dive into the `patientflow` package to explore the predictive models and their applications in forecasting emergency bed demand.
+3. **Exploration:** Start with the `notebooks` folder to get an introduction to the end-users this modelling is designed for, and how we approach the modelling of emergency demand for beds
 
 ## Contributing:
 
@@ -44,6 +45,6 @@ One we have released this as a package, we will welcome contributions from the c
 
 ## Acknowlegement:
 
-The work here has been done by researchers at University College London (UCL). UCL provided some financial support to develop the materials shared here. None of this work would be possible without the support and commitment of many colleagues from University College London Hospital
+The work here has been done by researchers at University College London (UCL). UCL provided some financial support to develop the materials shared here. None of this work would be possible without the support and commitment of many colleagues from University College London Hospital.
 
 This repo has been forked from the excellent [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks. 

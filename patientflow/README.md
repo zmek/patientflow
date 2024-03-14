@@ -5,16 +5,10 @@ Our intention is to release this folder, and its subfolders, as a Python package
 ## Modules Overview:
 
 - `predict`: The central module containing submodules for predicting various aspects of bed capacity
-  - `emergencydemand`: Forecasts the number of emergency beds required
+  - `emergencydemand`: Includes functions used to generate predictions of the number of emergency beds required. See [this notebook](../notebooks/notebooks/2%20Introducing%20emergency%20demand%20and%20its%20modelling.ipynb) for an introduction to the modelling approach
 
 Other modules may follow in future.
 
-## Key Objectives:
+## Deployment:
 
-- **Aggregate-level prediction:** Focus on predicting the overall number of beds needed
-- **Specialty and sex breakdown:** Provide predictions by specialty and sex, allowing for targeted resource allocation
-- **Inclusion of future arrivals:** Factor in patients who are yet to arrive, providing a more complete picture of demand
-
-## Utilisation:
-
-This package is designed for use in hospital data systems, enabling real-time prediction and analysis. The modules can be customised to align with specific hospital requirements
+This package is designed for use in hospital data projects analysing patient flow and bed capacity in short time horizons. The modules can be customised to align with specific hospital requirements
