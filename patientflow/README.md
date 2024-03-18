@@ -9,7 +9,7 @@ The package will support predictions of bed demand by providing functions that
 - return a net bed position by combining predictions of demand and supply of bed
 - provide visualisation of the performance of these predictions using qq plots
 
-The package is intended to serve as a wrapper of the functions typically used for such purposes in the `scipy` python package, with additional context support their application and evaluation in bed management in healthcare
+The package is intended to serve as a wrapper of the functions typically used for such purposes in the `scipy` python package, with additional context to support their application and evaluation in bed management in healthcare
 
 ## Modules Overview:
 

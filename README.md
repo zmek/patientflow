@@ -37,7 +37,7 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 1. **[Coming later] Installation:** Follow the instructions in `setup.py` to set up the environment and install necessary dependencies
 2. **[Coming later] Configuration:** Utilise `environment.yml` and `requirements.txt` to configure your environment to run these models
-3. **Exploration:** Start with the [`notebooks` folder ](../notebooks) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the  [`patientflow` README ](../patientflow/README.md) to understand our intentions for the package
+3. **Exploration:** Start with the [`notebooks`](/notebooks/) folder to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the  [`patientflow` README ](/patientflow/README.md) to understand our intentions for the package
 
 ## Contributing:
 
