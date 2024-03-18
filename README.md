@@ -5,7 +5,7 @@ Welcome to the PatientFlow repo, which is designed to support hospital bed manag
 Please note that you are looking at this repo prior to its first release. It is incomplete. 
 
 ## Objectives
-1. Develop code that was originally written for University College London Hospital into a reusable resource following the principles of Reproducible Analytical Pipelines
+1. Develop code that was originally written for University College London Hospital into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/)
 2. Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems
 3. Provide training materials to inform and educate anyone who wishes to adopt a similar approach
 
@@ -35,9 +35,9 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 ## Getting Started
 
-1. **[Coming later] Installation:** Follow the instructions in `setup.py` to set up the environment and install necessary dependencies
-2. **[Coming later] Configuration:** Utilise `environment.yml` and `requirements.txt` to configure your environment to run these models
-3. **Exploration:** Start with the [`notebooks` README](/notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the  [`patientflow` README ](/patientflow/README.md) to understand our intentions for the package
+1. **Exploration:** Start with the [`notebooks` README](/notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the  [`patientflow` README ](/patientflow/README.md) to understand our intentions for the Python package
+2. **[Coming later] Installation:** Follow the instructions in `setup.py` to set up the environment and install necessary dependencies
+3. **[Coming later] Configuration:** Utilise `environment.yml` and `requirements.txt` to configure your environment to run these models
 
 ## Contributing
 
