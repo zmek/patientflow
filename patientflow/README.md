@@ -11,13 +11,15 @@ The package will support predictions of bed demand by providing functions that
 
 The package is intended to serve as a wrapper of the functions typically used for such purposes in the `scipy` python package, with additional context to support their application and evaluation in bed management in healthcare
 
-## Modules Overview:
+## Modules Overview
 
 - `predict`: The central module containing submodules for predicting various aspects of bed capacity
-  - `emergencydemand`: Includes functions used to generate predictions of the number of emergency beds required. See [this notebook](../notebooks/2%20Introducing%20emergency%20demand%20and%20its%20modelling.ipynb) for an introduction to the modelling approach
+  - `emergencydemand`: generate predictions of the number of emergency beds required within a short time horizon. See [this notebook](../notebooks/2%20Introducing%20emergency%20demand%20and%20its%20modelling.ipynb) for an introduction to the modelling approach
+  - [Later] `emergencysupply`: generate predictions of the number of emergency beds that will become free within a short time horizon due to patients being discharged
+  - [Later] `netbed position`: using the above functions, generate predictions of the net bed position (surplus or deficit beds) within a short time horizon
 
 Other modules may follow in future.
 
-## Deployment:
+## Deployment
 
 This package is designed for use in hospital data projects analysing patient flow and bed capacity in short time horizons. The modules can be customised to align with specific hospital requirements
