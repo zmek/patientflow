@@ -2,6 +2,15 @@
 
 Our intention is to release this folder, and its subfolders, as a Python package that can be installed using common methods like `pip install`.  
 
+The package will support predictions of bed demand by providing functions that 
+
+- take as input patient-level probabilities of admission and discharge
+- return as output probability distributions predicting number of beds needed for or vacated by those patients, at different levels of aggregation (eg by specialty or sex)
+- return a net bed position by combining predictions of demand and supply of bed
+- provide visualisation of the performance of these predictions using qq plots
+
+The package is intended to serve as a wrapper of the functions typically used for such purposes in the `scipy` python package, with additional context support their application and evaluation in bed management in healthcare
+
 ## Modules Overview:
 
 - `predict`: The central module containing submodules for predicting various aspects of bed capacity
