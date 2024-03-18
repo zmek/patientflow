@@ -5,7 +5,7 @@ Welcome to the PatientFlow repo, which is designed to support hospital bed manag
 Please note that you are looking at this repo prior to its first release. It is incomplete. 
 
 ## Objectives
-1. Develop code origially written for University College London Hospital into a reusable resource following the principles of Reproducible Analytical Pipelines
+1. Develop code that was originally written for University College London Hospital into a reusable resource following the principles of Reproducible Analytical Pipelines
 2. Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems
 3. Provide training materials to inform and educate anyone who wishes to adopt a similar approach
 
@@ -20,7 +20,7 @@ Please note that you are looking at this repo prior to its first release. It is 
 - **Reproducible** - We follow the principles of Reproducible Analytical Pipelines, with the aim that the code can be easily adopted in other settings
 - **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. Our intention is that anyone with some knowledge of Python could understand and adapt the code for their use
 - **Modular:** The repository is structured into submodules, each intended to predict specific aspects of bed capacity (supply of empty beds, demand for beds and net position in 8 hours' time).
-- **Interactive:** This repo will include an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub. 
+- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub. 
 - **Practical:** We will include a dataset, derived from the work we did at University College London Hospital, which can be used to step through the modelling process. This means that, even if your hospital is not set up to do real-time prediction yet, you can still learn from our approach 
 
 ## Repository Structure:
