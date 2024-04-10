@@ -1,9 +1,7 @@
 """
-Emergency Demand Prediction Module
+Emergency Demand Prediction From Patient-Level Probababilities
 
-This module provides functionalities to predict demand based on probability distributions, specifically 
-tailored for scenarios where demand predictions are made based on a set of probabilistic outcomes (e.g., 
-in healthcare for bed allocation). The module uses symbolic mathematics to build and manipulate 
+This submodule provides functionalities to predict demand as a probability distributions, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate 
 expressions dynamically, facilitating the computation of aggregate demand probabilities.
 
 Dependencies:
@@ -41,11 +39,11 @@ Date: 25.03.24
 Version: 0.1
 """
 
-
 import numpy as np
 import pandas as pd
 import sympy as sym
 from sympy import symbols, expand
+
 
 def create_symbols(n):
     """
@@ -55,6 +53,7 @@ def create_symbols(n):
     :return: A tuple of symbols.
     """
     return symbols(f"r0:{n}")
+
 
 def compute_core_expression(ri, s):
     """
@@ -67,6 +66,7 @@ def compute_core_expression(ri, s):
     r = sym.Symbol("r")
     core_expression = (1 - r) + r * s
     return core_expression.subs({r: ri})
+
 
 def build_expression(syms, n):
     """
@@ -82,6 +82,7 @@ def build_expression(syms, n):
         expression *= compute_core_expression(syms[i], s)
     return expression
 
+
 def expression_subs(expression, n, predictions):
     """
     Substitute the predictions into the expression.
@@ -94,6 +95,7 @@ def expression_subs(expression, n, predictions):
     substitution = dict(zip(syms[0:n], predictions[0:n]))
     return expression.subs(substitution)
 
+
 def return_coeff(expression, i):
     """
     Return the coefficient of s^i in the expanded expression.
@@ -104,6 +106,7 @@ def return_coeff(expression, i):
     """
     s = sym.Symbol("s")
     return expand(expression).coeff(s, i)
+
 
 def model_input_to_pred_proba(model_input, model):
     """
@@ -119,20 +122,21 @@ def model_input_to_pred_proba(model_input, model):
     predictions = model.predict_proba(model_input)[:, 1]
     return pd.DataFrame(predictions, columns=["pred_proba"])
 
+
 def pred_proba_to_pred_demand(predictions_proba):
     """
     Convert individual predictions to aggregate demand over a number of beds.
 
-    This function takes a DataFrame containing individual probability predictions and aggregates them to 
-    calculate the predicted demand. The DataFrame should contain a single column named 'pred_proba' where 
+    This function takes a DataFrame containing individual probability predictions and aggregates them to
+    calculate the predicted demand. The DataFrame should contain a single column named 'pred_proba' where
     each row represents the probability prediction for a single instance.
 
-    :param predictions_proba: A DataFrame containing the probability predictions. It must have a single 
-                              column named 'pred_proba' with each row representing a probability value 
+    :param predictions_proba: A DataFrame containing the probability predictions. It must have a single
+                              column named 'pred_proba' with each row representing a probability value
                               (ranging from 0 to 1) of the corresponding instance being positive.
 
-    :return: A DataFrame containing the predicted demand. The DataFrame will have a single column 
-             'agg_proba' where each row corresponds to the aggregated demand probability for that 
+    :return: A DataFrame containing the predicted demand. The DataFrame will have a single column
+             'agg_proba' where each row corresponds to the aggregated demand probability for that
              number of instances (from 0 to n, where n is the number of predictions).
     """
 
@@ -141,8 +145,11 @@ def pred_proba_to_pred_demand(predictions_proba):
     expression = build_expression(syms, n)
     expression = expression_subs(expression, n, predictions_proba["pred_proba"])
     pred_demand_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
-    pred_demand = pd.DataFrame.from_dict(pred_demand_dict, orient="index", columns=["agg_proba"])
+    pred_demand = pd.DataFrame.from_dict(
+        pred_demand_dict, orient="index", columns=["agg_proba"]
+    )
     return pred_demand
+
 
 def get_prob_dist_for_horizon_dt(X_test, y_test, model):
     """
@@ -167,11 +174,10 @@ def get_prob_dist_for_horizon_dt(X_test, y_test, model):
         horizon_dt_dict["pred_demand"] = pred_demand
         horizon_dt_dict["actual_demand"] = sum(y_test)
     else:
-        horizon_dt_dict["pred_demand"] = pd.DataFrame({'agg_proba': [1]}, index=[0])
+        horizon_dt_dict["pred_demand"] = pd.DataFrame({"agg_proba": [1]}, index=[0])
         horizon_dt_dict["actual_demand"] = 0
 
     return horizon_dt_dict
-
 
 
 def get_prob_dist(horizon_dts, df, X_test, y_test, model):
@@ -184,49 +190,53 @@ def get_prob_dist(horizon_dts, df, X_test, y_test, model):
     demand over a series of time points.
 
     :param horizon_dts: A list of dates for which the probability distribution is to be calculated.
-    :param df: The complete dataset from which slices will be taken based on horizon dates. The DataFrame 
+    :param df: The complete dataset from which slices will be taken based on horizon dates. The DataFrame
                must contain a 'horizon_dt' column, which is used to filter the data for each specified horizon date.
     :param X_test: The feature set corresponding to the test dataset.
     :param y_test: The actual outcomes corresponding to the test dataset.
     :param model: The predictive model used to generate probability distributions for each horizon date.
     :return: A dictionary where each key is a horizon date, and the value is another dictionary containing
              'pred_demand' (as a DataFrame) and 'actual_demand' (an integer) for that date.
-             
+
      Note:
-        The function includes an assertion to ensure that the lengths of the feature set (X_test) and 
-        the outcome set (y_test) are equal for each horizon date. This check helps maintain the 
+        The function includes an assertion to ensure that the lengths of the feature set (X_test) and
+        the outcome set (y_test) are equal for each horizon date. This check helps maintain the
         integrity of the data and the validity of the predictions.
     """
 
     prob_dist_dict = {}
-    
-    print((f"Calculating probability distributions for {len(horizon_dts)} horizon dates"))
-    
+
+    print(
+        (f"Calculating probability distributions for {len(horizon_dts)} horizon dates")
+    )
+
     if len(horizon_dts) > 10:
         print("This may take a minute or more")
-        
+
     # Initialize a counter for notifying the user every 10 horizon dates processed
     count = 0
-              
+
     for dt in horizon_dts:
-        # Filter the dataset for the current horizon date 
+        # Filter the dataset for the current horizon date
         episode_slices_to_test = df.index[(df.horizon_dt == dt)]
 
         # Ensure the lengths of test features and outcomes are equal
-        assert len(X_test.loc[episode_slices_to_test]) == len(y_test[episode_slices_to_test]), "Mismatch in lengths of X_test and y_test slices."
+        assert len(X_test.loc[episode_slices_to_test]) == len(
+            y_test[episode_slices_to_test]
+        ), "Mismatch in lengths of X_test and y_test slices."
 
         # Compute the predicted and actual demand for the current horizon date
         prob_dist_dict[dt] = get_prob_dist_for_horizon_dt(
             X_test=X_test.loc[episode_slices_to_test],
             y_test=y_test[episode_slices_to_test],
-            model=model
+            model=model,
         )
-        
+
         # Increment the counter and notify the user every 10 horizon dates processed
         count += 1
         if count % 10 == 0 & count != len(horizon_dts):
             print(f"Processed {count} horizon dates")
 
     print(f"Processed {len(horizon_dts)} horizon dates")
-    
+
     return prob_dist_dict

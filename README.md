@@ -13,7 +13,7 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 - **User led:** This work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital, over four years. What is modelled directly reflects how they work and what is most useful to them.
 - **Focused on short-term predictions:** We demonstrate the creation and evaluation of predictive models. The output from these models is a prediction of how many beds with be needed by patients within a short time horizon of (say) 8 hours. (Later we plan to add modules that also predict supply and net bed position over the same period)
-- **Assumes real-time data is available:** Our focus is on how hospitals can make use of real-time data to make informed decisions on the ground. All the modelling here is designed assuming that a hospital has some capacity to run models using real-time (or near to real-time) data in its electronic health record
+- **Assumes real-time data is available:** Our focus is on how hospitals can make use of real-time data to make informed decisions on the ground. The majority of the modelling here is designed assuming that a hospital has some capacity to run models using real-time (or near to real-time) data in its electronic health record. However, we will also consider what is achievable without real-time EHR data, or only with minimal data on ED attendances.
 
 ## Main Features of this repository
 
