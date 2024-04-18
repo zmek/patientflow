@@ -39,7 +39,7 @@ from predict.emergency_demand.yet_to_arrive import (
 )
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_time_window import (
-from predict.emergency_demand.admission_in_time_window import (
+from predict.emergency_demand.admission_in_time_window_using_historic_data import (
     calculate_probability,
 )
 
@@ -264,38 +264,36 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             dict: A dictionary with predictions for each specified context.
         """
         predictions = {}
-        theta = self.weights["theta"]
+        theta = self.weights.get("theta", 1)  # Provide a default value or handle if missing
         NTimes = int(self.time_window / self.time_interval)
 
-        if "default" in prediction_context:
-            time_of_day = prediction_context["default"]["time_of_day"]
-            if time_of_day not in self.tod:
-                original_time_of_day = time_of_day
-                time_of_day = self._find_nearest_previous_tod(time_of_day)
-                warnings.warn(
-                    f"Time of day requested of {original_time_of_day} was not in model training. "
-                    f"Reverting to predictions for {time_of_day}."
-                )
-            lambda_t = self.weights["default"][time_of_day]["lambda_t"]
+        for filter_key, filter_values in prediction_context.items():
+            try:
+                if filter_key not in self.weights:
+                    raise ValueError(f"Filter key '{filter_key}' is not recognized in the model weights.")
 
-            predictions["all"] = poisson_binom_generating_function(
-                NTimes, lambda_t, theta, self.epsilon
-            )
+                time_of_day = filter_values.get("time_of_day")
+                if time_of_day is None:
+                    raise ValueError(f"No 'time_of_day' provided for filter '{filter_key}'.")
 
-        else:
-            for filter_key, filter_values in prediction_context.items():
-                if filter_key != "theta":
-                    time_of_day = filter_values["time_of_day"]
-                    if time_of_day not in self.tod:
-                        original_time_of_day = time_of_day
-                        time_of_day = self._find_nearest_previous_tod(time_of_day)
-                        warnings.warn(
-                            f"Time of day requested of {original_time_of_day} was not in model training. "
-                            f"Reverting to predictions for {time_of_day}."
-                        )
-                    lambda_t = self.weights[filter_key][time_of_day]["lambda_t"]
-                    predictions[filter_key] = poisson_binom_generating_function(
-                        NTimes, lambda_t, theta, self.epsilon
+                if time_of_day not in self.tod:
+                    original_time_of_day = time_of_day
+                    time_of_day = self._find_nearest_previous_tod(time_of_day)
+                    warnings.warn(
+                        f"Time of day requested of {original_time_of_day} was not in model training. "
+                        f"Reverting to predictions for {time_of_day}."
                     )
 
+                lambda_t = self.weights[filter_key][time_of_day].get("lambda_t")
+                if lambda_t is None:
+                    raise ValueError(f"No 'lambda_t' found for the time of day '{time_of_day}' under filter '{filter_key}'.")
+
+                predictions[filter_key] = poisson_binom_generating_function(
+                    NTimes, lambda_t, theta, self.epsilon
+                )
+
+            except KeyError as e:
+                raise KeyError(f"Key error occurred: {str(e)}")
+
         return predictions
+

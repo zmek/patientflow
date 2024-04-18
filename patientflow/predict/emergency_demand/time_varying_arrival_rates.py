@@ -18,6 +18,7 @@ def calculate_rates(df, time_interval):
     Raises:
     TypeError: If the index of the DataFrame is not a datetime index.
     """
+    
 
     # Validate that the DataFrame index is a datetime object
     if not isinstance(df.index, pd.DatetimeIndex):

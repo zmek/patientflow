@@ -10,6 +10,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2010-11": {
@@ -23,6 +26,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2011-12": {
@@ -36,6 +42,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2012-13": {
@@ -49,6 +58,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2013-14": {
@@ -62,6 +74,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2014-15": {
@@ -75,6 +90,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2015-16": {
@@ -88,6 +106,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2016-17": {
@@ -101,6 +122,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2017-18": {
@@ -114,6 +138,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2018-19": {
@@ -127,6 +154,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2019-20": {
@@ -140,6 +170,9 @@
             "Other (Inc. not known)",
             "Other (inc. referred)",
             "Other"
+        ],
+        "admitted_columns": [
+            "Admitted / became a lodged patient"
         ]
     },
     "2020-21": {
@@ -152,6 +185,9 @@
             "Transferred",
             "Died",
             "Not Known"
+        ],
+        "admitted_columns": [
+            "Admitted"
         ]
     },
     "2021-22": {
@@ -164,6 +200,9 @@
             "Transferred",
             "Died",
             "Not Known"
+        ],
+        "admitted_columns": [
+            "Admitted"
         ]
     }
 }
