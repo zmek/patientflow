@@ -123,9 +123,9 @@ def model_input_to_pred_proba(model_input, model):
     return pd.DataFrame(predictions, columns=["pred_proba"])
 
 
-def pred_proba_to_pred_demand(predictions_proba):
+def pred_proba_to_pred_demand(predictions_proba, weights=None):
     """
-    Convert individual predictions to aggregate demand over a number of beds.
+    Convert individual predictions to aggregate demand over a number of beds, optionally weighting the predictions.
 
     This function takes a DataFrame containing individual probability predictions and aggregates them to
     calculate the predicted demand. The DataFrame should contain a single column named 'pred_proba' where
@@ -134,6 +134,7 @@ def pred_proba_to_pred_demand(predictions_proba):
     :param predictions_proba: A DataFrame containing the probability predictions. It must have a single
                               column named 'pred_proba' with each row representing a probability value
                               (ranging from 0 to 1) of the corresponding instance being positive.
+    :param weights: Optional array of weights, of the same length as predictions_proba, to weight the predictions.
 
     :return: A DataFrame containing the predicted demand. The DataFrame will have a single column
              'agg_proba' where each row corresponds to the aggregated demand probability for that
@@ -141,15 +142,18 @@ def pred_proba_to_pred_demand(predictions_proba):
     """
 
     n = len(predictions_proba)
+    local_proba = predictions_proba.copy()
+    if weights is not None:
+        local_proba['pred_proba'] *= weights
+    
     syms = create_symbols(n)
     expression = build_expression(syms, n)
-    expression = expression_subs(expression, n, predictions_proba["pred_proba"])
+    expression = expression_subs(expression, n, local_proba['pred_proba'])
     pred_demand_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
     pred_demand = pd.DataFrame.from_dict(
         pred_demand_dict, orient="index", columns=["agg_proba"]
     )
     return pred_demand
-
 
 def get_prob_dist_for_horizon_dt(X_test, y_test, model):
     """
@@ -217,9 +221,18 @@ def get_prob_dist(horizon_dts, df, X_test, y_test, model):
     count = 0
 
     for dt in horizon_dts:
+        
         # Filter the dataset for the current horizon date
         episode_slices_to_test = df.index[(df.horizon_dt == dt)]
+        
+#         # Check if all indices from episode_slices_to_test exist in X_test
+#         if not episode_slices_to_test.isin(X_test.index).any():
+#             raise ValueError(f"Index mismatch detected for horizon date {dt}: Indices in episode_slices_to_test are not present in X_test.")
 
+#         # Check if all indices from episode_slices_to_test exist in y_test
+#         if not episode_slices_to_test.isin(y_test.index).any():
+#             raise ValueError(f"Index mismatch detected for horizon date {dt}: Indices in episode_slices_to_test are not present in y_test.")
+            
         # Ensure the lengths of test features and outcomes are equal
         assert len(X_test.loc[episode_slices_to_test]) == len(
             y_test[episode_slices_to_test]
