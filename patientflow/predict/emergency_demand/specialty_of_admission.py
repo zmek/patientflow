@@ -130,6 +130,10 @@ class SpecialtyPredictor(BaseEstimator, TransformerMixin):
         :return: A dictionary of specialities and the probabilities that the
             patient will be admitted to them.
         """
+        # Check for no tuple
+        if not consult_sequence:
+            return self.weights.get(tuple(), {})
+        
         # Return a direct lookup of probabilities if possible.
         if consult_sequence in self.weights:
             return self.weights[consult_sequence]
