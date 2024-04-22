@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Tuple
 
 
-class SpecialityPredictor(BaseEstimator, TransformerMixin):
+class SpecialtyPredictor(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.weights = None  # Initialize the weights attribute
 
@@ -16,7 +16,7 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
         sequences and incorporates a default probability for sequences without explicit data.
 
         Parameters:
-        - X: A pandas DataFrame with at least 'consult_sequence', 'final_sequence' and 'observed_category' columns.
+        - X: A pandas DataFrame with at least 'consult_sequence', 'final_sequence' and 'observed_specialty' columns.
 
         Returns:
         - A dictionary mapping each sequence (including null sequences) to their
@@ -24,18 +24,18 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
         """
 
         # derive the names of the observed specialties from the data (used later)
-        prop_keys = X.observed_category.unique()
+        prop_keys = X.observed_specialty.unique()
 
         # For each sequences count the number of observed categories
         X_grouped = (
-            X.groupby("final_sequence")["observed_category"]
+            X.groupby("final_sequence")["observed_specialty"]
             .value_counts()
             .unstack(fill_value=0)
         )
 
         # Handle null sequences by assigning them to a specific key
         null_counts = (
-            X[X["final_sequence"].isnull()]["observed_category"]
+            X[X["final_sequence"].isnull()]["observed_specialty"]
             .value_counts()
             .to_frame()
             .T
@@ -54,7 +54,7 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
         # Calculate the probability of each final sequence occurring in the original data
         proportions["probability_of_final_sequence"] = row_totals / row_totals.sum()
 
-        # Reweight probabilities of ending with each observed speciality
+        # Reweight probabilities of ending with each observed specialty
         # by the likelihood of each final sequence ocurring
         for col in proportions.columns[
             :-1
@@ -70,7 +70,7 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
         # row-wise function to return, for each consult sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category
-        proportions["prob_consult_sequence_ends_in_observed_category"] = proportions[
+        proportions["prob_consult_sequence_ends_in_observed_specialty"] = proportions[
             "final_sequence_to_string"
         ].apply(
             lambda x: self._string_match_consult_sequence(x, proportions, prop_keys)
@@ -78,7 +78,7 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
 
         # return these as weights
         self.weights = proportions.to_dict()[
-            "prob_consult_sequence_ends_in_observed_category"
+            "prob_consult_sequence_ends_in_observed_specialty"
         ]
 
         return self

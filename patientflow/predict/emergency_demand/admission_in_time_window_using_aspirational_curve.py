@@ -30,7 +30,7 @@ def decay_curve(x, x1, b, k_decay):
     Returns:
     - float: The y-value of the decay curve at x.
     """
-    return b * np.exp(-k_decay * (x - x1))
+    return 1 - b * np.exp(-k_decay * (x - x1))
 
 
 def create_curve(x1, y1):
@@ -41,7 +41,7 @@ def create_curve(x1, y1):
 
     # Constants for decay
     k_decay = k_growth  # Using the same k for simplicity
-    b = (1 - y1) / np.exp(-k_decay * 0)  # x - x1 is 0 at x = x1
+        b = (1 - y1) / np.exp(-k_decay * 0)  # x - x1 is 0 at x = x1
 
     # Generate x values
     x_values = np.linspace(0, 24, 200)
