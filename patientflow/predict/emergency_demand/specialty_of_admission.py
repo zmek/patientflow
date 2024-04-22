@@ -6,6 +6,9 @@ from typing import Any, Dict, Tuple
 
 
 class SpecialityPredictor(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.weights = None  # Initialize the weights attribute
+
     def fit(self, X: pd.DataFrame, y: pd.Series = None) -> Dict:
         """
         Fits the predictor based on training data by computing the proportion of each
@@ -74,35 +77,42 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
         )
 
         # return these as weights
-        weights = proportions.to_dict()[
+        self.weights = proportions.to_dict()[
             "prob_consult_sequence_ends_in_observed_category"
         ]
 
-        return weights
+        return self
 
     def _string_match_consult_sequence(self, consult_sequence, proportions, prop_keys):
+        """
+        Matches a given consult_sequence with final sequences (expressed as strings) in the dataset and aggregates
+        their probabilities for each observed specialty. This function filters the data to
+        match only those rows where the *beginning* of the final_sequence string
+        matches the given consult_sequence, ie it requires only a partial match.
+        That means that sequence 'medical' will match 'medical, elderly' and 'medical, surgical'
+        as well as 'medical' on its own. The function
+        computes the total probabilities of any consult_sequence ending in each specialty, and normalizes these totals.
 
-        # get the proportions of visits ending in each speciality that partially match the consult sequence
-        props = (
-            proportions[
-                proportions.final_sequence_to_string.str.match(consult_sequence)
-            ][prop_keys].sum()
-            / proportions[
-                proportions.final_sequence_to_string.str.match(consult_sequence)
-            ][prop_keys]
-            .sum()
-            .values.sum()
-        )
+        Parameters:
+        - consult_sequence (str): The sequence of consults represented as a string,
+        used to match against sequences in the proportions DataFrame.
+        - proportions (pd.DataFrame): DataFrame containing proportions data with an additional
+        column 'final_sequence_to_string' which includes string representations of sequences.
+        - prop_keys (np.array): Array of unique observed specialties to consider in calculations.
 
-        # # add entries for paediatric
-        # props_keys = np.array(list(prop_keys) + ["paediatric"])
-        # props = np.array(list(props) + [0])
+        Returns:
+        - dict: A dictionary where keys are specialty names and values are the aggregated
+        and normalized probabilities of ending a consult sequence in those specialties.
+        """
 
-        return dict(zip(prop_keys, props))
+        props = proportions[
+            proportions.final_sequence_to_string.str.match(consult_sequence)
+        ][prop_keys].sum()
+        props_total = props.sum()
+        return dict(zip(prop_keys, props / props_total))
 
     def predict(
         self,
-        weights: dict[tuple[str, ...], dict[str, float]],
         consult_sequence: tuple[str, ...],
     ) -> dict[str, float]:
         """
@@ -121,16 +131,16 @@ class SpecialityPredictor(BaseEstimator, TransformerMixin):
             patient will be admitted to them.
         """
         # Return a direct lookup of probabilities if possible.
-        if consult_sequence in weights:
-            return weights[consult_sequence]
+        if consult_sequence in self.weights:
+            return self.weights[consult_sequence]
 
         # Otherwise, if the sequence has multiple elements, work back looking for a match
         while len(consult_sequence) > 1:
             consult_sequence_list = list(consult_sequence)
             consult_sequence = tuple(consult_sequence_list[0:-1])  # remove last element
 
-            if consult_sequence in weights:
-                return weights[consult_sequence]
+            if consult_sequence in self.weights:
+                return self.weights[consult_sequence]
 
         #   if no consult data:
-        return weights[tuple()]
+        return self.weights.get(tuple(), {})
