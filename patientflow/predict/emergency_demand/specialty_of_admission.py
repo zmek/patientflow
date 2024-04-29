@@ -131,7 +131,7 @@ class SpecialtyPredictor(BaseEstimator, TransformerMixin):
             patient will be admitted to them.
         """
         # Check for no tuple
-        if not consult_sequence:
+        if consult_sequence is None or pd.isna(consult_sequence):
             return self.weights.get(tuple(), {})
         
         # Return a direct lookup of probabilities if possible.
@@ -139,6 +139,7 @@ class SpecialtyPredictor(BaseEstimator, TransformerMixin):
             return self.weights[consult_sequence]
 
         # Otherwise, if the sequence has multiple elements, work back looking for a match
+
         while len(consult_sequence) > 1:
             consult_sequence_list = list(consult_sequence)
             consult_sequence = tuple(consult_sequence_list[0:-1])  # remove last element
