@@ -16,7 +16,9 @@ def get_model_name(model_name, tod_):
     model_name = model_name + '_' + f"{hour_:02}" + min_
     return model_name
 
-
+def select_one_episode_slice_per_visit(df):
+    max_indices = df.groupby('visit_number')['random_number'].idxmax()
+    return(df.loc[max_indices].drop(columns=['random_number']))
 
 def preprocess_data(df, tod_, exclude_columns, single_episode_slice_per_visit=True):
     # Filter by the time of day while keeping the original index
@@ -24,8 +26,7 @@ def preprocess_data(df, tod_, exclude_columns, single_episode_slice_per_visit=Tr
     
     if single_episode_slice_per_visit:
         # Group by 'visit_number' and get the row with the maximum 'random_number'
-        max_indices = df_tod.groupby('visit_number')['random_number'].idxmax()
-        df_single = df_tod.loc[max_indices].drop(columns=['random_number'])
+        df_single = select_one_episode_slice_per_visit(df_tod)
         
         # Create label array with the same index
         y = df_single.pop("is_admitted").astype(int)
