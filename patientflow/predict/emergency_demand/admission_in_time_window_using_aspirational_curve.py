@@ -2,60 +2,31 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def growth_curve(x, a, k_growth):
-    """
-    Logistic-like growth function.
+# Growth component (0 <= x <= x1)
+def growth_curve(x, a, gamma):
+    return a * (np.exp(x*gamma))
 
-    Parameters:
-    - x (float): The x-value at which to evaluate the curve.
-    - a (float): Scaling factor for the growth phase.
-    - k_growth (float): Growth rate.
+# Decay component (x >= x1)
+def decay_curve(x, x1, y1, lamda):
+    return y1 + (1-y1)*(1-np.exp(-lamda*(x-x1)))
 
-    Returns:
-    - float: The y-value of the growth curve at x.
-    """
-    return a * (np.exp(k_growth * x) - 1)
-
-
-def decay_curve(x, x1, b, k_decay):
-    """
-    Exponential decay function.
-
-    Parameters:
-    - x (float): The x-value at which to evaluate the curve.
-    - x1 (float): The x-value where decay starts.
-    - b (float): Scaling factor for the decay phase.
-    - k_decay (float): Decay rate.
-
-    Returns:
-    - float: The y-value of the decay curve at x.
-    """
-    return 1 - b * np.exp(-k_decay * (x - x1))
-
-
-def create_curve(x1, y1):
-
+def create_curve(x1, y1, x2, y2, a = 0.01):
+    
     # Constants for growth
-    k_growth = 1 / x1
-    a = y1 / (np.exp(k_growth * x1) - 1)
-
+    gamma = np.log(y1/a)/x1
+    
     # Constants for decay
-    k_decay = k_growth  # Using the same k for simplicity
-        b = (1 - y1) / np.exp(-k_decay * 0)  # x - x1 is 0 at x = x1
+    x_delta = x2 - x1
+    lamda = np.log((1-y1)/(1-y2))/x_delta
 
     # Generate x values
-    x_values = np.linspace(0, 24, 200)
+    x_values = np.linspace(0, 20, 200)
 
     # Compute y values for each x
-    y_values = [
-        growth_curve(x, a, k_growth) if x <= x1 else decay_curve(x, x1, b, k_decay)
-        for x in x_values
-    ]
+    y_values = [growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda) for x in x_values]
+    return gamma, lamda, a, x_values, y_values
 
-    return x_values, y_values, a, k_growth, b, k_decay
-
-
-def get_y_from_aspirational_curve(x, x1, y1):
+def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
     """
     Calculate the probability of admission (y) for a given time since arrival (x) on the curve.
 
@@ -68,22 +39,22 @@ def get_y_from_aspirational_curve(x, x1, y1):
     float: The y value corresponding to the given x.
     """
 
-    x_values, y_values, a, k_growth, b, k_decay = create_curve(x1, y1)
+    gamma, lamda, a, x_values, y_values = create_curve(x1, y1, x2, y2)
 
     if x <= x1:
-        return growth_curve(x, a, k_growth)
+        return growth_curve(x, a, gamma)
     else:
-        return decay_curve(x, x1, b, k_decay)
+        return decay_curve(x, x1, y1, lamda)
 
 
-def calculate_probability(elapsed_los_td_hrs, time_window_hrs, x1, y1):
+def calculate_probability(elapsed_los_td_hrs, time_window_hrs, x1, y1, x2, y2):
 
     # probability of still being in the ED now (a function of elapsed time since arrival)
-    prob_still_being_in_now = get_y_from_aspirational_curve(elapsed_los_td_hrs, x1, y1)
+    prob_still_being_in_now = get_y_from_aspirational_curve(elapsed_los_td_hrs, x1, y1, x2, y2)
 
     # prob admission when adding the time window added to elapsed time since arrival
     prob_admission_within_elapsed_time_plus_time_window = get_y_from_aspirational_curve(
-        elapsed_los_td_hrs + time_window_hrs, x1, y1
+        elapsed_los_td_hrs + time_window_hrs, x1, y1, x2, y2
     )
 
     # prob admission within time window given arrival time
