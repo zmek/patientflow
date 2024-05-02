@@ -77,4 +77,6 @@ def get_specialty_probs(model_file_path, episode_slices_df):
     # This is necessary because, in our local implementation, specialty_model has not been trained to return predictions for paediatric patients
     episode_slices_df['specialty_prob'] = episode_slices_df['specialty_prob'].apply(lambda d: {**d, **{'paediatric': d.get('paediatric', 0)}})
     
+    print(episode_slices_df.shape)
+    
     return(episode_slices_df)

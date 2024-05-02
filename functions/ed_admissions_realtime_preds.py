@@ -6,6 +6,8 @@ from predict.emergency_demand.from_individual_probs import model_input_to_pred_p
 from ed_admissions_helper_functions import prepare_for_inference
 from ed_admissions_utils import load_saved_model 
 
+from ed_admissions_helper_functions import get_specialty_probs
+
 def index_of_sum(sequence: list[float], max_sum: float) -> int:
     s = 0.0
     for i, p in enumerate(sequence):
@@ -31,30 +33,8 @@ def create_predictions(model_dir, slice_datetime, episode_slices_df, specialties
     # Run inference on the patients in ED (admission probabilities)
     prob_admission_after_ed = model_input_to_pred_proba(X_test, admissions_model)
     
-    # Load model for specialty predictions
-    specialty_model =  prepare_for_inference(model_dir, 'ed_specialty', model_only = True)
-    
-    # Mark which observations are for children
-    episode_slices_df['is_child'] = episode_slices_df['age_group'] == '0-17'
-
-    # For children we assume all admitted to pediatric specialties and will not go to any other place
-    child_dict = {
-        'medical': 0.0,
-        'surgical': 0.0,
-        'haem_onc': 0.0,
-        'paediatric': 1.0
-    }
-
-
-    # Apply child_dict directly to children and speciality model to all other visits 
-    episode_slices_df['specialty_prob'] = episode_slices_df.apply(
-        lambda row: specialty_model.predict(row['consultation_sequence']) if not row['is_child'] else child_dict,
-        axis=1
-    )
-
-    # Ensure each dictionary in 'specialty_prob' contains the key 'paediatric' with a default value of 0
-    # This is necessary because, in our local implementation, specialty_model has not been trained to return predictions for paediatric patients
-    episode_slices_df['specialty_prob'] = episode_slices_df['specialty_prob'].apply(lambda d: {**d, **{'paediatric': d.get('paediatric', 0)}})
+    # Run inference on the patients in ED (admission probabilities)
+    episode_slices_df = get_specialty_probs(model_dir, episode_slices_df)
 
     # Prepare data and model for yet-to-arrive
     yet_to_arrive_model_name = 'ed_yet_to_arrive_by_spec_' + prediction_window + '_hours'
