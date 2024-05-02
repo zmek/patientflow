@@ -155,7 +155,7 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     )
     return pred_demand
 
-def get_prob_dist_for_horizon_dt(X_test, y_test, model):
+def get_prob_dist_for_horizon_dt(X_test, y_test, model, weights=None):
     """
     Get the probability distribution for a specific horizon date.
 
@@ -174,7 +174,7 @@ def get_prob_dist_for_horizon_dt(X_test, y_test, model):
 
     if len(X_test) > 0:
         pred_proba = model_input_to_pred_proba(X_test, model)
-        pred_demand = pred_proba_to_pred_demand(pred_proba)
+        pred_demand = pred_proba_to_pred_demand(pred_proba, weights)
         horizon_dt_dict["pred_demand"] = pred_demand
         horizon_dt_dict["actual_demand"] = sum(y_test)
     else:
@@ -184,7 +184,7 @@ def get_prob_dist_for_horizon_dt(X_test, y_test, model):
     return horizon_dt_dict
 
 
-def get_prob_dist(horizon_dts, df, X_test, y_test, model):
+def get_prob_dist(horizon_dts, df, X_test, y_test, model, weights = None):
     """
     Calculate and return a probability distribution over a sequence of horizon dates.
 
@@ -237,12 +237,18 @@ def get_prob_dist(horizon_dts, df, X_test, y_test, model):
         assert len(X_test.loc[episode_slices_to_test]) == len(
             y_test[episode_slices_to_test]
         ), "Mismatch in lengths of X_test and y_test slices."
+        
+        if weights is None:
+            horizon_dt_weights = None
+        else:
+            horizon_dt_weights = weights[episode_slices_to_test].values 
 
         # Compute the predicted and actual demand for the current horizon date
         prob_dist_dict[dt] = get_prob_dist_for_horizon_dt(
             X_test=X_test.loc[episode_slices_to_test],
             y_test=y_test[episode_slices_to_test],
             model=model,
+            weights=horizon_dt_weights
         )
 
         # Increment the counter and notify the user every 10 horizon dates processed

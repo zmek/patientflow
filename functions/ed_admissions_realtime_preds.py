@@ -45,10 +45,8 @@ def create_predictions(model_dir, slice_datetime, episode_slices_df, specialties
         'paediatric': 1.0
     }
 
-    # Apply child_dict directly to children and speciality model to all other visits 
-    # episode_slices_df['specialty_prob'] = episode_slices_df['is_child'].apply(lambda x: child_dict if x else None)
 
-    # Apply speciality model to all other visits 
+    # Apply child_dict directly to children and speciality model to all other visits 
     episode_slices_df['specialty_prob'] = episode_slices_df.apply(
         lambda row: specialty_model.predict(row['consultation_sequence']) if not row['is_child'] else child_dict,
         axis=1
