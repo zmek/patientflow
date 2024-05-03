@@ -41,7 +41,7 @@ def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
 
     gamma, lamda, a, x_values, y_values = create_curve(x1, y1, x2, y2)
 
-    if x <= x1:
+    if x < x1:
         return growth_curve(x, a, gamma)
     else:
         return decay_curve(x, x1, y1, lamda)
@@ -50,17 +50,26 @@ def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
 def calculate_probability(elapsed_los_td_hrs, time_window_hrs, x1, y1, x2, y2):
 
     # probability of still being in the ED now (a function of elapsed time since arrival)
-    prob_still_being_in_now = get_y_from_aspirational_curve(elapsed_los_td_hrs, x1, y1, x2, y2)
+    prob_admission_prior_to_now = get_y_from_aspirational_curve(elapsed_los_td_hrs, x1, y1, x2, y2)
 
     # prob admission when adding the time window added to elapsed time since arrival
-    prob_admission_within_elapsed_time_plus_time_window = get_y_from_aspirational_curve(
+    prob_admission_by_end_of_window = get_y_from_aspirational_curve(
         elapsed_los_td_hrs + time_window_hrs, x1, y1, x2, y2
     )
+    
+    # when elapsed_los_td_hrs is extremely high (> 94 hours when x1=4, x2=12, y1=0.76, y2=0.99), 
+    # get_y_from_aspirational_curve returns 1.0 for prob_admission_prior_to_now
+    # despite the curve being asymptotic
+    # causing a divide by zero error
+    # also, when elapsed_los_td_hrs is extremely high, prob_admission_by_end_of_window approaches prob_admission_prior_to_now in value
+    # in this case, return 1
+    if prob_admission_prior_to_now == 1:
+        return(1.0)
 
     # prob admission within time window given arrival time
     return (
-        prob_admission_within_elapsed_time_plus_time_window - prob_still_being_in_now
-    ) / (1 - prob_still_being_in_now)
+        prob_admission_by_end_of_window - prob_admission_prior_to_now
+    ) / (1 - prob_admission_prior_to_now)
 
 
 def plot_curve(full_path, x1, y1):
