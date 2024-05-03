@@ -49,34 +49,98 @@ def prepare_for_inference(model_file_path, model_name, time_of_day = None, model
         
     
 
+def prepare_episode_slices_dict(df):
+    """
+    Prepares a dictionary mapping horizon dates to their corresponding episode slice indices.
 
-def get_specialty_probs(model_file_path, episode_slices_df):
+    Args:
+    df (pd.DataFrame): DataFrame containing at least a 'horizon_dt' column which represents the dates.
+
+    Returns:
+    dict: A dictionary where keys are dates and values are arrays of indices corresponding to each date's episode slices.
+    """
+    # Ensure 'horizon_dt' is in the DataFrame
+    if 'horizon_dt' not in df.columns:
+        raise ValueError("DataFrame must include a 'horizon_dt' column")
+
+    # Group the DataFrame by 'horizon_dt' and collect the indices for each group
+    episode_slices_dict = {date: group.index.tolist() for date, group in df.groupby('horizon_dt')}
+
+    return episode_slices_dict
+
+
+
+def get_specialty_probs(model_file_path, episode_slices_df, special_category_func=None, special_category_dict=None):
+    """
+    Calculate specialty probability distributions for patient visits based on their data.
+    
+    This function applies a predictive model to each row of the input DataFrame to compute
+    specialty probability distributions. Optionally, it can classify certain rows as
+    belonging to a special category (like pediatric cases) based on a user-defined function,
+    applying a fixed probability distribution for these cases.
+
+    Parameters
+    ----------
+    model_file_path : str
+        Path to the predictive model file.
+    episode_slices_df : pandas.DataFrame
+        DataFrame containing the data on which predictions are to be made. Must include
+        a 'consultation_sequence' column if no special_category_func is applied.
+    special_category_func : callable, optional
+        A function that takes a DataFrame row (Series) as input and returns True if the row
+        belongs to a special category that requires a fixed probability distribution. 
+        If not provided, no special categorization is applied.
+    special_category_dict : dict, optional
+        A dictionary containing the fixed probability distribution for special category cases.
+        This dictionary is applied to rows identified by `special_category_func`. If 
+        `special_category_func` is provided, this parameter must also be provided.
+
+    Returns
+    -------
+    pandas.Series
+        A Series containing dictionaries as values. Each dictionary represents the probability
+        distribution of specialties for each patient visit.
+
+    Raises
+    ------
+    ValueError
+        If `special_category_func` is provided but `special_category_dict` is None.
+
+    Examples
+    --------
+    >>> model_file_path = 'path/to/model'
+    >>> data = {'age_group': ['0-17', '18-65', '66+'], 'age': [16, 40, 70], 'consultation_sequence': [1, 2, 3]}
+    >>> episode_slices_df = pd.DataFrame(data)
+    >>> special_category_func = lambda row: row['age'] <= 17
+    >>> special_category_dict = {'medical': 0.0, 'surgical': 0.0, 'haem_onc': 0.0, 'paediatric': 1.0}
+    >>> probs = get_specialty_probs(model_file_path, episode_slices_df, special_category_func, special_category_dict)
+    >>> print(probs)
+    """
+    if special_category_func and not special_category_dict:
+        raise ValueError("special_category_dict must be provided if special_category_func is specified.")
 
     # Load model for specialty predictions
-    specialty_model =  prepare_for_inference(model_file_path, 'ed_specialty', model_only = True)
+    specialty_model = prepare_for_inference(model_file_path, 'ed_specialty', model_only=True)
 
-    # Mark which observations are for children
-    episode_slices_df['is_child'] = episode_slices_df['age_group'] == '0-17'
+    # Function to determine the specialty probabilities
+    def determine_specialty(row):
+        if special_category_func and special_category_func(row):
+            return special_category_dict
+        else:
+            return specialty_model.predict(row['consultation_sequence'])
 
-    # For children we assume all admitted to pediatric specialties and will not go to any other place
-    child_dict = {
-        'medical': 0.0,
-        'surgical': 0.0,
-        'haem_onc': 0.0,
-        'paediatric': 1.0
-    }
+    # Apply the determine_specialty function to each row
+    specialty_prob_series = episode_slices_df.apply(determine_specialty, axis=1)
 
+    # Find all unique keys used in any dictionary within the series
+    all_keys = set().union(*(d.keys() for d in specialty_prob_series if isinstance(d, dict)))
 
-    # Apply child_dict directly to children and speciality model to all other visits 
-    episode_slices_df['specialty_prob'] = episode_slices_df.apply(
-        lambda row: specialty_model.predict(row['consultation_sequence']) if not row['is_child'] else child_dict,
-        axis=1
+    # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
+    specialty_prob_series = specialty_prob_series.apply(
+        lambda d: {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
     )
+    
+    return specialty_prob_series
 
-    # Ensure each dictionary in 'specialty_prob' contains the key 'paediatric' with a default value of 0
-    # This is necessary because, in our local implementation, specialty_model has not been trained to return predictions for paediatric patients
-    episode_slices_df['specialty_prob'] = episode_slices_df['specialty_prob'].apply(lambda d: {**d, **{'paediatric': d.get('paediatric', 0)}})
-    
-    print(episode_slices_df.shape)
-    
-    return(episode_slices_df)
+
+

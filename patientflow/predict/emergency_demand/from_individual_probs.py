@@ -184,78 +184,72 @@ def get_prob_dist_for_horizon_dt(X_test, y_test, model, weights=None):
     return horizon_dt_dict
 
 
-def get_prob_dist(horizon_dts, df, X_test, y_test, model, weights = None):
+def get_prob_dist(episode_slices_dict, X_test, y_test, model, weights=None):
     """
-    Calculate and return a probability distribution over a sequence of horizon dates.
+    Calculate probability distributions for each horizon date based on given model predictions.
 
-    This function iterates over a list of horizon dates, extracts relevant slices of the test dataset for
-    each date, and calculates the predicted and actual demand for that date. The function aggregates
-    these values into a dictionary, providing a comprehensive overview of predicted versus actual
-    demand over a series of time points.
+    Parameters
+    ----------
+    episode_slices_dict : dict
+        A dictionary mapping horizon dates (as datetime objects) to indices in `X_test` and `y_test`
+        that correspond to the episode slices to be tested for each date.
+    X_test : pandas.DataFrame
+        A DataFrame containing the test features for prediction.
+    y_test : pandas.Series
+        A Series containing the true outcome values corresponding to the test features in `X_test`.
+    model : any
+        A predictive model object with a `predict_proba` method that takes features from `X_test` and
+        optionally weights, and returns a probability distribution over possible outcomes.
+    weights : pandas.Series, optional
+        A Series containing weights for the test data points, which may influence the prediction,
+        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
 
-    :param horizon_dts: A list of dates for which the probability distribution is to be calculated.
-    :param df: The complete dataset from which slices will be taken based on horizon dates. The DataFrame
-               must contain a 'horizon_dt' column, which is used to filter the data for each specified horizon date.
-    :param X_test: The feature set corresponding to the test dataset.
-    :param y_test: The actual outcomes corresponding to the test dataset.
-    :param model: The predictive model used to generate probability distributions for each horizon date.
-    :return: A dictionary where each key is a horizon date, and the value is another dictionary containing
-             'pred_demand' (as a DataFrame) and 'actual_demand' (an integer) for that date.
+    Returns
+    -------
+    dict
+        A dictionary where each key is a horizon date and each value is the resulting probability
+        distribution for that date, obtained by applying the model on the corresponding test slices.
 
-     Note:
-        The function includes an assertion to ensure that the lengths of the feature set (X_test) and
-        the outcome set (y_test) are equal for each horizon date. This check helps maintain the
-        integrity of the data and the validity of the predictions.
+    Notes
+    -----
+    - The function asserts that the length of the test features and outcomes are equal for each
+      slice before proceeding with predictions.
+    - It notifies the user of progress in processing horizon dates, especially if there are more
+      than 10 horizon dates.
     """
-
     prob_dist_dict = {}
+    print(f"Calculating probability distributions for {len(episode_slices_dict)} horizon dates")
 
-    print(
-        (f"Calculating probability distributions for {len(horizon_dts)} horizon dates")
-    )
-
-    if len(horizon_dts) > 10:
+    if len(episode_slices_dict) > 10:
         print("This may take a minute or more")
 
     # Initialize a counter for notifying the user every 10 horizon dates processed
     count = 0
 
-    for dt in horizon_dts:
-        
-        # Filter the dataset for the current horizon date
-        episode_slices_to_test = df.index[(df.horizon_dt == dt)]
-        
-#         # Check if all indices from episode_slices_to_test exist in X_test
-#         if not episode_slices_to_test.isin(X_test.index).any():
-#             raise ValueError(f"Index mismatch detected for horizon date {dt}: Indices in episode_slices_to_test are not present in X_test.")
-
-#         # Check if all indices from episode_slices_to_test exist in y_test
-#         if not episode_slices_to_test.isin(y_test.index).any():
-#             raise ValueError(f"Index mismatch detected for horizon date {dt}: Indices in episode_slices_to_test are not present in y_test.")
-            
+    for dt, episode_slices_to_test in episode_slices_dict.items():
         # Ensure the lengths of test features and outcomes are equal
         assert len(X_test.loc[episode_slices_to_test]) == len(
-            y_test[episode_slices_to_test]
+            y_test.loc[episode_slices_to_test]
         ), "Mismatch in lengths of X_test and y_test slices."
-        
+
         if weights is None:
             horizon_dt_weights = None
         else:
-            horizon_dt_weights = weights[episode_slices_to_test].values 
+            horizon_dt_weights = weights.loc[episode_slices_to_test].values
 
         # Compute the predicted and actual demand for the current horizon date
         prob_dist_dict[dt] = get_prob_dist_for_horizon_dt(
             X_test=X_test.loc[episode_slices_to_test],
-            y_test=y_test[episode_slices_to_test],
+            y_test=y_test.loc[episode_slices_to_test],
             model=model,
             weights=horizon_dt_weights
         )
 
         # Increment the counter and notify the user every 10 horizon dates processed
         count += 1
-        if count % 10 == 0 & count != len(horizon_dts):
+        if count % 10 == 0 and count != len(episode_slices_dict):
             print(f"Processed {count} horizon dates")
 
-    print(f"Processed {len(horizon_dts)} horizon dates")
+    print(f"Processed {len(episode_slices_dict)} horizon dates")
 
     return prob_dist_dict
