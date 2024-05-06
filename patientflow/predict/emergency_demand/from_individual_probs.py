@@ -1,25 +1,24 @@
 """
 Emergency Demand Prediction From Patient-Level Probababilities
 
-This submodule provides functionalities to predict demand as a probability distributions, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate 
-expressions dynamically, facilitating the computation of aggregate demand probabilities.
+This submodule provides functions to predict demand as a probability distribution, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate expressions dynamically, facilitating the computation of aggregate demand probabilities.
 
 Dependencies:
     - numpy: Used for array and numerical operations.
-    - pandas: Utilized for handling data structures like DataFrames, enabling data manipulation and analysis. The module expects a DataFrame `df` with a specific structure, notably including a 'horizon_dt' column, which represents the horizon dates for the demand predictions. This column is crucial for filtering data within the `get_prob_dist` functions.
+    - pandas: Utilized for handling data structures like DataFrames, enabling data manipulation and analysis.
     - sympy: A Python library for symbolic mathematics, used here to dynamically create and manipulate symbolic expressions, particularly for the calculation of probabilities.
 
 
 Functions:
-    - create_symbols(n): Creates a set of symbolic variables.
-    - compute_core_expression(ri, s): Computes a core expression for given inputs.
-    - build_expression(syms, n): Builds an overall expression from core expressions.
-    - expression_subs(expression, predictions): Substitutes predictions into an expression.
-    - return_coeff(expression, i): Returns a specific coefficient from an expanded expression.
-    - model_input_to_pred_proba(model_input, model): Converts model input to predicted probabilities.
-    - pred_proba_to_pred_demand(predictions_proba): Converts prediction probabilities to predicted demand.
-    - get_prob_dist_for_horizon_dt(X_test, y_test, model): Computes probability distribution for a horizon date.
-    - get_prob_dist(horizon_dts, df, X_test, y_test, model): Computes probability distributions over horizon dates.
+- create_symbols(n): Generates symbolic variables.
+- compute_core_expression(ri, s): Computes a symbolic expression involving both symbols and constants.
+- build_expression(syms, n): Constructs a cumulative product of symbolic expressions.
+- expression_subs(expression, n, predictions): Substitutes numerical values into a symbolic expression.
+- return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
+- model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
+- pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
+- get_prob_dist_for_horizon_dt(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
+- get_prob_dist(episode_slices_dict, X_test, y_test, model, weights): Computes probability distributions for multiple horizon dates.
     
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
 
@@ -47,21 +46,36 @@ from sympy import symbols, expand
 
 def create_symbols(n):
     """
-    Dynamically create a set of symbols based on the input size.
+    Generate a sequence of symbolic objects intended for use in mathematical expressions.
 
-    :param n: Number of symbols to create.
-    :return: A tuple of symbols.
+    Parameters
+    ----------
+    n : int
+        Number of symbols to create.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the generated symbolic objects.
     """
     return symbols(f"r0:{n}")
 
 
 def compute_core_expression(ri, s):
     """
-    Compute the core expression for a given ri and symbol s.
+    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.
 
-    :param ri: The ri value to substitute in the expression.
-    :param s: The symbol s used in the expression.
-    :return: The computed core expression.
+    Parameters
+    ----------
+    ri : float
+        The constant value to substitute into the expression.
+    s : Symbol
+        The symbolic object used in the expression.
+
+    Returns
+    -------
+    Expr
+        The symbolic expression after substitution.
     """
     r = sym.Symbol("r")
     core_expression = (1 - r) + r * s
@@ -70,11 +84,19 @@ def compute_core_expression(ri, s):
 
 def build_expression(syms, n):
     """
-    Build the overall expression by multiplying core expressions for each symbol.
+    Construct a cumulative product expression by combining individual symbolic expressions.
 
-    :param syms: The symbols used in the expressions.
-    :param n: The number of terms to include in the product.
-    :return: The built expression.
+    Parameters
+    ----------
+    syms : iterable
+        Iterable containing symbols to use in the expressions.
+    n : int
+        The number of terms to include in the cumulative product.
+
+    Returns
+    -------
+    Expr
+        The cumulative product of the expressions.
     """
     s = sym.Symbol("s")
     expression = 1
@@ -85,24 +107,42 @@ def build_expression(syms, n):
 
 def expression_subs(expression, n, predictions):
     """
-    Substitute the predictions into the expression.
+    Substitute values into a symbolic expression based on a mapping from symbols to predictions.
 
-    :param expression: The expression to substitute into.
-    :param predictions: The predictions to use for substitution.
-    :return: The substituted expression.
+    Parameters
+    ----------
+    expression : Expr
+        The symbolic expression to perform substitution on.
+    n : int
+        Number of symbols and corresponding predictions.
+    predictions : list
+        List of numerical predictions to substitute.
+
+    Returns
+    -------
+    Expr
+        The expression after performing the substitution.
     """
     syms = create_symbols(n)
-    substitution = dict(zip(syms[0:n], predictions[0:n]))
+    substitution = dict(zip(syms, predictions))
     return expression.subs(substitution)
 
 
 def return_coeff(expression, i):
     """
-    Return the coefficient of s^i in the expanded expression.
+    Extract the coefficient of a specified power from an expanded symbolic expression.
 
-    :param expression: The expression to expand.
-    :param i: The power of s to find the coefficient for.
-    :return: The coefficient of s^i.
+    Parameters
+    ----------
+    expression : Expr
+        The expression to expand and extract from.
+    i : int
+        The power of the term whose coefficient is to be extracted.
+
+    Returns
+    -------
+    number
+        The coefficient of the specified power in the expression.
     """
     s = sym.Symbol("s")
     return expand(expression).coeff(s, i)
@@ -110,14 +150,20 @@ def return_coeff(expression, i):
 
 def model_input_to_pred_proba(model_input, model):
     """
-    Convert model input to predicted probabilities.
+    Use a predictive model to convert model input data into predicted probabilities.
 
-    This function takes the model input and uses the provided model to predict probabilities. It then
-    organizes these probabilities into a pandas DataFrame.
+    Parameters
+    ----------
+    model_input : array-like
+        The input data to the model, typically as features used for predictions.
+    model : object
+        A model object with a `predict_proba` method that computes probability estimates.
 
-    :param model_input: The input data to the model, typically features used for prediction.
-    :param model: The predictive model that provides a predict_proba method.
-    :return: A pandas DataFrame containing the predicted probabilities for the positive class.
+    Returns
+    -------
+    DataFrame
+        A pandas DataFrame containing the predicted probabilities for the positive class,
+        with one column labeled 'pred_proba'.
     """
     predictions = model.predict_proba(model_input)[:, 1]
     return pd.DataFrame(predictions, columns=["pred_proba"])
@@ -125,50 +171,56 @@ def model_input_to_pred_proba(model_input, model):
 
 def pred_proba_to_pred_demand(predictions_proba, weights=None):
     """
-    Convert individual predictions to aggregate demand over a number of beds, optionally weighting the predictions.
+    Aggregate individual probability predictions into predicted demand using optional weights.
 
-    This function takes a DataFrame containing individual probability predictions and aggregates them to
-    calculate the predicted demand. The DataFrame should contain a single column named 'pred_proba' where
-    each row represents the probability prediction for a single instance.
+    Parameters
+    ----------
+    predictions_proba : DataFrame
+        A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
+    weights : array-like, optional
+        An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
 
-    :param predictions_proba: A DataFrame containing the probability predictions. It must have a single
-                              column named 'pred_proba' with each row representing a probability value
-                              (ranging from 0 to 1) of the corresponding instance being positive.
-    :param weights: Optional array of weights, of the same length as predictions_proba, to weight the predictions.
-
-    :return: A DataFrame containing the predicted demand. The DataFrame will have a single column
-             'agg_proba' where each row corresponds to the aggregated demand probability for that
-             number of instances (from 0 to n, where n is the number of predictions).
+    Returns
+    -------
+    DataFrame
+        A DataFrame with a single column 'agg_proba' showing the aggregated probability demand,
+        indexed from 0 to n, where n is the number of predictions.
     """
-
     n = len(predictions_proba)
     local_proba = predictions_proba.copy()
     if weights is not None:
-        local_proba['pred_proba'] *= weights
-    
+        local_proba["pred_proba"] *= weights
+
     syms = create_symbols(n)
     expression = build_expression(syms, n)
-    expression = expression_subs(expression, n, local_proba['pred_proba'])
+    expression = expression_subs(expression, n, local_proba["pred_proba"])
     pred_demand_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
     pred_demand = pd.DataFrame.from_dict(
         pred_demand_dict, orient="index", columns=["agg_proba"]
     )
     return pred_demand
 
+
 def get_prob_dist_for_horizon_dt(X_test, y_test, model, weights=None):
     """
-    Get the probability distribution for a specific horizon date.
+    Calculate both predicted and actual demand distributions for a given date using test data.
 
-    This function computes the predicted demand and the actual demand for a given horizon date.
-    It utilizes the model to predict probabilities and then converts these predictions to a distribution
-    over the number of beds.
+    Parameters
+    ----------
+    X_test : array-like
+        Test features for a specific horizon date.
+    y_test : array-like
+        Actual outcomes corresponding to the test features.
+    model : object
+        A predictive model which should provide a `predict_proba` method.
+    weights : array-like, optional
+        Weights to apply to the predictions for demand calculation.
 
-    :param X_test: The test set features corresponding to the horizon date.
-    :param y_test: The actual outcomes corresponding to the horizon date.
-    :param model: The predictive model used for generating probabilities. The model class must provide a predict_proba method
-
-    :return: A dictionary containing the predicted demand ('pred_demand') and the actual demand
-             ('actual_demand') for the horizon date.
+    Returns
+    -------
+    dict
+        A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
+        respectively for the horizon date. Each is presented as a DataFrame or an integer.
     """
     horizon_dt_dict = {}
 
@@ -218,7 +270,9 @@ def get_prob_dist(episode_slices_dict, X_test, y_test, model, weights=None):
       than 10 horizon dates.
     """
     prob_dist_dict = {}
-    print(f"Calculating probability distributions for {len(episode_slices_dict)} horizon dates")
+    print(
+        f"Calculating probability distributions for {len(episode_slices_dict)} horizon dates"
+    )
 
     if len(episode_slices_dict) > 10:
         print("This may take a minute or more")
@@ -242,7 +296,7 @@ def get_prob_dist(episode_slices_dict, X_test, y_test, model, weights=None):
             X_test=X_test.loc[episode_slices_to_test],
             y_test=y_test.loc[episode_slices_to_test],
             model=model,
-            weights=horizon_dt_weights
+            weights=horizon_dt_weights,
         )
 
         # Increment the counter and notify the user every 10 horizon dates processed
