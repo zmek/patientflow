@@ -169,6 +169,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         self.time_interval = time_interval
         self.epsilon = epsilon
         self.tod = tod
+        
+        # Initialize yet_to_arrive_dict 
+        self.weights = {}
 
         # If there are filters specified, calculate and store the parameters directly with the respective spec keys
         if self.filters:
@@ -190,9 +193,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             f"using time window of {time_window} minutes after the time of prediction"
         )
         print(f"and time interval of {time_interval} minutes within the time window.")
-        print(
-            f"The reference year for probability of admission in time window was {reference_year}"
-        )
         print(f"The error value for prediction will be {epsilon}")
         print("To see the weights saved by this model, used the get_weights() method")
 
