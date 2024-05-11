@@ -23,11 +23,12 @@ The curve is applied as follows
 def growth_curve(x, a, gamma):
     """
     Calculate the exponential growth value at a given x using specified parameters.
+    The function supports both scalar and array inputs for x.
 
     Parameters
     ----------
-    x : float
-        The x-value at which to evaluate the curve.
+    x : float or np.ndarray
+        The x-value(s) at which to evaluate the curve.
     a : float
         The coefficient that defines the starting point of the growth curve when x is 0.
     gamma : float
@@ -35,20 +36,21 @@ def growth_curve(x, a, gamma):
 
     Returns
     -------
-    float
-        The y-value of the growth curve at x.
+    float or np.ndarray
+        The y-value(s) of the growth curve at x.
     """
-    return a * (np.exp(x * gamma))
+    return a * np.exp(x * gamma)
 
 
 def decay_curve(x, x1, y1, lamda):
     """
     Calculate the exponential decay value at a given x using specified parameters.
+    The function supports both scalar and array inputs for x.
 
     Parameters
     ----------
-    x : float
-        The x-value at which to evaluate the curve.
+    x : float or np.ndarray
+        The x-value(s) at which to evaluate the curve.
     x1 : float
         The x-value where the growth curve transitions to the decay curve.
     y1 : float
@@ -58,15 +60,16 @@ def decay_curve(x, x1, y1, lamda):
 
     Returns
     -------
-    float
-        The y-value of the decay curve at x.
+    float or np.ndarray
+        The y-value(s) of the decay curve at x.
     """
     return y1 + (1 - y1) * (1 - np.exp(-lamda * (x - x1)))
 
 
-def create_curve(x1, y1, x2, y2, a=0.01):
+def create_curve(x1, y1, x2, y2, a=0.01, generate_values=False):
     """
-    Generates a continuous curve composed of an exponential growth segment followed by an exponential decay segment, using specified transition points and coefficients.
+    Generates parameters for an exponential growth and decay curve.
+    Optionally generates x-values and corresponding y-values across a default or specified range.
 
     Parameters
     ----------
@@ -80,11 +83,14 @@ def create_curve(x1, y1, x2, y2, a=0.01):
         The y-value at x2, intended to fine-tune the decay rate.
     a : float, optional
         The initial value coefficient for the growth curve, defaults to 0.01.
+    generate_values : bool, optional
+        Flag to determine whether to generate x-values and y-values for visualization purposes.
 
     Returns
     -------
     tuple
-        Contains the growth rate (gamma), decay rate (lamda), initial value coefficient (a), array of x-values, and corresponding array of y-values.
+        If generate_values is False, returns (gamma, lamda, a).
+        If generate_values is True, returns (gamma, lamda, a, x_values, y_values).
     """
 
     # Validate inputs
@@ -93,50 +99,51 @@ def create_curve(x1, y1, x2, y2, a=0.01):
     if not (0 < y1 < y2 < 1):
         raise ValueError("y1 must be less than y2, and both must be between 0 and 1")
 
-    # Constants for growth
+    # Constants for growth and decay
     gamma = np.log(y1 / a) / x1
+    lamda = np.log((1 - y1) / (1 - y2)) / (x2 - x1)
 
-    # Constants for decay
-    x_delta = x2 - x1
-    lamda = np.log((1 - y1) / (1 - y2)) / x_delta
+    if generate_values:
+        x_values = np.linspace(0, 20, 200)
+        y_values = [
+            growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda)
+            for x in x_values
+        ]
+        return gamma, lamda, a, x_values, y_values
 
-    # Generate x values
-    x_values = np.linspace(0, 20, 200)
-
-    # Compute y values for each x
-    y_values = [
-        growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda)
-        for x in x_values
-    ]
-    return gamma, lamda, a, x_values, y_values
+    return gamma, lamda, a
 
 
 def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
     """
     Calculate the probability y that a patient will have been admitted by a specified x after their arrival, by reading from the aspirational curve that has been constrained to pass through points (x1, y1) and (x2, y2) with an exponential growth curve where x < x1 and an exponential decay where x < x2
 
+    The function handles scalar or array inputs for x and determines y using either an exponential growth curve (for x < x1)
+    or an exponential decay curve (for x >= x1). The curve parameters are derived to ensure the curve passes through
+    specified points (x1, y1) and (x2, y2).
+
     Parameters
     ----------
-    x : float
-        The x-coordinate at which to calculate the y-value on the curve.
-    (x1,y1) :
-        The target proportion of patients y1 (eg 76%) who have been admitted or discharged by time x1 (eg 4 hours).
-    (x2, y2) :
-        The time x2 by which all but a small proportion y2 of patients have been admitted.
+    x : float or np.ndarray
+        The x-coordinate(s) at which to calculate the y-value on the curve. Can be a single value or an array of values.
+    x1 : float
+        The x-coordinate of the first key point on the curve, where the growth phase ends and the decay phase begins.
+    y1 : float
+        The y-coordinate of the first key point (x1), representing the target proportion of patients admitted by time x1.
+    x2 : float
+        The x-coordinate of the second key point on the curve, beyond which all but a few patients are expected to be admitted.
+    y2 : float
+        The y-coordinate of the second key point (x2), representing the target proportion of patients admitted by time x2.
 
     Returns
     -------
-    float
-        The calculated y-value (probability of admission) at the given x, based on the combined growth and decay curve parameters.
-
+    float or np.ndarray
+        The calculated y-value(s) (probability of admission) at the given x. The type of the return matches the input type
+        for x (either scalar or array).
     """
-
-    gamma, lamda, a, x_values, y_values = create_curve(x1, y1, x2, y2)
-
-    if x < x1:
-        return growth_curve(x, a, gamma)
-    else:
-        return decay_curve(x, x1, y1, lamda)
+    gamma, lamda, a = create_curve(x1, y1, x2, y2)
+    y = np.where(x < x1, growth_curve(x, a, gamma), decay_curve(x, x1, y1, lamda))
+    return y
 
 
 def calculate_probability(elapsed_los_td_hrs, time_window_hrs, x1, y1, x2, y2):
