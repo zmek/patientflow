@@ -32,6 +32,7 @@ from datetime import datetime, time, timedelta
 
 import pandas as pd
 import warnings
+import numpy as np
 
 # from dissemination.patientflow.predict.emergency_demand.yet_to_arrive import (
 from predict.emergency_demand.yet_to_arrive import (
@@ -39,8 +40,8 @@ from predict.emergency_demand.yet_to_arrive import (
 )
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_time_window import (
-from predict.emergency_demand.admission_in_time_window_using_historic_data import (
-    calculate_probability,
+from predict.emergency_demand.admission_in_time_window_using_aspirational_curve import (
+    get_y_from_aspirational_curve,
 )
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_time_window import (
@@ -139,8 +140,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         time_window,
         time_interval,
         tod,
-        json_file_path,
-        reference_year,
         epsilon=10**-7,
         y=None,
     ):
@@ -148,34 +147,31 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         Fits the model to the training data, computing necessary parameters for future predictions.
 
         Args:
-            train_df (pandas.DataFrame): The training dataset with historical admission data.
-            time_window (int): The prediction time window in minutes.
-            time_interval (int): The interval in minutes for splitting the time window.
-            tod (list): Times of day at which predictions are made, in hours.
-            json_file_path (str): Path to a JSON file containing additional model parameters.
-            reference_year (int): The year to which the model parameters are calibrated.
-            epsilon (float, optional): A small value to handle zero probabilities in calculations.
-            y (None, optional): Ignored, present for compatibility with scikit-learn's fit method.
+            train_df (pandas.DataFrame):
+                The training dataset with historical admission data.
+            time_window (int):
+                The prediction time window in minutes.
+            time_interval (int):
+                The interval in minutes for splitting the time window.
+            tod (list):
+                Times of day at which predictions are made, in hours.
+            epsilon (float, optional):
+                A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
+            y (None, optional):
+                Ignored, present for compatibility with scikit-learn's fit method.
 
         Returns:
             PoissonBinomialPredictor: The instance itself, fitted with the training data.
         """
-        # self.json_file_path = json_file_path
-        # self.reference_year = reference_year
-
-        # Calculate theta, probability of admission in time window
-        theta = calculate_probability(
-            json_file_path, reference_year, time_window, time_interval
-        )
 
         # Store time_window, time_interval, and any other parameters as instance variables
         self.time_window = time_window
         self.time_interval = time_interval
         self.epsilon = epsilon
         self.tod = tod
-
-        # Initialize yet_to_arrive_dict with theta
-        self.weights = {"theta": theta}
+        
+        # Initialize yet_to_arrive_dict 
+        self.weights = {}
 
         # If there are filters specified, calculate and store the parameters directly with the respective spec keys
         if self.filters:
@@ -197,9 +193,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             f"using time window of {time_window} minutes after the time of prediction"
         )
         print(f"and time interval of {time_interval} minutes within the time window.")
-        print(
-            f"The reference year for probability of admission in time window was {reference_year}"
-        )
         print(f"The error value for prediction will be {epsilon}")
         print("To see the weights saved by this model, used the get_weights() method")
 
@@ -252,29 +245,53 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         return closest_tod
 
-    def predict(self, prediction_context):
+    def predict(self, prediction_context, x1, y1, x2, y2):
         """
         Predicts the number of admissions for the given context based on the fitted model.
 
         Args:
             prediction_context (dict): A dictionary defining the context for which predictions are to be made.
                                        It should specify either a general context or one based on the applied filters.
+            x1 : float
+                The x-coordinate of the first transition point on the aspirational curve, where the growth phase ends and the decay phase begins.
+            y1 : float
+                The y-coordinate of the first transition point (x1), representing the target proportion of patients admitted by time x1.
+            x2 : float
+                The x-coordinate of the second transition point on the curve, beyond which all but a few patients are expected to be admitted.
+            y2 : float
+                The y-coordinate of the second transition point (x2), representing the target proportion of patients admitted by time x2.
 
         Returns:
             dict: A dictionary with predictions for each specified context.
         """
         predictions = {}
-        theta = self.weights.get("theta", 1)  # Provide a default value or handle if missing
+
+        # theta = self.weights.get("theta", 1)  # Provide a default value or handle if missing
         NTimes = int(self.time_window / self.time_interval)
+        # Calculate theta, probability of admission in time window
+
+        # for each time interval, calculate time remaining before end of window
+        time_remaining_before_end_of_window = self.time_window / 60 - np.arange(
+            0, self.time_window / 60, self.time_interval / 60
+        )
+
+        # probability of admission in that time
+        theta = get_y_from_aspirational_curve(
+            time_remaining_before_end_of_window, x1, y1, x2, y2
+        )
 
         for filter_key, filter_values in prediction_context.items():
             try:
                 if filter_key not in self.weights:
-                    raise ValueError(f"Filter key '{filter_key}' is not recognized in the model weights.")
+                    raise ValueError(
+                        f"Filter key '{filter_key}' is not recognized in the model weights."
+                    )
 
                 time_of_day = filter_values.get("time_of_day")
                 if time_of_day is None:
-                    raise ValueError(f"No 'time_of_day' provided for filter '{filter_key}'.")
+                    raise ValueError(
+                        f"No 'time_of_day' provided for filter '{filter_key}'."
+                    )
 
                 if time_of_day not in self.tod:
                     original_time_of_day = time_of_day
@@ -286,7 +303,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
                 lambda_t = self.weights[filter_key][time_of_day].get("lambda_t")
                 if lambda_t is None:
-                    raise ValueError(f"No 'lambda_t' found for the time of day '{time_of_day}' under filter '{filter_key}'.")
+                    raise ValueError(
+                        f"No 'lambda_t' found for the time of day '{time_of_day}' under filter '{filter_key}'."
+                    )
 
                 predictions[filter_key] = poisson_binom_generating_function(
                     NTimes, lambda_t, theta, self.epsilon
@@ -296,4 +315,3 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 raise KeyError(f"Key error occurred: {str(e)}")
 
         return predictions
-

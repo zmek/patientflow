@@ -6,6 +6,8 @@ from predict.emergency_demand.from_individual_probs import model_input_to_pred_p
 from ed_admissions_helper_functions import prepare_for_inference
 from ed_admissions_utils import load_saved_model 
 
+from ed_admissions_helper_functions import get_specialty_probs
+
 def index_of_sum(sequence: list[float], max_sum: float) -> int:
     s = 0.0
     for i, p in enumerate(sequence):
@@ -21,38 +23,18 @@ def create_predictions(model_dir, slice_datetime, episode_slices_df, specialties
     minute = slice_datetime.minute
     time_of_day = (hour, minute)
 
-
+    # initiase predictions dict
     predictions = {key: {subkey: None for subkey in ['in_ed', 'yet_to_arrive']} for key in specialties}
-
-    # set prediction context for the yet to arrive model
 
     # Prepare data and model for patients in ED
     X_test, y_test, admissions_model = prepare_for_inference(model_dir, 'ed_admission', time_of_day = time_of_day, df = episode_slices_df) 
+    ### NOTE - probably need to drop consult sequence ######
 
     # Run inference on the patients in ED (admission probabilities)
-    pred_proba = model_input_to_pred_proba(X_test, admissions_model)
-
-    # temporary code until specialty model is ready--------
-    episode_slices_df['is_child'] = episode_slices_df['age_group'] == '0-17'
-
-    # Temp dictionaries until spec model ready
-    adult_dict = {
-        'medical': 0.71,
-        'surgical': 0.20,
-        'haem_onc': 0.09,
-        'paediatric': 0.00
-    }
-    child_dict = {
-        'medical': 0.0,
-        'surgical': 0.0,
-        'haem_onc': 0.0,
-        'paediatric': 1.0
-    }
-
-    # Assign dictionary based on the condition in 'is_child' column
-    episode_slices_df['specialty_prob'] = episode_slices_df['is_child'].apply(lambda x: child_dict if x else adult_dict)
-    # end of temporary code --------
-
+    prob_admission_after_ed = model_input_to_pred_proba(X_test, admissions_model)
+    
+    # Run inference on the patients in ED (admission probabilities)
+    episode_slices_df = get_specialty_probs(model_dir, episode_slices_df)
 
     # Prepare data and model for yet-to-arrive
     yet_to_arrive_model_name = 'ed_yet_to_arrive_by_spec_' + prediction_window + '_hours'
@@ -64,22 +46,22 @@ def create_predictions(model_dir, slice_datetime, episode_slices_df, specialties
 
 
     for spec_ in specialties:
-
+                
         # Process patients in ED
-        spec_weights = episode_slices_df['specialty_prob'].apply(lambda x: x[spec_]).values
+        prob_admission_to_specialty = episode_slices_df['specialty_prob'].apply(lambda x: x[spec_]).values
 
-
-        # Where spec_weights are equal to zero, this is either because - following the formulation chosen here - a child has zero probability of being admitted to an adult ward, or vice versa
-        # These non-standard cases should not be included in the overall bed counts in such cases
-        # Therefore filter the weights and the patients to exclude any with zero probability,
+        # Filter the weights and the patients to exclude any with zero probability,
         # before calling the function to generate a distribution over bed numbers
+        # Where prob_admission_to_specialty are equal to zero, this is either because 
+        # a child has zero probability of being admitted to an adult ward, or vice versa
+        # These non-standard cases should not be included in the overall bed counts in such cases
 
-        non_zero_indices = spec_weights != 0
-        filtered_pred_proba = pred_proba[non_zero_indices]
-        filtered_spec_weights = spec_weights[non_zero_indices]
+        non_zero_indices = prob_admission_to_specialty != 0
+        filtered_prob_admission_after_ed = prob_admission_after_ed[non_zero_indices]
+        filtered_prob_admission_to_specialty = prob_admission_to_specialty[non_zero_indices]
 
-        # Call the function with the filtered data
-        pred_demand_in_ED = pred_proba_to_pred_demand(filtered_pred_proba, filtered_spec_weights)
+        # Call the function to predict demand for patients in ED, with the filtered data
+        pred_demand_in_ED = pred_proba_to_pred_demand(filtered_prob_admission_after_ed, filtered_prob_admission_to_specialty)
 
         # Process patients yet-to-arrive
         prediction_context = {
@@ -95,7 +77,3 @@ def create_predictions(model_dir, slice_datetime, episode_slices_df, specialties
     return(predictions)
     
         
-    
-
-    
-    
