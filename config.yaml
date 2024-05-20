@@ -14,10 +14,10 @@ epsilon:
 yta_time_interval:
  15
  
-# time window after prediction time in minutes
-time_window:
+# prediction window after prediction time in minutes
+prediction_window:
  480 
  
-# reference year for probability of admission in time window 
+# reference year for probability of admission in prediction window 
 reference_year: 
  2009-10

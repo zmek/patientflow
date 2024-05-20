@@ -1,7 +1,7 @@
 """
 Poisson-Binomial Admission Predictor
 
-This module implements a Poisson-Binomial admission predictor to estimate the number of hospital admissions within a specified time window using historical admission data. It applies Poisson and binomial distributions to forecast future admissions, excluding already arrived patients. The predictor accommodates different data filters for tailored predictions across various hospital settings.
+This module implements a Poisson-Binomial admission predictor to estimate the number of hospital admissions within a specified prediction window using historical admission data. It applies Poisson and binomial distributions to forecast future admissions, excluding already arrived patients. The predictor accommodates different data filters for tailored predictions across various hospital settings.
 
 Dependencies:
     - pandas: For data manipulation and analysis, essential for handling the dataset used in predictions.
@@ -9,17 +9,17 @@ Dependencies:
     - sklearn: Utilizes BaseEstimator and TransformerMixin from scikit-learn for creating custom, interoperable predictors.
     - Custom modules:
         - predict.emergency_demand.yet_to_arrive: Includes the Poisson-binomial generating function for prediction calculations.
-        - predict.emergency_demand.admission_in_time_window: Calculates the probability of admission within a specified time window.
+        - predict.emergency_demand.admission_in_prediction_window: Calculates the probability of admission within a specified prediction window.
         - time_varying_arrival_rates: Computes time-varying arrival rates, a core component of the prediction algorithm.
 
 Classes:
     PoissonBinomialPredictor(BaseEstimator, TransformerMixin): 
-        Predicts the number of admissions within a given time window based on historical data and Poisson-binomial distribution.
+        Predicts the number of admissions within a given prediction window based on historical data and Poisson-binomial distribution.
 
     Methods within PoissonBinomialPredictor:
         - __init__(self, filters=None): Initializes the predictor with optional data filters.
         - filter_dataframe(self, df, filters): Applies filters to the dataset for targeted predictions.
-        - fit(self, train_df, time_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
+        - fit(self, train_df, prediction_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
         - predict(self, prediction_context): Predicts the number of admissions using the trained model.
 
 This module is designed for flexibility and customization to suit different prediction needs in hospital environments.
@@ -39,12 +39,12 @@ from predict.emergency_demand.yet_to_arrive import (
     poisson_binom_generating_function,
 )
 
-# from dissemination.patientflow.predict.emergency_demand.admission_in_time_window import (
-from predict.emergency_demand.admission_in_time_window_using_aspirational_curve import (
+# from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
+from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
     get_y_from_aspirational_curve,
 )
 
-# from dissemination.patientflow.predict.emergency_demand.admission_in_time_window import (
+# from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from predict.emergency_demand.time_varying_arrival_rates import (
     calculate_rates,
 )
@@ -58,7 +58,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     """
-    A class to predict an aspirational number of admissions within a specified time window.
+    A class to predict an aspirational number of admissions within a specified prediction window.
     This prediction does not include patients who have already arrived and is based on historical data.
     The prediction uses a combination of Poisson and binomial distributions.
 
@@ -68,7 +68,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     Methods:
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
-        fit(self, train_df, time_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
+        fit(self, train_df, prediction_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
         predict(self, prediction_context): Predicts the number of admissions for a given context after the model is trained.
         get_weights(self): Retrieves the model parameters computed during fitting.
     """
@@ -102,20 +102,20 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 filtered_df = filtered_df[filtered_df[column] == criteria]
         return filtered_df
 
-    def _calculate_parameters(self, df, time_window, time_interval, tod):
+    def _calculate_parameters(self, df, prediction_window, time_interval, tod):
         """
         Calculate parameters required for the model.
 
         Args:
             df (pandas.DataFrame): The data frame to process.
-            time_window (int): The total time window for prediction.
-            time_interval (int): The interval for splitting the time window.
+            prediction_window (int): The total prediction window for prediction.
+            time_interval (int): The interval for splitting the prediction window.
             tod (list): Times of day at which predictions are made.
 
         Returns:
             dict: Calculated lambda_t parameters organized by time of day.
         """
-        Ntimes = int(time_window / time_interval)
+        Ntimes = int(prediction_window / time_interval)
         arrival_rates_dict = calculate_rates(df, time_interval)
         tod_dict = {}
 
@@ -137,7 +137,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     def fit(
         self,
         train_df,
-        time_window,
+        prediction_window,
         time_interval,
         tod,
         epsilon=10**-7,
@@ -149,10 +149,10 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         Args:
             train_df (pandas.DataFrame):
                 The training dataset with historical admission data.
-            time_window (int):
-                The prediction time window in minutes.
+            prediction_window (int):
+                The prediction prediction window in minutes.
             time_interval (int):
-                The interval in minutes for splitting the time window.
+                The interval in minutes for splitting the prediction window.
             tod (list):
                 Times of day at which predictions are made, in hours.
             epsilon (float, optional):
@@ -164,13 +164,13 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             PoissonBinomialPredictor: The instance itself, fitted with the training data.
         """
 
-        # Store time_window, time_interval, and any other parameters as instance variables
-        self.time_window = time_window
+        # Store prediction_window, time_interval, and any other parameters as instance variables
+        self.prediction_window = prediction_window
         self.time_interval = time_interval
         self.epsilon = epsilon
         self.tod = tod
-        
-        # Initialize yet_to_arrive_dict 
+
+        # Initialize yet_to_arrive_dict
         self.weights = {}
 
         # If there are filters specified, calculate and store the parameters directly with the respective spec keys
@@ -178,21 +178,23 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),
-                    time_window,
+                    prediction_window,
                     time_interval,
                     tod,
                 )
         else:
             # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'
             self.weights["default"] = self._calculate_parameters(
-                train_df, time_window, time_interval, tod
+                train_df, prediction_window, time_interval, tod
             )
 
         print(f"Poisson Binomial Predictor trained for these times: {tod}")
         print(
-            f"using time window of {time_window} minutes after the time of prediction"
+            f"using prediction window of {prediction_window} minutes after the time of prediction"
         )
-        print(f"and time interval of {time_interval} minutes within the time window.")
+        print(
+            f"and time interval of {time_interval} minutes within the prediction window."
+        )
         print(f"The error value for prediction will be {epsilon}")
         print("To see the weights saved by this model, used the get_weights() method")
 
@@ -267,12 +269,12 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         predictions = {}
 
         # theta = self.weights.get("theta", 1)  # Provide a default value or handle if missing
-        NTimes = int(self.time_window / self.time_interval)
-        # Calculate theta, probability of admission in time window
+        NTimes = int(self.prediction_window / self.time_interval)
+        # Calculate theta, probability of admission in prediction window
 
         # for each time interval, calculate time remaining before end of window
-        time_remaining_before_end_of_window = self.time_window / 60 - np.arange(
-            0, self.time_window / 60, self.time_interval / 60
+        time_remaining_before_end_of_window = self.prediction_window / 60 - np.arange(
+            0, self.prediction_window / 60, self.time_interval / 60
         )
 
         # probability of admission in that time

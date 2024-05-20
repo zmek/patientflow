@@ -16,7 +16,7 @@ class TestSpecialityPredictor(unittest.TestCase):
             "training_validation_test": np.random.choice(
                 ["train", "valid", "test"], size=100, p=[0.8, 0.1, 0.1]
             ),
-            "episode_slice_id": range(1, 101),
+            "snapshot_id": range(1, 101),
             "visit_number": np.random.randint(10000, 99999, size=100),
             "consultation_sequence": np.random.choice(
                 [
@@ -112,8 +112,8 @@ class TestSpecialityPredictor(unittest.TestCase):
         # Assuming fit has been run and self.predictor is ready
         self.predictor.fit(self.train_df)
         for _, row in self.test_df.iterrows():
-            consult_sequence = row["consultation_sequence"]
-            weights = self.predictor.predict(consult_sequence)
+            consultation_sequence = row["consultation_sequence"]
+            weights = self.predictor.predict(consultation_sequence)
             self.assertIsInstance(
                 weights, dict
             )  # Each prediction should be a dictionary of probabilities
