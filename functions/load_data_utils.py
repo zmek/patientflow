@@ -21,14 +21,21 @@ def convert_set_to_dummies(df, column, prefix):
     return dummies
 
 def convert_dict_to_dummies(df, column, prefix):
-    # Create a DataFrame from the dictionary column
-    dict_df = df[column].apply(pd.Series)
-    
+    def extract_relevant_value(d):
+        if isinstance(d, dict):
+            if 'value_as_real' in d or 'value_as_text' in d:
+                return d.get('value_as_real') if d.get('value_as_real') is not None else d.get('value_as_text')
+            else:
+                return d  # Return the dictionary as is if it does not contain 'value_as_real' or 'value_as_text'
+        return d  # Return the value as is if it is not a dictionary
+
+    # Apply the extraction function to each entry in the dictionary column
+    extracted_values = df[column].apply(lambda x: {k: extract_relevant_value(v) for k, v in x.items()})
+
+    # Create a DataFrame from the processed dictionary column
+    dict_df = extracted_values.apply(pd.Series)
+
     # Add a prefix to the column names
     dict_df.columns = [f"{prefix}_{col}" for col in dict_df.columns]
-    
-    # # Join the new dictionary DataFrame with the original DataFrame
-    # # Fill missing values with 0 (where the dictionary did not have the specific key)
-    # result_df = df.join(dict_df, how='left').fillna(0)
-    
+
     return dict_df
