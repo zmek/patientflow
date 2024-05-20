@@ -42,7 +42,7 @@ def prepare_for_inference(
     # print("Prep for inference - test_df")
     # print(test_df.index)
 
-    exclude_from_training_data = ["visit_number", "horizon_dt", "time_of_day"]
+    exclude_from_training_data = ["visit_number", "snapshot_datetime", "time_of_day"]
 
     X_test, y_test = preprocess_data(
         test_df, time_of_day, exclude_from_training_data, single_snapshot_per_visit
@@ -61,18 +61,18 @@ def prepare_snapshots_dict(df):
     Prepares a dictionary mapping horizon dates to their corresponding snapshot indices.
 
     Args:
-    df (pd.DataFrame): DataFrame containing at least a 'horizon_dt' column which represents the dates.
+    df (pd.DataFrame): DataFrame containing at least a 'snapshot_datetime' column which represents the dates.
 
     Returns:
     dict: A dictionary where keys are dates and values are arrays of indices corresponding to each date's snapshots.
     """
-    # Ensure 'horizon_dt' is in the DataFrame
-    if "horizon_dt" not in df.columns:
-        raise ValueError("DataFrame must include a 'horizon_dt' column")
+    # Ensure 'snapshot_datetime' is in the DataFrame
+    if "snapshot_datetime" not in df.columns:
+        raise ValueError("DataFrame must include a 'snapshot_datetime' column")
 
-    # Group the DataFrame by 'horizon_dt' and collect the indices for each group
+    # Group the DataFrame by 'snapshot_datetime' and collect the indices for each group
     snapshots_dict = {
-        date: group.index.tolist() for date, group in df.groupby("horizon_dt")
+        date: group.index.tolist() for date, group in df.groupby("snapshot_datetime")
     }
 
     return snapshots_dict
