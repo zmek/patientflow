@@ -8,7 +8,7 @@ import pandas as pd
 def prepare_for_inference(
     model_file_path,
     model_name,
-    time_of_day=None,
+    prediction_time=None,
     model_only=False,
     df=None,
     data_path=None,
@@ -16,7 +16,7 @@ def prepare_for_inference(
 ):
 
     # retrieve model trained for this time of day
-    model = load_saved_model(model_file_path, model_name, time_of_day)
+    model = load_saved_model(model_file_path, model_name, prediction_time)
 
     if model_only:
         return model
@@ -42,10 +42,14 @@ def prepare_for_inference(
     # print("Prep for inference - test_df")
     # print(test_df.index)
 
-    exclude_from_training_data = ["visit_number", "snapshot_datetime", "time_of_day"]
+    exclude_from_training_data = [
+        "visit_number",
+        "snapshot_datetime",
+        "prediction_time",
+    ]
 
     X_test, y_test = preprocess_data(
-        test_df, time_of_day, exclude_from_training_data, single_snapshot_per_visit
+        test_df, prediction_time, exclude_from_training_data, single_snapshot_per_visit
     )
 
     # print("Prep for inference - X_test")

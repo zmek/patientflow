@@ -42,8 +42,10 @@ def ed_admissions_get_data(path_ed_data):
         df.sort_values(sort_columns, inplace=True)
 
     # convert strings to tuples
-    if "time_of_day" in df.columns:
-        df["time_of_day"] = df["time_of_day"].apply(lambda x: ast.literal_eval(x))
+    if "prediction_time" in df.columns:
+        df["prediction_time"] = df["prediction_time"].apply(
+            lambda x: ast.literal_eval(x)
+        )
 
     if "consultation_sequence" in df.columns:
         df["consultation_sequence"] = df["consultation_sequence"].apply(

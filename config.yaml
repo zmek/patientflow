@@ -1,5 +1,5 @@
 # List of prediction times
-tod:
+prediction_times:
   - [6, 0]
   - [9, 30]
   - [12, 0]
@@ -14,10 +14,26 @@ epsilon:
 yta_time_interval:
  15
  
-# prediction window after prediction time in minutes
+# time window after prediction time in minutes
 prediction_window:
  480 
  
-# reference year for probability of admission in prediction window 
+# reference year for probability of admission in time window 
 reference_year: 
  2009-10
+
+# Target number of hours for ED admissions
+x1: 
+ 4
+ 
+# Target proportion of patients admitted by time x1.
+y1: 
+ .76
+
+# Target number of hours by which all but a small minority of patients will have been admitted (must be > x1)
+x2: 
+ 12
+
+# Target proportion of patients admitted by time x2.
+y2: 
+ .99

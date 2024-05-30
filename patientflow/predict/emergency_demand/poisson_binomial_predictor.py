@@ -19,7 +19,7 @@ Classes:
     Methods within PoissonBinomialPredictor:
         - __init__(self, filters=None): Initializes the predictor with optional data filters.
         - filter_dataframe(self, df, filters): Applies filters to the dataset for targeted predictions.
-        - fit(self, train_df, prediction_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
+        - fit(self, train_df, prediction_window, time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
         - predict(self, prediction_context): Predicts the number of admissions using the trained model.
 
 This module is designed for flexibility and customization to suit different prediction needs in hospital environments.
@@ -68,7 +68,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     Methods:
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
-        fit(self, train_df, prediction_window, time_interval, tod, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
+        fit(self, train_df, prediction_window, time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
         predict(self, prediction_context): Predicts the number of admissions for a given context after the model is trained.
         get_weights(self): Retrieves the model parameters computed during fitting.
     """
@@ -102,7 +102,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 filtered_df = filtered_df[filtered_df[column] == criteria]
         return filtered_df
 
-    def _calculate_parameters(self, df, prediction_window, time_interval, tod):
+    def _calculate_parameters(
+        self, df, prediction_window, time_interval, prediction_times
+    ):
         """
         Calculate parameters required for the model.
 
@@ -110,36 +112,42 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             df (pandas.DataFrame): The data frame to process.
             prediction_window (int): The total prediction window for prediction.
             time_interval (int): The interval for splitting the prediction window.
-            tod (list): Times of day at which predictions are made.
+            prediction_times (list): Times of day at which predictions are made.
 
         Returns:
             dict: Calculated lambda_t parameters organized by time of day.
         """
         Ntimes = int(prediction_window / time_interval)
         arrival_rates_dict = calculate_rates(df, time_interval)
-        tod_dict = {}
+        prediction_time_dict = {}
 
-        for tod_ in tod:
-            tod_hr, tod_min = (tod_, 0) if isinstance(tod_, int) else tod_
+        for prediction_time_ in prediction_times:
+            prediction_time_hr, prediction_time_min = (
+                (prediction_time_, 0)
+                if isinstance(prediction_time_, int)
+                else prediction_time_
+            )
             lambda_t = [
                 arrival_rates_dict[
                     (
-                        datetime(1970, 1, 1, tod_hr, tod_min)
+                        datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
                         + i * timedelta(minutes=time_interval)
                     ).time()
                 ]
                 for i in range(Ntimes)
             ]
-            tod_dict[(tod_hr, tod_min)] = {"lambda_t": lambda_t}
+            prediction_time_dict[(prediction_time_hr, prediction_time_min)] = {
+                "lambda_t": lambda_t
+            }
 
-        return tod_dict
+        return prediction_time_dict
 
     def fit(
         self,
         train_df,
         prediction_window,
         time_interval,
-        tod,
+        prediction_times,
         epsilon=10**-7,
         y=None,
     ):
@@ -153,7 +161,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 The prediction prediction window in minutes.
             time_interval (int):
                 The interval in minutes for splitting the prediction window.
-            tod (list):
+            prediction_times (list):
                 Times of day at which predictions are made, in hours.
             epsilon (float, optional):
                 A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
@@ -168,7 +176,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         self.prediction_window = prediction_window
         self.time_interval = time_interval
         self.epsilon = epsilon
-        self.tod = tod
+        self.prediction_times = prediction_times
 
         # Initialize yet_to_arrive_dict
         self.weights = {}
@@ -180,15 +188,15 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                     self.filter_dataframe(train_df, filters),
                     prediction_window,
                     time_interval,
-                    tod,
+                    prediction_times,
                 )
         else:
             # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'
             self.weights["default"] = self._calculate_parameters(
-                train_df, prediction_window, time_interval, tod
+                train_df, prediction_window, time_interval, prediction_times
             )
 
-        print(f"Poisson Binomial Predictor trained for these times: {tod}")
+        print(f"Poisson Binomial Predictor trained for these times: {prediction_times}")
         print(
             f"using prediction window of {prediction_window} minutes after the time of prediction"
         )
@@ -207,45 +215,45 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         """
         return self.weights
 
-    def _find_nearest_previous_tod(self, requested_time):
+    def _find_nearest_previous_prediction_time(self, requested_time):
         """
-        Finds the nearest previous time of day in 'tod' relative to the requested time.
-        If the requested time is earlier than all times in 'tod', the function returns
-        the latest time in 'tod'.
+        Finds the nearest previous time of day in 'prediction_times' relative to the requested time.
+        If the requested time is earlier than all times in 'prediction_times', the function returns
+        the latest time in 'prediction_times'.
 
         Args:
             requested_time (tuple): The requested time as (hour, minute).
 
         Returns:
-            tuple: The closest previous time of day from 'tod'.
+            tuple: The closest previous time of day from 'prediction_times'.
         """
         requested_datetime = datetime.strptime(
             f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
         )
-        closest_tod = max(
-            self.tod,
-            key=lambda tod_time: datetime.strptime(
-                f"{tod_time[0]:02d}:{tod_time[1]:02d}", "%H:%M"
+        closest_prediction_time = max(
+            self.prediction_times,
+            key=lambda prediction_time_time: datetime.strptime(
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
             ),
         )
         min_diff = float("inf")
 
-        for tod_time in self.tod:
-            tod_datetime = datetime.strptime(
-                f"{tod_time[0]:02d}:{tod_time[1]:02d}", "%H:%M"
+        for prediction_time_time in self.prediction_times:
+            prediction_time_datetime = datetime.strptime(
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
             )
-            diff = (requested_datetime - tod_datetime).total_seconds()
+            diff = (requested_datetime - prediction_time_datetime).total_seconds()
 
-            # If the difference is negative, it means the tod_time is ahead of the requested_time,
+            # If the difference is negative, it means the prediction_time_time is ahead of the requested_time,
             # hence we calculate the difference by considering a day's wrap around.
             if diff < 0:
                 diff += 24 * 60 * 60  # Add 24 hours in seconds
 
             if 0 <= diff < min_diff:
-                closest_tod = tod_time
+                closest_prediction_time = prediction_time_time
                 min_diff = diff
 
-        return closest_tod
+        return closest_prediction_time
 
     def predict(self, prediction_context, x1, y1, x2, y2):
         """
@@ -289,24 +297,26 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                         f"Filter key '{filter_key}' is not recognized in the model weights."
                     )
 
-                time_of_day = filter_values.get("time_of_day")
-                if time_of_day is None:
+                prediction_time = filter_values.get("prediction_time")
+                if prediction_time is None:
                     raise ValueError(
-                        f"No 'time_of_day' provided for filter '{filter_key}'."
+                        f"No 'prediction_time' provided for filter '{filter_key}'."
                     )
 
-                if time_of_day not in self.tod:
-                    original_time_of_day = time_of_day
-                    time_of_day = self._find_nearest_previous_tod(time_of_day)
+                if prediction_time not in self.prediction_times:
+                    original_prediction_time = prediction_time
+                    prediction_time = self._find_nearest_previous_prediction_time(
+                        prediction_time
+                    )
                     warnings.warn(
-                        f"Time of day requested of {original_time_of_day} was not in model training. "
-                        f"Reverting to predictions for {time_of_day}."
+                        f"Time of day requested of {original_prediction_time} was not in model training. "
+                        f"Reverting to predictions for {prediction_time}."
                     )
 
-                lambda_t = self.weights[filter_key][time_of_day].get("lambda_t")
+                lambda_t = self.weights[filter_key][prediction_time].get("lambda_t")
                 if lambda_t is None:
                     raise ValueError(
-                        f"No 'lambda_t' found for the time of day '{time_of_day}' under filter '{filter_key}'."
+                        f"No 'lambda_t' found for the time of day '{prediction_time}' under filter '{filter_key}'."
                     )
 
                 predictions[filter_key] = poisson_binom_generating_function(

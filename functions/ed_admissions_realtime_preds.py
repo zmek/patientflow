@@ -33,7 +33,7 @@ def create_predictions(
     # initialisation
     hour = snapshot_datetime.hour
     minute = snapshot_datetime.minute
-    time_of_day = (hour, minute)
+    prediction_time = (hour, minute)
 
     # initiase predictions dict
     predictions = {
@@ -43,7 +43,7 @@ def create_predictions(
 
     # Prepare data and model for patients in ED
     X_test, y_test, admissions_model = prepare_for_inference(
-        model_dir, "ed_admission", time_of_day=time_of_day, df=snapshots_df
+        model_dir, "ed_admission", prediction_time=prediction_time, df=snapshots_df
     )
     ### NOTE - probably need to drop consult sequence ######
 
@@ -60,7 +60,9 @@ def create_predictions(
     yet_to_arrive_model = load_saved_model(model_dir, yet_to_arrive_model_name)
 
     # Run inference on the yet-to-arrive
-    prediction_context = {key: {"time_of_day": time_of_day} for key in specialties}
+    prediction_context = {
+        key: {"prediction_time": prediction_time} for key in specialties
+    }
     pred_demand_yta = yet_to_arrive_model.predict(prediction_context)
 
     for spec_ in specialties:
@@ -88,7 +90,7 @@ def create_predictions(
         )
 
         # Process patients yet-to-arrive
-        prediction_context = {spec_: {"time_of_day": time_of_day}}
+        prediction_context = {spec_: {"prediction_time": prediction_time}}
 
         # Return the distributions at the desired cut points
         predictions[spec_]["in_ed"] = [
