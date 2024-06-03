@@ -10,17 +10,12 @@ def convert_set_to_dummies(df, column, prefix):
     # # Sum the dummies back to the original DataFrame's index
     dummies = dummies.groupby(dummies.index).sum()
     
-    # # Join the dummy variables with the original DataFrame
-    # # Fill missing values with 0s (where the set did not have the specific item)
-    # result_df = df.join(dummies, how='left').fillna(0)
-    
-    # # Convert float dummies to int (since dummies are 0 or 1)
-    # for col in dummies.columns:
-    #     result_df[col] = result_df[col].astype(int)
+    # Convert dummy variables to boolean
+    dummies = dummies.astype(bool)
     
     return dummies
 
-def convert_dict_to_dummies(df, column, prefix):
+def convert_dict_to_values(df, column, prefix):
     def extract_relevant_value(d):
         if isinstance(d, dict):
             if 'value_as_real' in d or 'value_as_text' in d:
