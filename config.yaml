@@ -5,6 +5,13 @@ prediction_times:
   - [12, 0]
   - [15, 30]
   - [22, 0]
+
+# Training, validation and test set dates
+modelling_dates:
+  - 2030-04-01 # start training set
+  - 2031-09-01 # start validation set
+  - 2031-11-01 # start test set
+  - 2032-05-01 # end test set
   
 # desired error for Poisson distribution (1 - sum of each approximated Poisson)
 epsilon: 
