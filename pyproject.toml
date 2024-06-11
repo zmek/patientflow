@@ -1,5 +1,4 @@
-    "Programming Language :: Python :: 3.10",
-A[build-system]
+[build-system]
 build-backend = "setuptools.build_meta"
 requires = [
     "setuptools",
