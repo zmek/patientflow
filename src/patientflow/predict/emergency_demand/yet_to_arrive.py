@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import json
 
-from predict.emergency_demand.admission_in_time_window_using_historic_data import calculate_probability
+from predict.emergency_demand.admission_in_prediction_window_using_historic_data import (
+    calculate_probability,
+)
 
 
 def weighted_poisson_binomial(i, lam, theta):
@@ -97,12 +99,17 @@ def poisson_binom_generating_function(NTimes, lambda_t, theta, epsilon):
     for j in range(NTimes):
         distribution[:, j] = aggregate_probabilities(lambda_t, kmax, theta, j)
 
-    df_list = [pd.DataFrame({'sum': range(kmax + 1), 'prob': distribution[:, j]}) for j in range(NTimes)]
+    df_list = [
+        pd.DataFrame({"sum": range(kmax + 1), "prob": distribution[:, j]})
+        for j in range(NTimes)
+    ]
     total_distribution = df_list[0]
 
     for df in df_list[1:]:
         total_distribution = convolute_distributions(total_distribution, df)
-        
-    total_distribution = total_distribution.rename(columns={'prob': 'agg_proba'}).set_index('sum')
+
+    total_distribution = total_distribution.rename(
+        columns={"prob": "agg_proba"}
+    ).set_index("sum")
 
     return total_distribution

@@ -17,8 +17,8 @@ Functions:
 - return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
 - model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
 - pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
-- get_prob_dist_for_horizon_dt(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
-- get_prob_dist(episode_slices_dict, X_test, y_test, model, weights): Computes probability distributions for multiple horizon dates.
+- get_prob_dist_for_prediction_moment(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
+- get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple horizon dates.
     
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
 
@@ -201,7 +201,7 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     return pred_demand
 
 
-def get_prob_dist_for_horizon_dt(X_test, y_test, model, weights=None):
+def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
     """
     Calculate both predicted and actual demand distributions for a given date using test data.
 
@@ -222,29 +222,31 @@ def get_prob_dist_for_horizon_dt(X_test, y_test, model, weights=None):
         A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
         respectively for the horizon date. Each is presented as a DataFrame or an integer.
     """
-    horizon_dt_dict = {}
+    prediction_moment_dict = {}
 
     if len(X_test) > 0:
         pred_proba = model_input_to_pred_proba(X_test, model)
         pred_demand = pred_proba_to_pred_demand(pred_proba, weights)
-        horizon_dt_dict["pred_demand"] = pred_demand
-        horizon_dt_dict["actual_demand"] = sum(y_test)
+        prediction_moment_dict["pred_demand"] = pred_demand
+        prediction_moment_dict["actual_demand"] = sum(y_test)
     else:
-        horizon_dt_dict["pred_demand"] = pd.DataFrame({"agg_proba": [1]}, index=[0])
-        horizon_dt_dict["actual_demand"] = 0
+        prediction_moment_dict["pred_demand"] = pd.DataFrame(
+            {"agg_proba": [1]}, index=[0]
+        )
+        prediction_moment_dict["actual_demand"] = 0
 
-    return horizon_dt_dict
+    return prediction_moment_dict
 
 
-def get_prob_dist(episode_slices_dict, X_test, y_test, model, weights=None):
+def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     """
     Calculate probability distributions for each horizon date based on given model predictions.
 
     Parameters
     ----------
-    episode_slices_dict : dict
+    snapshots_dict : dict
         A dictionary mapping horizon dates (as datetime objects) to indices in `X_test` and `y_test`
-        that correspond to the episode slices to be tested for each date.
+        that correspond to the snapshots to be tested for each date.
     X_test : pandas.DataFrame
         A DataFrame containing the test features for prediction.
     y_test : pandas.Series
@@ -260,50 +262,50 @@ def get_prob_dist(episode_slices_dict, X_test, y_test, model, weights=None):
     -------
     dict
         A dictionary where each key is a horizon date and each value is the resulting probability
-        distribution for that date, obtained by applying the model on the corresponding test slices.
+        distribution for that date, obtained by applying the model on the corresponding test snapshots.
 
     Notes
     -----
     - The function asserts that the length of the test features and outcomes are equal for each
-      slice before proceeding with predictions.
+      snapshot before proceeding with predictions.
     - It notifies the user of progress in processing horizon dates, especially if there are more
       than 10 horizon dates.
     """
     prob_dist_dict = {}
     print(
-        f"Calculating probability distributions for {len(episode_slices_dict)} horizon dates"
+        f"Calculating probability distributions for {len(snapshots_dict)} horizon dates"
     )
 
-    if len(episode_slices_dict) > 10:
+    if len(snapshots_dict) > 10:
         print("This may take a minute or more")
 
     # Initialize a counter for notifying the user every 10 horizon dates processed
     count = 0
 
-    for dt, episode_slices_to_test in episode_slices_dict.items():
+    for dt, snaptshots_to_include in snapshots_dict.items():
         # Ensure the lengths of test features and outcomes are equal
-        assert len(X_test.loc[episode_slices_to_test]) == len(
-            y_test.loc[episode_slices_to_test]
-        ), "Mismatch in lengths of X_test and y_test slices."
+        assert len(X_test.loc[snaptshots_to_include]) == len(
+            y_test.loc[snaptshots_to_include]
+        ), "Mismatch in lengths of X_test and y_test snapshots."
 
         if weights is None:
-            horizon_dt_weights = None
+            prediction_moment_weights = None
         else:
-            horizon_dt_weights = weights.loc[episode_slices_to_test].values
+            prediction_moment_weights = weights.loc[snaptshots_to_include].values
 
         # Compute the predicted and actual demand for the current horizon date
-        prob_dist_dict[dt] = get_prob_dist_for_horizon_dt(
-            X_test=X_test.loc[episode_slices_to_test],
-            y_test=y_test.loc[episode_slices_to_test],
+        prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
+            X_test=X_test.loc[snaptshots_to_include],
+            y_test=y_test.loc[snaptshots_to_include],
             model=model,
-            weights=horizon_dt_weights,
+            weights=prediction_moment_weights,
         )
 
         # Increment the counter and notify the user every 10 horizon dates processed
         count += 1
-        if count % 10 == 0 and count != len(episode_slices_dict):
+        if count % 10 == 0 and count != len(snapshots_dict):
             print(f"Processed {count} horizon dates")
 
-    print(f"Processed {len(episode_slices_dict)} horizon dates")
+    print(f"Processed {len(snapshots_dict)} horizon dates")
 
     return prob_dist_dict

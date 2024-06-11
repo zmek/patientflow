@@ -198,7 +198,7 @@ def calculate_cumulative_proportions(df, columns):
     return df
 
 
-def interpolate_probabilities(df, time_window, time_interval):
+def interpolate_probabilities(df, prediction_window, time_interval):
     """
     Interpolate probabilities at specified time intervals.
 
@@ -206,7 +206,7 @@ def interpolate_probabilities(df, time_window, time_interval):
 
     Args:
         df (pandas.DataFrame): The DataFrame with time and cumulative proportion data.
-        time_window (int): Total time window in hours.
+        prediction_window (int): Total prediction window in hours.
         time_interval (int): Time interval in minutes.
 
     Returns:
@@ -215,10 +215,10 @@ def interpolate_probabilities(df, time_window, time_interval):
     df_new = pd.concat(
         [
             df[["end_time", "cum_prop"]].iloc[:24],
-            pd.DataFrame({"end_time": [time_window], "cum_prop": [1]}),
+            pd.DataFrame({"end_time": [prediction_window], "cum_prop": [1]}),
         ]
     )
-    xnew = np.arange(1, time_window / time_interval + 1) * time_interval
+    xnew = np.arange(1, prediction_window / time_interval + 1) * time_interval
     return np.interp(xnew, df_new["end_time"], df_new["cum_prop"])
 
 
@@ -237,14 +237,16 @@ def compute_rolling_mean(interpolated_probs):
     return np.flip(rolling_mean)
 
 
-def calculate_probability(json_file_path, reference_year, time_window, time_interval):
+def calculate_probability(
+    json_file_path, reference_year, prediction_window, time_interval
+):
     """
-    Calculate the probability of hospital admission within a specified time window.
+    Calculate the probability of hospital admission within a specified prediction window.
 
     Args:
         json_file_path (str): Path to the JSON file.
         reference_year (str): Year for which the data is to be analyzed.
-        time_window (int): Total time window (in minutes).
+        prediction_window (int): Total prediction window (in minutes).
         time_interval (int): Time interval (in minutes).
 
     Returns:
@@ -264,7 +266,7 @@ def calculate_probability(json_file_path, reference_year, time_window, time_inte
     df = calculate_cumulative_proportions(df, nhse_source_data["columns"])
 
     # Validate and Interpolate Probabilities
-    interpolated_probs = interpolate_probabilities(df, time_window, time_interval)
+    interpolated_probs = interpolate_probabilities(df, prediction_window, time_interval)
 
     # Validate and Compute Rolling Mean
     return compute_rolling_mean(interpolated_probs)
