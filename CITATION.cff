@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "King"
+    given-names: "Zella"
+    email: "zella.king@ucl.ac.uk"
+repository-code: "https://github.com/zmek/patientflow"
+title: "PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data"
+license: "MIT"
