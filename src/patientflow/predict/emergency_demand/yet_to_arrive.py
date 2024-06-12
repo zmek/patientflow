@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 import json
 
-from predict.emergency_demand.admission_in_prediction_window_using_historic_data import (
-    calculate_probability,
-)
+
 
 
 def weighted_poisson_binomial(i, lam, theta):
