@@ -29,9 +29,10 @@
 
 Welcome to the PatientFlow repo, which is designed to support hospital bed management through predictive modelling. The repository shows methods for forecasting short-term bed capacity, a crucial aspect of hospital operations that impacts patient care and resource allocation.
 
-Please note that you are looking at this repo prior to its first release. It is incomplete. 
+Please note that you are looking at this repo prior to its first release. It is incomplete.
 
 ## Objectives
+
 1. Develop code that was originally written for University College London Hospital into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/)
 2. Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems
 3. Provide training materials to inform and educate anyone who wishes to adopt a similar approach
@@ -46,11 +47,10 @@ Please note that you are looking at this repo prior to its first release. It is 
 ## Main Features of this repository
 
 - **Reproducible** - We follow the principles of Reproducible Analytical Pipelines, with the aim that the code can be easily adopted in other settings
-- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. The narrative in the notebooks is intended to be accessible to someone without any knowledge of programming; it should still be possible to follow the approach. We intend that anyone with some knowledge of Python could understand and adapt the code for their use. 
+- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. The narrative in the notebooks is intended to be accessible to someone without any knowledge of programming; it should still be possible to follow the approach. We intend that anyone with some knowledge of Python could understand and adapt the code for their use.
 - **Modular:** The repository is structured into submodules, each intended to predict specific aspects of bed capacity (supply of empty beds, demand for beds and net position in 8 hours' time).
-- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub. 
+- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub.
 - **Practical:** We hope to include a dataset, derived from the work we did at University College London Hospital, which can be used to step through the modelling process. This means that, even if your hospital is not set up to do real-time prediction yet, you can still follow the same steps we took. We are currently working on a Data Protection Impact Assessment (DPIA) with our colleagues at UCLH.
-
 
 This project was inspired by the excellent [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is developed in collaboration with the
 [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University
@@ -69,7 +69,7 @@ Centre for Advanced Research Computing, University College London
 
 ## Getting Started
 
-Start with the [`notebooks` README](/notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the  [`patientflow` README ](/src/patientflow/README.md) to understand our intentions for the Python package
+Start with the [`notebooks` README](/notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the [`patientflow` README ](/src/patientflow/README.md) to understand our intentions for the Python package
 
 ### Prerequisites
 

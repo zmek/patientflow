@@ -2,7 +2,7 @@
 
 Our intention is to release this folder, and its subfolders, as a Python package that can be installed using common methods like `pip install`
 
-The package will support predictions of bed demand by providing functions that 
+The package will support predictions of bed demand by providing functions that
 
 - take as input patient-level probabilities of admission and discharge
 - return as output probability distributions predicting number of beds needed for or vacated by those patients, at different levels of aggregation (eg by specialty or sex)

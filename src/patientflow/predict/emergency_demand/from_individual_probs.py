@@ -19,7 +19,7 @@ Functions:
 - pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
 - get_prob_dist_for_prediction_moment(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
 - get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple horizon dates.
-    
+
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
 
 Example Usage:
@@ -36,12 +36,12 @@ Note:
 Author: Zella King
 Date: 25.03.24
 Version: 0.1
+
 """
 
-import numpy as np
 import pandas as pd
 import sympy as sym
-from sympy import symbols, expand
+from sympy import expand, symbols
 
 
 def create_symbols(n):
@@ -57,6 +57,7 @@ def create_symbols(n):
     -------
     tuple
         A tuple containing the generated symbolic objects.
+
     """
     return symbols(f"r0:{n}")
 
@@ -76,6 +77,7 @@ def compute_core_expression(ri, s):
     -------
     Expr
         The symbolic expression after substitution.
+
     """
     r = sym.Symbol("r")
     core_expression = (1 - r) + r * s
@@ -97,6 +99,7 @@ def build_expression(syms, n):
     -------
     Expr
         The cumulative product of the expressions.
+
     """
     s = sym.Symbol("s")
     expression = 1
@@ -122,6 +125,7 @@ def expression_subs(expression, n, predictions):
     -------
     Expr
         The expression after performing the substitution.
+
     """
     syms = create_symbols(n)
     substitution = dict(zip(syms, predictions))
@@ -143,6 +147,7 @@ def return_coeff(expression, i):
     -------
     number
         The coefficient of the specified power in the expression.
+
     """
     s = sym.Symbol("s")
     return expand(expression).coeff(s, i)
@@ -164,6 +169,7 @@ def model_input_to_pred_proba(model_input, model):
     DataFrame
         A pandas DataFrame containing the predicted probabilities for the positive class,
         with one column labeled 'pred_proba'.
+
     """
     predictions = model.predict_proba(model_input)[:, 1]
     return pd.DataFrame(predictions, columns=["pred_proba"])
@@ -185,6 +191,7 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     DataFrame
         A DataFrame with a single column 'agg_proba' showing the aggregated probability demand,
         indexed from 0 to n, where n is the number of predictions.
+
     """
     n = len(predictions_proba)
     local_proba = predictions_proba.copy()
@@ -221,6 +228,7 @@ def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
     dict
         A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
         respectively for the horizon date. Each is presented as a DataFrame or an integer.
+
     """
     prediction_moment_dict = {}
 
@@ -270,6 +278,7 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
       snapshot before proceeding with predictions.
     - It notifies the user of progress in processing horizon dates, especially if there are more
       than 10 horizon dates.
+
     """
     prob_dist_dict = {}
     print(

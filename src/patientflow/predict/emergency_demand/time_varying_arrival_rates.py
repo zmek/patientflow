@@ -1,5 +1,6 @@
-import pandas as pd
 from datetime import datetime, timedelta
+
+import pandas as pd
 
 
 def calculate_rates(df, time_interval):
@@ -8,18 +9,17 @@ def calculate_rates(df, time_interval):
 
     This function computes the arrival rates for each time interval specified, across the entire date range present in the dataframe. The arrival rate is calculated as the number of entries in the dataframe for each time interval, divided by the number of days in the dataset's timespan.
 
-    Parameters:
+    Parameters
     df (pandas.DataFrame): A DataFrame indexed by datetime, representing the data for which arrival rates are to be calculated. The index of the DataFrame should be of datetime type.
     time_interval (int): The time interval, in minutes, for which the arrival rates are to be calculated. For example, if `time_interval=60`, the function will calculate hourly arrival rates.
 
-    Returns:
+    Returns
     dict: A dictionary where the keys are the start times of each interval (as `datetime.time` objects), and the values are the corresponding arrival rates (as floats).
 
-    Raises:
+    Raises
     TypeError: If the index of the DataFrame is not a datetime index.
-    """
-    
 
+    """
     # Validate that the DataFrame index is a datetime object
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("The DataFrame index must be a DatetimeIndex.")

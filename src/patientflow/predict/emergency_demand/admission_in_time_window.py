@@ -1,9 +1,9 @@
 import json
+from io import BytesIO
+
 import numpy as np
 import pandas as pd
 import requests
-from io import BytesIO
-import pandas as pd
 from openpyxl import load_workbook
 
 
@@ -41,8 +41,8 @@ def load_data_into_dataframe(url, sheet_name, columns):
 
     Returns:
         pandas.DataFrame: Loaded data as a DataFrame.
-    """
 
+    """
     # Specify the 'Duration in department' target string to find the duration column
     target_string = "Duration in department"
 
@@ -52,7 +52,6 @@ def load_data_into_dataframe(url, sheet_name, columns):
         file_in_memory = BytesIO(response.content)
 
         if url.endswith(".xlsx"):
-
             workbook = load_workbook(file_in_memory, data_only=True)
             try:
                 sheet = workbook[sheet_name]
@@ -171,9 +170,10 @@ def load_json_configuration(json_file_path, reference_year):
 
     Returns:
         dict: A dictionary containing the URL, sheet name, and columns.
+
     """
     try:
-        with open(json_file_path, "r") as file:
+        with open(json_file_path) as file:
             nhse_urls_dict = json.load(file)
         return nhse_urls_dict[reference_year]
     except (FileNotFoundError, KeyError) as e:
@@ -190,6 +190,7 @@ def calculate_cumulative_proportions(df, columns):
 
     Returns:
         pandas.DataFrame: DataFrame with added cumulative totals and proportions.
+
     """
     columns_to_sum = set(columns).intersection(df.columns)
     total_patients = df[list(columns_to_sum)].sum().sum()
@@ -209,6 +210,7 @@ def interpolate_probabilities(df, prediction_window, time_interval):
 
     Returns:
         numpy.ndarray: Interpolated probabilities.
+
     """
     df_new = pd.concat(
         [
@@ -229,6 +231,7 @@ def compute_rolling_mean(interpolated_probs):
 
     Returns:
         numpy.ndarray: Smoothed probabilities.
+
     """
     rolling_mean = np.convolve(interpolated_probs, np.ones(2) / 2, mode="valid")
     rolling_mean = np.insert(rolling_mean, 0, interpolated_probs[0])
@@ -249,6 +252,7 @@ def calculate_probability(
 
     Returns:
         numpy.ndarray: Array of probabilities.
+
     """
     # Validate and Load Configuration
     nhse_source_data = load_json_configuration(json_file_path, reference_year)

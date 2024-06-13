@@ -51,7 +51,6 @@ def preprocess_data(
 
 
 def load_saved_model(model_file_path, model_name, prediction_time=None):
-
     if prediction_time:
         # retrieve model based on the time of day it is trained for
         model_name = get_model_name(model_name, prediction_time)

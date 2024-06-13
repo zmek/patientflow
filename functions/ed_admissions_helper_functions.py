@@ -1,8 +1,5 @@
-from joblib import load
-from ed_admissions_utils import get_model_name, preprocess_data, load_saved_model
+from ed_admissions_utils import preprocess_data, load_saved_model
 from ed_admissions_data_retrieval import ed_admissions_get_data
-
-import pandas as pd
 
 
 def prepare_for_inference(
@@ -14,7 +11,6 @@ def prepare_for_inference(
     data_path=None,
     single_snapshot_per_visit=True,
 ):
-
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
