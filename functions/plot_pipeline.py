@@ -95,6 +95,6 @@ def in_ED_now_plot(directory_path, file_name, ex, horizon_datetime, figsize, tit
 
     plt.tight_layout()
     os.makedirs(directory_path, exist_ok=True)
-    plt.savefig(directory_path / file_name, dpi=300)
+    plt.savefig(directory_path / file_name.replace(' ','_'), dpi=300)
     
     plt.show()
