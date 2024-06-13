@@ -69,7 +69,7 @@ Centre for Advanced Research Computing, University College London
 
 ## Getting Started
 
-Start with the [`notebooks` README](/notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the [`patientflow` README ](/src/patientflow/README.md) to understand our intentions for the Python package
+Start with the [`notebooks` README](notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the [`patientflow` README ](src/patientflow/README.md) to understand our intentions for the Python package
 
 ### Prerequisites
 

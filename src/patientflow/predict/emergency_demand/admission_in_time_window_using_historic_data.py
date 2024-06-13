@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import requests
 from openpyxl import load_workbook
+from typing import List, Dict
 
 
 # Parsing the 'Duration in department' column to extract start and end times
@@ -30,7 +31,7 @@ def parse_duration(duration):
         return parts, None
 
 
-def load_data_into_dataframe(url, sheet_name, columns):
+def load_data_into_dataframe(url: str, sheet_name: str, columns: List[str]) -> pd.DataFrame:
     """
     Load data into a DataFrame from a specified URL and sheet name.
 
@@ -160,7 +161,7 @@ def load_data_into_dataframe(url, sheet_name, columns):
         return None
 
 
-def load_json_configuration(json_file_path, reference_year):
+def load_json_configuration(json_file_path: str, reference_year: str) -> Dict:
     """
     Load NHSE source data configuration from a JSON file.
 
@@ -180,7 +181,7 @@ def load_json_configuration(json_file_path, reference_year):
         raise ValueError("Error loading configuration: " + str(e))
 
 
-def calculate_cumulative_proportions(df, columns):
+def calculate_cumulative_proportions(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
     """
     Calculate cumulative totals and proportions of patients.
 
@@ -199,7 +200,7 @@ def calculate_cumulative_proportions(df, columns):
     return df
 
 
-def interpolate_probabilities(df, prediction_window, time_interval):
+def interpolate_probabilities(df: pd.DataFrame, prediction_window: int, time_interval: int) -> np.ndarray:
     """
     Interpolate probabilities at specified time intervals.
 
@@ -224,7 +225,7 @@ def interpolate_probabilities(df, prediction_window, time_interval):
     return np.interp(xnew, df_new["end_time"], df_new["cum_prop"])
 
 
-def compute_rolling_mean(interpolated_probs):
+def compute_rolling_mean(interpolated_probs: np.ndarray) -> np.ndarray:
     """
     Compute the rolling mean of interpolated probabilities.
 
@@ -241,8 +242,8 @@ def compute_rolling_mean(interpolated_probs):
 
 
 def calculate_probability(
-    json_file_path, reference_year, prediction_window, time_interval
-):
+    json_file_path: str, reference_year: str, prediction_window: int, time_interval: int
+) -> np.ndarray:
     """
     Calculate the probability of hospital admission within a specified prediction window.
 
