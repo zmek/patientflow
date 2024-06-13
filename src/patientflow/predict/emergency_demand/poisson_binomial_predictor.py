@@ -183,6 +183,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         # If there are filters specified, calculate and store the parameters directly with the respective spec keys
         if self.filters:
+
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),

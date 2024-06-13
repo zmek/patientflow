@@ -13,7 +13,7 @@ def create_colour_dict():
         'single': {
             'medical': '#ED7D31',  # red
             'surgical': '#70AD47',  # green
-            'haem_onc': '#FFC000',  # yellow
+            'haem/onc': '#FFC000',  # yellow
             'paediatric': '#5B9BD5',  # blue
             'all': '#44546A' , # dark blue
             'window': '#A9A9A9'
@@ -62,7 +62,7 @@ def in_ED_now_plot(directory_path, file_name, ex, horizon_datetime, figsize, tit
             scatter = plt.scatter(group['elapsed_los_td']/3600, jittered_y, c=group[preds_col], cmap=colour_map, vmin=0, vmax=1, label=location, s=size)
             scatter_plots.append(scatter)
         # plt.colorbar(scatter_plots[-1], orientation='vertical')
-        cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)), orientation='vertical')
+        cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)), ax=plt.gca(), orientation='vertical')
         
 
     else:
