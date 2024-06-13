@@ -28,7 +28,6 @@ def ed_admissions_get_data(path_ed_data):
     Returns:
     pd.DataFrame: A dataframe with the ED visits. See data dictionary
     """
-    dir_path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(Path().home(), path_ed_data)
 
     # read dataframe

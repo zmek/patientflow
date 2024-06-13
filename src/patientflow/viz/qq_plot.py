@@ -36,16 +36,16 @@ def qq_plot(prediction_moments, prob_dist_dict, title_):
     The function aggregates the predicted and observed distributions, calculates their CDF (Cumulative Distribution Function),
     and plots the observed CDF against the predicted CDF to visualize the accuracy of the predictions.
 
-    Parameters:
+    Parameters
     - prediction_moments (list): A list of time points of interest.
     - prob_dist_dict (dict): A nested dictionary containing predicted and actual demands for each time point.
       The structure is {time_point: {'pred_demand': pd.DataFrame of predicted value, 'actual_demand': integer}}.
     - title_ (str): Title for the plot.
 
-    Returns:
+    Returns
     - matplotlib.figure.Figure: A figure object containing the QQ plot.
-    """
 
+    """
     # Initialize lists to store CDF and observed data
     cdf_data = []
     observed_data = []

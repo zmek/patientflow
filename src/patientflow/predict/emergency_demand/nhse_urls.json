@@ -1,208 +1,182 @@
 {
-    "2009-10": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub02xxx/pub02563/acci-emer-atte-eng-2009-2010-tab-v1.xls",
-        "sheet_name": "Chart 3.15 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2010-11": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub05xxx/pub05075/acci-emer-atte-eng-2010-2011-data.xls",
-        "sheet_name": "Chart 14 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2011-12": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub09xxx/pub09624/acci-emer-atte-eng-2011-12-data.xls",
-        "sheet_name": "Chart 14 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2012-13": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub13xxx/pub13464/acci-emer-atte-eng-2012-13-data.xls",
-        "sheet_name": "Chart 14 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2013-14": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub16xxx/pub16728/acci-emer-atte-eng-2013-14-data.xlsx",
-        "sheet_name": "Chart 14 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2014-15": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub19xxx/pub19883/acci-emer-atte-eng-2014-15-data.xlsx",
-        "sheet_name": "Chart 14 (data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2015-16": {
-        "url": "https://files.digital.nhs.uk/publicationimport/pub23xxx/pub23070/acci-emer-atte-eng-2015-16-data.xlsx",
-        "sheet_name": "Chart 12 (Data)",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2016-17": {
-        "url": "https://files.digital.nhs.uk/publication/e/7/acci-emer-atte-eng-2016-17-data.xlsx",
-        "sheet_name": "Table 21",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2017-18": {
-        "url": "https://files.digital.nhs.uk/EC/2236E9/AE1718_national_data_tables.xlsx",
-        "sheet_name": "Table 21",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2018-19": {
-        "url": "https://files.digital.nhs.uk/06/C0AC02/AE1819_National_Data_Tables_v4.xlsx",
-        "sheet_name": "Table 21",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2019-20": {
-        "url": "https://files.digital.nhs.uk/1A/4A65BF/AE1920_National_Data_Tables%20v1.1.xlsx",
-        "sheet_name": "Table 21",
-        "columns": [
-            "Admitted / became a lodged patient",
-            "Discharged - GP follow up",
-            "Discharged - no follow up",
-            "Referred",
-            "Other (Inc. not known)",
-            "Other (inc. referred)",
-            "Other"
-        ],
-        "admitted_columns": [
-            "Admitted / became a lodged patient"
-        ]
-    },
-    "2020-21": {
-        "url": "https://files.digital.nhs.uk/5C/702A3E/AE2021_National_Data_Tables.xlsx",
-        "sheet_name": "Table 19",
-        "columns": [
-            "Admitted",
-            "Discharged",
-            "Ambulatory/short stay",
-            "Transferred",
-            "Died",
-            "Not Known"
-        ],
-        "admitted_columns": [
-            "Admitted"
-        ]
-    },
-    "2021-22": {
-        "url": "https://files.digital.nhs.uk/C7/C663E6/AE2122_National_Data_Tables.xlsx",
-        "sheet_name": "Table 19",
-        "columns": [
-            "Admitted",
-            "Discharged",
-            "Ambulatory/short stay",
-            "Transferred",
-            "Died",
-            "Not Known"
-        ],
-        "admitted_columns": [
-            "Admitted"
-        ]
-    }
+  "2009-10": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub02xxx/pub02563/acci-emer-atte-eng-2009-2010-tab-v1.xls",
+    "sheet_name": "Chart 3.15 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2010-11": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub05xxx/pub05075/acci-emer-atte-eng-2010-2011-data.xls",
+    "sheet_name": "Chart 14 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2011-12": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub09xxx/pub09624/acci-emer-atte-eng-2011-12-data.xls",
+    "sheet_name": "Chart 14 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2012-13": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub13xxx/pub13464/acci-emer-atte-eng-2012-13-data.xls",
+    "sheet_name": "Chart 14 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2013-14": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub16xxx/pub16728/acci-emer-atte-eng-2013-14-data.xlsx",
+    "sheet_name": "Chart 14 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2014-15": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub19xxx/pub19883/acci-emer-atte-eng-2014-15-data.xlsx",
+    "sheet_name": "Chart 14 (data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2015-16": {
+    "url": "https://files.digital.nhs.uk/publicationimport/pub23xxx/pub23070/acci-emer-atte-eng-2015-16-data.xlsx",
+    "sheet_name": "Chart 12 (Data)",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2016-17": {
+    "url": "https://files.digital.nhs.uk/publication/e/7/acci-emer-atte-eng-2016-17-data.xlsx",
+    "sheet_name": "Table 21",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2017-18": {
+    "url": "https://files.digital.nhs.uk/EC/2236E9/AE1718_national_data_tables.xlsx",
+    "sheet_name": "Table 21",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2018-19": {
+    "url": "https://files.digital.nhs.uk/06/C0AC02/AE1819_National_Data_Tables_v4.xlsx",
+    "sheet_name": "Table 21",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2019-20": {
+    "url": "https://files.digital.nhs.uk/1A/4A65BF/AE1920_National_Data_Tables%20v1.1.xlsx",
+    "sheet_name": "Table 21",
+    "columns": [
+      "Admitted / became a lodged patient",
+      "Discharged - GP follow up",
+      "Discharged - no follow up",
+      "Referred",
+      "Other (Inc. not known)",
+      "Other (inc. referred)",
+      "Other"
+    ],
+    "admitted_columns": ["Admitted / became a lodged patient"]
+  },
+  "2020-21": {
+    "url": "https://files.digital.nhs.uk/5C/702A3E/AE2021_National_Data_Tables.xlsx",
+    "sheet_name": "Table 19",
+    "columns": [
+      "Admitted",
+      "Discharged",
+      "Ambulatory/short stay",
+      "Transferred",
+      "Died",
+      "Not Known"
+    ],
+    "admitted_columns": ["Admitted"]
+  },
+  "2021-22": {
+    "url": "https://files.digital.nhs.uk/C7/C663E6/AE2122_National_Data_Tables.xlsx",
+    "sheet_name": "Table 19",
+    "columns": [
+      "Admitted",
+      "Discharged",
+      "Ambulatory/short stay",
+      "Transferred",
+      "Died",
+      "Not Known"
+    ],
+    "admitted_columns": ["Admitted"]
+  }
 }

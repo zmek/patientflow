@@ -22,10 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-dependencies = [
-]
 description = "Code and training materials for predicting short-term hospital bed capacity using real-time data"
 dynamic = [
+    "dependencies",
     "version",
 ]
 keywords = [
@@ -79,21 +78,12 @@ testpaths = [
 [tool.ruff]
 fix = true
 force-exclude = true
-lint.ignore = [
-    "COM812", # trailing commas (ruff-format recommended)
-    "D203", # no-blank-line-before-class
-    "D212", # multi-line-summary-first-line
-    "D407", # removed dashes lines under sections
-    "D417", # argument description in docstring (unreliable)
-    "ISC001", # simplify implicit str concatenation (ruff-format recommended)
-]
+lint.ignore = []
 lint.per-file-ignores = {"tests*" = [
     "INP001", # File is part of an implicit namespace package.
     "S101", # Use of `assert` detected
 ]}
-lint.select = [
-    "ALL",
-]
+lint.select = ["E4", "E7", "E9", "F"]
 lint.isort.known-first-party = [
     "patientflow",
 ]
@@ -101,6 +91,9 @@ lint.mccabe.max-complexity = 18
 lint.pep8-naming.classmethod-decorators = [
     "classmethod",
 ]
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"

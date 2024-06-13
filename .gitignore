@@ -132,3 +132,5 @@ dmypy.json
 
 # Jetbrains
 *.DS_Store
+
+**_version.py
