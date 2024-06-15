@@ -4,7 +4,8 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import roc_auc_score, log_loss
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
+
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -74,7 +75,8 @@ def initialise_model(params):
     return model
 
 
-# Set up the feature transformation
+
+
 def create_column_transformer(df, ordinal_mappings=None):
     """
     Create a column transformer for a dataframe with dynamic column handling.
@@ -95,10 +97,10 @@ def create_column_transformer(df, ordinal_mappings=None):
             transformers.append((col, OrdinalEncoder(categories=[ordinal_mappings[col]],
                                                      handle_unknown='use_encoded_value', unknown_value=np.nan), [col]))
         elif df[col].dtype == 'object' or (df[col].dtype == 'bool' or df[col].nunique() == 2):
-        # OneHotEncoding for categorical or boolean columns
+            # OneHotEncoding for categorical or boolean columns
             transformers.append((col, OneHotEncoder(handle_unknown='ignore'), [col]))
         else:
-            # Passthrough for other types of columns (e.g., numerical)
-            transformers.append((col, 'passthrough', [col]))
+            # Scaling for numerical columns
+            transformers.append((col, StandardScaler(), [col]))
 
     return ColumnTransformer(transformers)
