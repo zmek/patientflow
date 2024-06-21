@@ -109,13 +109,13 @@ def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media
         ax[0, i].legend(loc="upper left")
         ax[0, i].set_xlabel("Test set visits ordered by increasing predicted probability")
         ax[0, i].set_ylabel("Number of admissions")
-        ax[0, i].set_title(f"Expected number of admissions by {group_name}: {str(grp)}")
+        ax[0, i].set_title(f"{group_name}: {str(grp)}")
 
         # Plot difference
         ax[1, i].plot(x, model - observed)
         ax[1, i].set_xlabel("Test set visits ordered by increasing predicted probability")
         ax[1, i].set_ylabel("Expected number of admissions - observed")
-        ax[1, i].set_title("Difference between expected and observed")
+        ax[1, i].set_title(f"{group_name}: {str(grp)}")
 
 
     fig.suptitle(f"MADCAP plots by {group_name}: {dataset}")
