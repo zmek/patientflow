@@ -68,6 +68,10 @@ def plot_distributions(df, col_name, grouping_var, plot_type='both', title=None,
         g.fig.suptitle(title, fontsize=16)
     else:
         g.fig.suptitle(f'Distribution of {col_name} by {grouping_var}', fontsize=16)
+
+    # # Remove grid lines for each axis in the FacetGrid
+    # for ax in g.axes.flatten():
+    #     ax.grid(False)
     
     # Show the plot
     plt.show()
