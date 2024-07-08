@@ -46,7 +46,7 @@ def in_ED_now_plot(directory_path, file_name, ex, horizon_datetime, figsize, tit
     
     figsize_x, figsize_y = figsize
     
-    ex = ex[ex.elapsed_los_td/3600 < truncate_at_hours]
+    ex = ex[ex.elapsed_los/3600 < truncate_at_hours]
 
     # Create a dictionary to map ordinal categories to numerical values
     unique_locations = sorted(ex['loc_new'].unique())
@@ -59,7 +59,7 @@ def in_ED_now_plot(directory_path, file_name, ex, horizon_datetime, figsize, tit
         for location, group in ex.groupby('loc_new'):
             jittered_y = loc_to_num[location] + np.random.uniform(-jitter_amount, jitter_amount, size=len(group))
             # Collect scatter plots
-            scatter = plt.scatter(group['elapsed_los_td']/3600, jittered_y, c=group[preds_col], cmap=colour_map, vmin=0, vmax=1, label=location, s=size)
+            scatter = plt.scatter(group['elapsed_los']/3600, jittered_y, c=group[preds_col], cmap=colour_map, vmin=0, vmax=1, label=location, s=size)
             scatter_plots.append(scatter)
         # plt.colorbar(scatter_plots[-1], orientation='vertical')
         cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)), ax=plt.gca(), orientation='vertical')
@@ -70,7 +70,7 @@ def in_ED_now_plot(directory_path, file_name, ex, horizon_datetime, figsize, tit
         for location, group in ex.groupby('loc_new'):
             # Add jitter: modify the numerical y-coordinate with a small, random offset
             jittered_y = loc_to_num[location] + np.random.uniform(-jitter_amount, jitter_amount, size=len(group))
-            plt.scatter(group['elapsed_los_td']/3600, jittered_y, color=spec_colour_dict['single']['all'], label=location, s=size)
+            plt.scatter(group['elapsed_los']/3600, jittered_y, color=spec_colour_dict['single']['all'], label=location, s=size)
 
     plt.xlim(0, truncate_at_hours)
     plt.gca().invert_yaxis()
