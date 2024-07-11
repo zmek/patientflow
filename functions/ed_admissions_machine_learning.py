@@ -1,11 +1,9 @@
-import xgboost as xgb
 import numpy as np
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import roc_auc_score, log_loss
-from sklearn.pipeline import Pipeline
+import xgboost as xgb
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
-
+from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -35,7 +33,7 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
         # Fit the pipeline to the training data
         # Note that you don't need to manually transform the data; the pipeline handles it
         pipeline.fit(X_train, y_train)
-        
+
         # # To access transformed feature names:
         # transformed_cols = pipeline.named_steps['feature_transformer'].get_feature_names_out()
         # transformed_cols = [col.split('__')[-1] for col in transformed_cols]
@@ -61,10 +59,10 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
     mean_valid_logloss = sum(valid_loglosses) / n_splits
 
     return {
-        'train_auc': mean_train_auc,
-        'valid_auc': mean_valid_auc,
-        'train_logloss': mean_train_logloss,
-        'valid_logloss': mean_valid_logloss,
+        "train_auc": mean_train_auc,
+        "valid_auc": mean_valid_auc,
+        "train_logloss": mean_train_logloss,
+        "valid_logloss": mean_valid_logloss,
     }
 
 
@@ -73,8 +71,6 @@ def initialise_model(params):
     model = xgb.XGBClassifier(n_jobs=-1, use_label_encoder=False, eval_metric="logloss")
     model.set_params(**params)
     return model
-
-
 
 
 def create_column_transformer(df, ordinal_mappings=None):
@@ -86,7 +82,7 @@ def create_column_transformer(df, ordinal_mappings=None):
     :return: A configured ColumnTransformer object.
     """
     transformers = []
-    
+
     # Default to an empty dict if no ordinal mappings are provided
     if ordinal_mappings is None:
         ordinal_mappings = {}
@@ -94,11 +90,22 @@ def create_column_transformer(df, ordinal_mappings=None):
     for col in df.columns:
         if col in ordinal_mappings:
             # Ordinal encoding for specified columns with a predefined ordering
-            transformers.append((col, OrdinalEncoder(categories=[ordinal_mappings[col]],
-                                                     handle_unknown='use_encoded_value', unknown_value=np.nan), [col]))
-        elif df[col].dtype == 'object' or (df[col].dtype == 'bool' or df[col].nunique() == 2):
+            transformers.append(
+                (
+                    col,
+                    OrdinalEncoder(
+                        categories=[ordinal_mappings[col]],
+                        handle_unknown="use_encoded_value",
+                        unknown_value=np.nan,
+                    ),
+                    [col],
+                )
+            )
+        elif df[col].dtype == "object" or (
+            df[col].dtype == "bool" or df[col].nunique() == 2
+        ):
             # OneHotEncoding for categorical or boolean columns
-            transformers.append((col, OneHotEncoder(handle_unknown='ignore'), [col]))
+            transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
         else:
             # Scaling for numerical columns
             transformers.append((col, StandardScaler(), [col]))

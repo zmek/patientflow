@@ -1,15 +1,9 @@
-from pathlib import Path
-from datetime import datetime
-import pandas as pd
-
+from ed_admissions_helper_functions import get_specialty_probs, prepare_for_inference
+from ed_admissions_utils import load_saved_model
 from predict.emergency_demand.from_individual_probs import (
     model_input_to_pred_proba,
     pred_proba_to_pred_demand,
 )
-from ed_admissions_helper_functions import prepare_for_inference
-from ed_admissions_utils import load_saved_model
-
-from ed_admissions_helper_functions import get_specialty_probs
 
 
 def index_of_sum(sequence: list[float], max_sum: float) -> int:
@@ -29,7 +23,6 @@ def create_predictions(
     prediction_window,
     cdf_cut_points,
 ) -> dict:  # [SpecialtyType, DemandPredictions]:
-
     # initialisation
     hour = snapshot_datetime.hour
     minute = snapshot_datetime.minute
@@ -66,7 +59,6 @@ def create_predictions(
     pred_demand_yta = yet_to_arrive_model.predict(prediction_context)
 
     for spec_ in specialties:
-
         # Process patients in ED
         prob_admission_to_specialty = (
             snapshots_df["specialty_prob"].apply(lambda x: x[spec_]).values

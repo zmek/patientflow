@@ -1,14 +1,14 @@
 import unittest
-import pandas as pd
+
 import numpy as np
-from sklearn.model_selection import train_test_split
+import pandas as pd
 from predict.emergency_demand.specialty_of_admission import (
     SpecialityPredictor,
 )
+from sklearn.model_selection import train_test_split
 
 
 class TestSpecialityPredictor(unittest.TestCase):
-
     def setUp(self):
         # Sample data generation as provided
         np.random.seed(42)  # For reproducibility
@@ -108,7 +108,6 @@ class TestSpecialityPredictor(unittest.TestCase):
         )
 
     def test_predict_returns_dict(self):
-
         # Assuming fit has been run and self.predictor is ready
         self.predictor.fit(self.train_df)
         for _, row in self.test_df.iterrows():

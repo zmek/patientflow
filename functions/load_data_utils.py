@@ -1,8 +1,4 @@
-import pandas as pd
-
-
 def get_specialty_group(l):
-
     if (
         l.count("Medicine") > 0
         or l.count("Geriatric")

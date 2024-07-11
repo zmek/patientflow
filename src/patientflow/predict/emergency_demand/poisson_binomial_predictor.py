@@ -13,7 +13,7 @@ Dependencies:
         - time_varying_arrival_rates: Computes time-varying arrival rates, a core component of the prediction algorithm.
 
 Classes:
-    PoissonBinomialPredictor(BaseEstimator, TransformerMixin): 
+    PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         Predicts the number of admissions within a given prediction window based on historical data and Poisson-binomial distribution.
 
     Methods within PoissonBinomialPredictor:
@@ -28,16 +28,10 @@ Date: 06.04.24
 Version: 1.0
 """
 
-from datetime import datetime, time, timedelta
-
-import pandas as pd
 import warnings
-import numpy as np
+from datetime import datetime, timedelta
 
-# from dissemination.patientflow.predict.emergency_demand.yet_to_arrive import (
-from predict.emergency_demand.yet_to_arrive import (
-    poisson_binom_generating_function,
-)
+import numpy as np
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
@@ -49,9 +43,13 @@ from predict.emergency_demand.time_varying_arrival_rates import (
     calculate_rates,
 )
 
+# from dissemination.patientflow.predict.emergency_demand.yet_to_arrive import (
+from predict.emergency_demand.yet_to_arrive import (
+    poisson_binom_generating_function,
+)
+
 # Import utility functions for time adjustment
 # from edmodel.utils.time_utils import adjust_for_model_specific_times
-
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -62,15 +60,16 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     This prediction does not include patients who have already arrived and is based on historical data.
     The prediction uses a combination of Poisson and binomial distributions.
 
-    Attributes:
+    Attributes
         None
 
-    Methods:
+    Methods
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
         fit(self, train_df, prediction_window, time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
         predict(self, prediction_context): Predicts the number of admissions for a given context after the model is trained.
         get_weights(self): Retrieves the model parameters computed during fitting.
+
     """
 
     def __init__(self, filters=None):
@@ -80,6 +79,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         Args:
             filters (dict, optional): A dictionary defining filters for different categories or specialties.
                                       If None or empty, no filtering will be applied.
+
         """
         self.filters = filters if filters else {}
 
@@ -93,6 +93,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         Returns:
             pandas.DataFrame: A filtered DataFrame.
+
         """
         filtered_df = df
         for column, criteria in filters.items():
@@ -116,6 +117,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         Returns:
             dict: Calculated lambda_t parameters organized by time of day.
+
         """
         Ntimes = int(prediction_window / time_interval)
         arrival_rates_dict = calculate_rates(df, time_interval)
@@ -170,8 +172,8 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         Returns:
             PoissonBinomialPredictor: The instance itself, fitted with the training data.
-        """
 
+        """
         # Store prediction_window, time_interval, and any other parameters as instance variables
         self.prediction_window = prediction_window
         self.time_interval = time_interval
@@ -183,7 +185,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         # If there are filters specified, calculate and store the parameters directly with the respective spec keys
         if self.filters:
-
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),
@@ -211,8 +212,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         """
         Returns the weights computed by the fit method.
 
-        Returns:
+        Returns
             dict: The weights.
+
         """
         return self.weights
 
@@ -227,6 +229,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         Returns:
             tuple: The closest previous time of day from 'prediction_times'.
+
         """
         requested_datetime = datetime.strptime(
             f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
@@ -274,6 +277,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         Returns:
             dict: A dictionary with predictions for each specified context.
+
         """
         predictions = {}
 
@@ -325,6 +329,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 )
 
             except KeyError as e:
-                raise KeyError(f"Key error occurred: {str(e)}")
+                raise KeyError(f"Key error occurred: {e!s}")
 
         return predictions

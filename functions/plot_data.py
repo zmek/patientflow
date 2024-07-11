@@ -1,20 +1,24 @@
-import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Define a consistent color palette
 # color_palette = {0: 'blue', 1: 'orange'}  # Assuming is_admitted can only be 0 or 1
-
-
 import seaborn as sns
-import matplotlib.pyplot as plt
 
-def plot_distributions(df, col_name, grouping_var, plot_type='both', title=None, rotate_x_labels=False, is_discrete=False):
+
+def plot_distributions(
+    df,
+    col_name,
+    grouping_var,
+    plot_type="both",
+    title=None,
+    rotate_x_labels=False,
+    is_discrete=False,
+):
     """
     Creates side-by-side plots comparing the distributions of a variable
     for each value of a grouping variable. Option to plot kde, which is useful for visualizing the distribution of data points in a smooth curve.
 
-    Parameters:
+    Parameters
     df (pandas.DataFrame): The dataframe containing the data.
     col_name (str): The name of the variable column to plot.
     grouping_var (str): The name of the grouping variable column.
@@ -25,31 +29,34 @@ def plot_distributions(df, col_name, grouping_var, plot_type='both', title=None,
     title (str): The overall title for the plot.
     rotate_x_labels (bool): Whether to rotate x-axis labels.
     is_discrete (bool): Whether the variable is discrete. If True, sets number of bins to max value.
+
     """
     # Set the aesthetic style of the plots
     sns.set(style="whitegrid")
-    
+
     # Create a FacetGrid for side-by-side plots
     g = sns.FacetGrid(df, col=grouping_var, height=5, aspect=1)
-    
+
     # Determine the number of bins if discrete
     if is_discrete:
         bins = int(df[col_name].max()) + 1
     else:
-        bins = 'auto'
-    
+        bins = "auto"
+
     # Map the appropriate plot type to each facet
-    if plot_type == 'both':
+    if plot_type == "both":
         g.map(sns.histplot, col_name, kde=True, bins=bins)
-    elif plot_type == 'hist':
+    elif plot_type == "hist":
         g.map(sns.histplot, col_name, kde=False, bins=bins)
-    elif plot_type == 'kde':
+    elif plot_type == "kde":
         g.map(sns.kdeplot, col_name, fill=True)
     else:
         raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
-    
-    g.set_axis_labels(col_name, "Frequency" if plot_type != 'kde' else "Density", fontsize = 10)
-    
+
+    g.set_axis_labels(
+        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
+    )
+
     if rotate_x_labels:
         for ax in g.axes.flat:
             for label in ax.get_xticklabels():
@@ -60,20 +67,17 @@ def plot_distributions(df, col_name, grouping_var, plot_type='both', title=None,
         for ax in g.axes.flat:
             ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
             ax.set_xlim(df[col_name].min() - 0.5, df[col_name].max() + 0.5)
-    
-    
+
     # Set the overall title
     plt.subplots_adjust(top=0.85)
     if title:
         g.fig.suptitle(title, fontsize=16)
     else:
-        g.fig.suptitle(f'Distribution of {col_name} by {grouping_var}', fontsize=16)
+        g.fig.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=16)
 
     # # Remove grid lines for each axis in the FacetGrid
     # for ax in g.axes.flatten():
     #     ax.grid(False)
-    
+
     # Show the plot
     plt.show()
-
-

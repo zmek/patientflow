@@ -1,10 +1,9 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 
+import matplotlib.pyplot as plt
+import numpy as np
 from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
     create_curve,
-    calculate_probability,
 )
 
 
@@ -43,7 +42,6 @@ def plot_curve(
     plt.xticks(x_ticks)
 
     if include_titles:
-
         plt.title(title_, fontsize=text_size)
         plt.xlabel("Hours since admission")
         plt.ylabel("Probability of admission by this point")

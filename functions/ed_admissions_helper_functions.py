@@ -1,8 +1,5 @@
-from joblib import load
-from ed_admissions_utils import get_model_name, preprocess_data, load_saved_model
 from ed_admissions_data_retrieval import ed_admissions_get_data
-
-import pandas as pd
+from ed_admissions_utils import load_saved_model, preprocess_data
 
 
 def prepare_for_inference(
@@ -14,7 +11,6 @@ def prepare_for_inference(
     data_path=None,
     single_snapshot_per_visit=True,
 ):
-
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
@@ -25,7 +21,7 @@ def prepare_for_inference(
         df = ed_admissions_get_data(data_path)
     elif df is None or df.empty:
         print("Please supply a dataset if not passing a data path")
-        return
+        return None
 
     # print("Prep for inference - df")
     # print(df[(df.training_validation_test == 'test')].index)
@@ -69,6 +65,7 @@ def prepare_snapshots_dict(df):
 
     Returns:
     dict: A dictionary where keys are dates and values are arrays of indices corresponding to each date's snapshots.
+
     """
     # Ensure 'snapshot_date' is in the DataFrame
     if "snapshot_date" not in df.columns:

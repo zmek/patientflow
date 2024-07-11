@@ -1,21 +1,24 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
+
 
 def plot_madcap(predict_proba, label, dataset, media_path):
     """
     Save a MADCAP plot comparing predicted probabilities and actual outcomes.
-    
-    Parameters:
+
+    Parameters
     predict_proba (array-like): Array of predicted probabilities.
     label (array-like): Array of actual labels.
     dataset (str): Name of the dataset, used in the plot title and file name.
     media_path (Path): Media path to save the plot.
+
     """
     # Ensure inputs are numpy arrays
     predict_proba = np.array(predict_proba)
     label = np.array(label)
-    
+
     # Sort by predict_proba
     sorted_indices = np.argsort(predict_proba)
     sorted_proba = predict_proba[sorted_indices]
@@ -66,14 +69,15 @@ def plot_madcap(predict_proba, label, dataset, media_path):
 def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media_path):
     """
     Save MADCAP plots subdivided by a specified grouping variable.
-    
-    Parameters:
+
+    Parameters
     predict_proba (array-like): Array of predicted probabilities.
     label (array-like): Array of actual labels.
     group (array-like): Array of grouping variable values.
     dataset (str): Name of the dataset, used in the plot title and file name.
     group_name (str): Name of the grouping variable
     media_path (Path): Media path to save the plot.
+
     """
     # Ensure inputs are numpy arrays
     predict_proba = np.array(predict_proba)
@@ -84,7 +88,7 @@ def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media
     fig, ax = plt.subplots(2, len(unique_groups), figsize=(12, 8))
 
     for i, grp in enumerate(unique_groups):
-        mask = (group == grp)
+        mask = group == grp
         sorted_indices = np.argsort(predict_proba[mask])
         sorted_proba = predict_proba[mask][sorted_indices]
         sorted_label = label[mask][sorted_indices]
@@ -107,16 +111,19 @@ def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media
         ax[0, i].plot(x, model, label="model")
         ax[0, i].plot(x, observed, label="observed")
         ax[0, i].legend(loc="upper left")
-        ax[0, i].set_xlabel("Test set visits ordered by increasing predicted probability")
+        ax[0, i].set_xlabel(
+            "Test set visits ordered by increasing predicted probability"
+        )
         ax[0, i].set_ylabel("Number of admissions")
-        ax[0, i].set_title(f"{group_name}: {str(grp)}")
+        ax[0, i].set_title(f"{group_name}: {grp!s}")
 
         # Plot difference
         ax[1, i].plot(x, model - observed)
-        ax[1, i].set_xlabel("Test set visits ordered by increasing predicted probability")
+        ax[1, i].set_xlabel(
+            "Test set visits ordered by increasing predicted probability"
+        )
         ax[1, i].set_ylabel("Expected number of admissions - observed")
-        ax[1, i].set_title(f"{group_name}: {str(grp)}")
-
+        ax[1, i].set_title(f"{group_name}: {grp!s}")
 
     fig.suptitle(f"MADCAP plots by {group_name}: {dataset}")
     fig.tight_layout(pad=1.08, rect=[0, 0, 1, 0.97])

@@ -5,11 +5,12 @@ def get_model_name(model_name, prediction_time_):
     """
     Create a model name based on the time of day.
 
-    Parameters:
+    Parameters
     prediction_time_ (tuple): A tuple representing the time of day (hour, minute).
 
-    Returns:
+    Returns
     str: A string representing the model name based on the time of day.
+
     """
     hour_, min_ = prediction_time_
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
@@ -51,7 +52,6 @@ def preprocess_data(
 
 
 def load_saved_model(model_file_path, model_name, prediction_time=None):
-
     if prediction_time:
         # retrieve model based on the time of day it is trained for
         model_name = get_model_name(model_name, prediction_time)
