@@ -37,7 +37,9 @@ def ed_admissions_get_data(path_ed_data):
 
     # sort by visit and date if in dataset
     sort_columns = [
-        col for col in ["visit_number", "snapshot_datetime"] if col in df.columns
+        col
+        for col in ["visit_number", "snapshot_datetime"]
+        if col in df.columns
     ]
     if sort_columns:
         df.sort_values(sort_columns, inplace=True)

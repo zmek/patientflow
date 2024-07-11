@@ -97,7 +97,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         """
         filtered_df = df
         for column, criteria in filters.items():
-            if callable(criteria):  # If the criteria is a function, apply it directly
+            if callable(
+                criteria
+            ):  # If the criteria is a function, apply it directly
                 filtered_df = filtered_df[filtered_df[column].apply(criteria)]
             else:  # Otherwise, assume the criteria is a value or list of values for equality check
                 filtered_df = filtered_df[filtered_df[column] == criteria]
@@ -132,7 +134,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             lambda_t = [
                 arrival_rates_dict[
                     (
-                        datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
+                        datetime(
+                            1970, 1, 1, prediction_time_hr, prediction_time_min
+                        )
                         + i * timedelta(minutes=time_interval)
                     ).time()
                 ]
@@ -198,7 +202,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 train_df, prediction_window, time_interval, prediction_times
             )
 
-        print(f"Poisson Binomial Predictor trained for these times: {prediction_times}")
+        print(
+            f"Poisson Binomial Predictor trained for these times: {prediction_times}"
+        )
         print(
             f"using prediction window of {prediction_window} minutes after the time of prediction"
         )
@@ -206,7 +212,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
             f"and time interval of {time_interval} minutes within the prediction window."
         )
         print(f"The error value for prediction will be {epsilon}")
-        print("To see the weights saved by this model, used the get_weights() method")
+        print(
+            "To see the weights saved by this model, used the get_weights() method"
+        )
 
     def get_weights(self):
         """
@@ -237,16 +245,20 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         closest_prediction_time = max(
             self.prediction_times,
             key=lambda prediction_time_time: datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+                "%H:%M",
             ),
         )
         min_diff = float("inf")
 
         for prediction_time_time in self.prediction_times:
             prediction_time_datetime = datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+                "%H:%M",
             )
-            diff = (requested_datetime - prediction_time_datetime).total_seconds()
+            diff = (
+                requested_datetime - prediction_time_datetime
+            ).total_seconds()
 
             # If the difference is negative, it means the prediction_time_time is ahead of the requested_time,
             # hence we calculate the difference by considering a day's wrap around.
@@ -286,8 +298,11 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         # Calculate theta, probability of admission in prediction window
 
         # for each time interval, calculate time remaining before end of window
-        time_remaining_before_end_of_window = self.prediction_window / 60 - np.arange(
-            0, self.prediction_window / 60, self.time_interval / 60
+        time_remaining_before_end_of_window = (
+            self.prediction_window / 60
+            - np.arange(
+                0, self.prediction_window / 60, self.time_interval / 60
+            )
         )
 
         # probability of admission in that time
@@ -310,15 +325,19 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
                 if prediction_time not in self.prediction_times:
                     original_prediction_time = prediction_time
-                    prediction_time = self._find_nearest_previous_prediction_time(
-                        prediction_time
+                    prediction_time = (
+                        self._find_nearest_previous_prediction_time(
+                            prediction_time
+                        )
                     )
                     warnings.warn(
                         f"Time of day requested of {original_prediction_time} was not in model training. "
                         f"Reverting to predictions for {prediction_time}."
                     )
 
-                lambda_t = self.weights[filter_key][prediction_time].get("lambda_t")
+                lambda_t = self.weights[filter_key][prediction_time].get(
+                    "lambda_t"
+                )
                 if lambda_t is None:
                     raise ValueError(
                         f"No 'lambda_t' found for the time of day '{prediction_time}' under filter '{filter_key}'."

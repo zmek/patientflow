@@ -1,4 +1,7 @@
-from ed_admissions_helper_functions import get_specialty_probs, prepare_for_inference
+from ed_admissions_helper_functions import (
+    get_specialty_probs,
+    prepare_for_inference,
+)
 from ed_admissions_utils import load_saved_model
 from predict.emergency_demand.from_individual_probs import (
     model_input_to_pred_proba,
@@ -36,12 +39,17 @@ def create_predictions(
 
     # Prepare data and model for patients in ED
     X_test, y_test, admissions_model = prepare_for_inference(
-        model_dir, "ed_admission", prediction_time=prediction_time, df=snapshots_df
+        model_dir,
+        "ed_admission",
+        prediction_time=prediction_time,
+        df=snapshots_df,
     )
     ### NOTE - probably need to drop consult sequence ######
 
     # Run inference on the patients in ED (admission probabilities)
-    prob_admission_after_ed = model_input_to_pred_proba(X_test, admissions_model)
+    prob_admission_after_ed = model_input_to_pred_proba(
+        X_test, admissions_model
+    )
 
     # Run inference on the patients in ED (admission probabilities)
     snapshots_df = get_specialty_probs(model_dir, snapshots_df)
@@ -71,14 +79,17 @@ def create_predictions(
         # These non-standard cases should not be included in the overall bed counts in such cases
 
         non_zero_indices = prob_admission_to_specialty != 0
-        filtered_prob_admission_after_ed = prob_admission_after_ed[non_zero_indices]
+        filtered_prob_admission_after_ed = prob_admission_after_ed[
+            non_zero_indices
+        ]
         filtered_prob_admission_to_specialty = prob_admission_to_specialty[
             non_zero_indices
         ]
 
         # Call the function to predict demand for patients in ED, with the filtered data
         pred_demand_in_ED = pred_proba_to_pred_demand(
-            filtered_prob_admission_after_ed, filtered_prob_admission_to_specialty
+            filtered_prob_admission_after_ed,
+            filtered_prob_admission_to_specialty,
         )
 
         # Process patients yet-to-arrive
@@ -86,11 +97,15 @@ def create_predictions(
 
         # Return the distributions at the desired cut points
         predictions[spec_]["in_ed"] = [
-            index_of_sum(pred_demand_in_ED["agg_proba"].values.cumsum(), cut_point)
+            index_of_sum(
+                pred_demand_in_ED["agg_proba"].values.cumsum(), cut_point
+            )
             for cut_point in cdf_cut_points
         ]
         predictions[spec_]["yet_to_arrive"] = [
-            index_of_sum(pred_demand_yta[spec_]["agg_proba"].values.cumsum(), cut_point)
+            index_of_sum(
+                pred_demand_yta[spec_]["agg_proba"].values.cumsum(), cut_point
+            )
             for cut_point in cdf_cut_points
         ]
 

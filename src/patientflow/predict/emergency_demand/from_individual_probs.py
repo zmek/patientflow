@@ -300,7 +300,9 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
         if weights is None:
             prediction_moment_weights = None
         else:
-            prediction_moment_weights = weights.loc[snaptshots_to_include].values
+            prediction_moment_weights = weights.loc[
+                snaptshots_to_include
+            ].values
 
         # Compute the predicted and actual demand for the current horizon date
         prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(

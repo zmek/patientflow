@@ -38,7 +38,12 @@ def aggregate_probabilities(lam, kmax, theta, time_index):
     numpy.ndarray: Aggregated probabilities for the given time index.
 
     """
-    if kmax < 0 or time_index < 0 or len(lam) <= time_index or len(theta) <= time_index:
+    if (
+        kmax < 0
+        or time_index < 0
+        or len(lam) <= time_index
+        or len(theta) <= time_index
+    ):
         raise ValueError("Invalid kmax, time_index, or array lengths.")
 
     probabilities_matrix = np.zeros((kmax + 1, kmax + 1))
@@ -61,9 +66,10 @@ def convolute_distributions(dist_a, dist_b):
     pd.DataFrame: The convoluted distribution.
 
     """
-    if not {"sum", "prob"}.issubset(dist_a.columns) or not {"sum", "prob"}.issubset(
-        dist_b.columns
-    ):
+    if not {"sum", "prob"}.issubset(dist_a.columns) or not {
+        "sum",
+        "prob",
+    }.issubset(dist_b.columns):
         raise ValueError("DataFrames must contain 'sum' and 'prob' columns.")
 
     sums = [x + y for x in dist_a["sum"] for y in dist_b["sum"]]

@@ -81,7 +81,9 @@ class TestSpecialityPredictor(unittest.TestCase):
                 ],
             ),
             "observed_category": np.random.choice(
-                ["haem_onc", "medical", "surgical"], size=100, p=[0.1, 0.7, 0.2]
+                ["haem_onc", "medical", "surgical"],
+                size=100,
+                p=[0.1, 0.7, 0.2],
             ),
         }
 
@@ -129,7 +131,9 @@ class TestSpecialityPredictor(unittest.TestCase):
     def test_edge_cases(self):
         self.predictor.fit(self.train_df)
         empty_sequence = tuple()
-        rare_sequence = tuple(["neuro", "neuro", "neuro"])  # Assuming 'neuro' is rare
+        rare_sequence = tuple(
+            ["neuro", "neuro", "neuro"]
+        )  # Assuming 'neuro' is rare
 
         empty_prediction = self.predictor.predict(empty_sequence)
         rare_prediction = self.predictor.predict(rare_sequence)
@@ -139,7 +143,9 @@ class TestSpecialityPredictor(unittest.TestCase):
         # Ensure that the method handles empty sequences without errors
         self.assertIsInstance(empty_prediction, dict)
         # Ensure probabilities are returned even for rare sequences
-        self.assertTrue(all(type(v) == float for v in rare_prediction.values()))
+        self.assertTrue(
+            all(type(v) == float for v in rare_prediction.values())
+        )
 
 
 if __name__ == "__main__":

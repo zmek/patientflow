@@ -33,7 +33,9 @@ def create_colour_dict():
 
     # Populate the spectrum dictionary with continuous colormaps
     for spec, color in spec_colour_dict["single"].items():
-        spec_colour_dict["spectrum"][spec] = generate_continuous_colormap(color)
+        spec_colour_dict["spectrum"][spec] = generate_continuous_colormap(
+            color
+        )
 
     return spec_colour_dict
 
@@ -87,7 +89,9 @@ def in_ED_now_plot(
             scatter_plots.append(scatter)
         # plt.colorbar(scatter_plots[-1], orientation='vertical')
         cbar = plt.colorbar(
-            plt.cm.ScalarMappable(cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)),
+            plt.cm.ScalarMappable(
+                cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)
+            ),
             ax=plt.gca(),
             orientation="vertical",
         )

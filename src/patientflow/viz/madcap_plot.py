@@ -25,7 +25,9 @@ def plot_madcap(predict_proba, label, dataset, media_path):
     sorted_label = label[sorted_indices]
 
     # Compute unique probabilities and their mean labels
-    unique_probs, inverse_indices = np.unique(sorted_proba, return_inverse=True)
+    unique_probs, inverse_indices = np.unique(
+        sorted_proba, return_inverse=True
+    )
     mean_labels = np.zeros_like(unique_probs)
 
     np.add.at(mean_labels, inverse_indices, sorted_label)
@@ -44,14 +46,18 @@ def plot_madcap(predict_proba, label, dataset, media_path):
     ax[0].plot(x, model, label="model")
     ax[0].plot(x, observed, label="observed")
     ax[0].legend(loc="upper left")
-    ax[0].set_xlabel("Test set visits ordered by increasing predicted probability")
+    ax[0].set_xlabel(
+        "Test set visits ordered by increasing predicted probability"
+    )
     ax[0].set_ylabel("Number of admissions")
     ax[0].set_title("Expected number of admissions compared with MADCAP")
 
     # Plot difference
     ax[1].plot(x, model - observed)
     ax[1].legend(loc="upper left")
-    ax[1].set_xlabel("Test set visits ordered by increasing predicted probability")
+    ax[1].set_xlabel(
+        "Test set visits ordered by increasing predicted probability"
+    )
     ax[1].set_ylabel("Expected number of admissions - observed")
     ax[1].set_title("Difference between expected and observed")
 
@@ -66,7 +72,9 @@ def plot_madcap(predict_proba, label, dataset, media_path):
     plt.close(fig)
 
 
-def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media_path):
+def plot_madcap_by_group(
+    predict_proba, label, group, dataset, group_name, media_path
+):
     """
     Save MADCAP plots subdivided by a specified grouping variable.
 
@@ -94,7 +102,9 @@ def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media
         sorted_label = label[mask][sorted_indices]
 
         # Compute unique probabilities and their mean labels
-        unique_probs, inverse_indices = np.unique(sorted_proba, return_inverse=True)
+        unique_probs, inverse_indices = np.unique(
+            sorted_proba, return_inverse=True
+        )
         mean_labels = np.zeros_like(unique_probs)
 
         np.add.at(mean_labels, inverse_indices, sorted_label)
