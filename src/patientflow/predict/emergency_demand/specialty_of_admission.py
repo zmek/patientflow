@@ -1,8 +1,7 @@
+from typing import Dict
+
 import pandas as pd
-import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from datetime import datetime
-from typing import Any, Dict, Tuple
 
 
 class SequencePredictor(BaseEstimator, TransformerMixin):
@@ -18,17 +17,17 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         input variable sequence ending in specific outcome variable categories. It also handles null
         sequences and incorporates a default probability for sequences without explicit data.
 
-        Parameters:
+        Parameters
         - X: A pandas DataFrame with at least the columns specified by input_var, grouping_var, and outcome_var.
         - input_var: The name of the column representing the input sequence.
         - grouping_var: The name of the column representing the grouping sequence.
         - outcome_var: The name of the column representing the outcome variable.
 
-        Returns:
+        Returns
         - A dictionary mapping each sequence (including null sequences) to their
         respective probability distribution across different categories.
-        """
 
+        """
         # derive the names of the observed specialties from the data (used later)
         prop_keys = X[self.outcome_var].unique()
 
@@ -102,18 +101,18 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         as well as 'medical' on its own. It computes the total probabilities of any input sequence ending
         in each outcome category, and normalizes these totals if possible.
 
-        Parameters:
+        Parameters
         - input_var_string (str): The sequence of inputs represented as a string,
         used to match against sequences in the proportions DataFrame.
         - proportions (pd.DataFrame): DataFrame containing proportions data with an additional
         column 'grouping_sequence_to_string' which includes string representations of sequences.
         - prop_keys (np.array): Array of unique outcomes to consider in calculations.
 
-        Returns:
+        Returns
         - dict: A dictionary where keys are outcome names and values are the aggregated
         and normalized probabilities of an input sequence ending in those outcomes.
-        """
 
+        """
         # Filter rows where the grouped sequence string starts with the input sequence string
         props = proportions[
             proportions["grouping_sequence_to_string"].str.match("^" + input_var_string)
@@ -133,7 +132,6 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         return dict(zip(prop_keys, normalized_props))
 
     def _probability_of_input_to_grouping_sequence(self, X):
-
         # For each input sequence count the number of grouping sequences
         X_grouped = (
             X.groupby(self.input_var)[self.grouping_var]
@@ -158,14 +156,14 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         For example, for an input sequence such as ("cardiology", "orthopedics"), the return
         value will be a dict of probabilities such as {"cardiology": 0.3, "orthopedics": 0.2, "neurology": 0.1}.
 
-        Parameters:
+        Parameters
         - input_sequence: A tuple containing the categories that have been observed for an entity in the order
         they have been encountered. An empty tuple represents an entity with no observed categories.
 
-        Returns:
+        Returns
         - A dictionary of categories and the probabilities that the input sequence will end in them.
-        """
 
+        """
         # Check for no tuple
         if input_sequence is None or pd.isna(input_sequence):
             return self.weights.get(tuple(), {})

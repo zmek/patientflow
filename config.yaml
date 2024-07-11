@@ -1,23 +1,38 @@
 # List of prediction times
-tod:
+prediction_times:
   - [6, 0]
   - [9, 30]
   - [12, 0]
   - [15, 30]
   - [22, 0]
-  
+
+# Training, validation and test set dates
+modelling_dates:
+  - 2030-04-01 # start training set
+  - 2031-09-01 # start validation set
+  - 2031-11-01 # start test set
+  - 2032-05-01 # end test set
+
 # desired error for Poisson distribution (1 - sum of each approximated Poisson)
-epsilon: 
-  10**-7 
-  
+epsilon: 10**-7
+
 # enter desired time interval for the calculation of aspiration yet-to-arrive in minutes
-yta_time_interval:
- 15
- 
+yta_time_interval: 15
+
 # time window after prediction time in minutes
-time_window:
- 480 
- 
-# reference year for probability of admission in time window 
-reference_year: 
- 2009-10
+prediction_window: 480
+
+# reference year for probability of admission in time window
+reference_year: 2009-10
+
+# Target number of hours for ED admissions
+x1: 4
+
+# Target proportion of patients admitted by time x1.
+y1: .76
+
+# Target number of hours by which all but a small minority of patients will have been admitted (must be > x1)
+x2: 12
+
+# Target proportion of patients admitted by time x2.
+y2: .99

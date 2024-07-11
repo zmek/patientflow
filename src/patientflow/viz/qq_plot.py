@@ -23,49 +23,51 @@ Date: 25.03.24
 Version: 0.1
 """
 
-
 # Import necessary libraries for data manipulation and visualization
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-def qq_plot(horizon_dts, prob_dist_dict, title_):
+
+def qq_plot(prediction_moments, prob_dist_dict, title_):
     """
     Generate a QQ plot comparing observed values with model predictions.
 
     The function aggregates the predicted and observed distributions, calculates their CDF (Cumulative Distribution Function),
     and plots the observed CDF against the predicted CDF to visualize the accuracy of the predictions.
 
-    Parameters:
-    - horizon_dts (list): A list of time points of interest.
+    Parameters
+    - prediction_moments (list): A list of time points of interest.
     - prob_dist_dict (dict): A nested dictionary containing predicted and actual demands for each time point.
       The structure is {time_point: {'pred_demand': pd.DataFrame of predicted value, 'actual_demand': integer}}.
     - title_ (str): Title for the plot.
 
-    Returns:
+    Returns
     - matplotlib.figure.Figure: A figure object containing the QQ plot.
-    """
 
+    """
     # Initialize lists to store CDF and observed data
     cdf_data = []
     observed_data = []
 
     # Loop through each time point to process predicted and observed data
-    for dt in horizon_dts:
+    for dt in prediction_moments:
         # Check if there is data for the current time point
         if dt in prob_dist_dict:
             # Extract predicted demand and actual demand
-            pred_demand = np.array(prob_dist_dict[dt]['pred_demand'])
-            actual_demand = prob_dist_dict[dt]['actual_demand']
+            pred_demand = np.array(prob_dist_dict[dt]["pred_demand"])
+            actual_demand = prob_dist_dict[dt]["actual_demand"]
 
             # Calculate the CDF for predicted demand
-            upper = pred_demand.cumsum() 
+            upper = pred_demand.cumsum()
             lower = np.hstack((0, upper[:-1]))
             mid = (upper + lower) / 2
 
             # Collect the CDF data and the observed data point
             cdf_data.append(np.column_stack((upper, lower, mid, pred_demand)))
-            observed_data.append(mid[actual_demand])  # CDF value at the observed admission count
+            observed_data.append(
+                mid[actual_demand]
+            )  # CDF value at the observed admission count
 
     # Return None if there is no data to plot
     if not cdf_data:
@@ -73,26 +75,33 @@ def qq_plot(horizon_dts, prob_dist_dict, title_):
 
     # Consolidate CDF data and prepare the dataframe for model predictions
     cdf_data = np.vstack(cdf_data)
-    qq_model = pd.DataFrame(cdf_data, columns=["cdf_upper", "cdf_mid", "cdf_lower", "weights"])
+    qq_model = pd.DataFrame(
+        cdf_data, columns=["cdf_upper", "cdf_mid", "cdf_lower", "weights"]
+    )
     qq_model = qq_model.sort_values("cdf_mid")
-    qq_model['cum_weight'] = qq_model['weights'].cumsum()
-    qq_model['cum_weight_normed'] = qq_model['cum_weight'] / qq_model['weights'].sum()
+    qq_model["cum_weight"] = qq_model["weights"].cumsum()
+    qq_model["cum_weight_normed"] = qq_model["cum_weight"] / qq_model["weights"].sum()
 
     # Prepare the observed data for plotting
     qq_observed = pd.DataFrame(observed_data, columns=["cdf_observed"])
     qq_observed = qq_observed.sort_values("cdf_observed")
-    qq_observed['weights'] = 1 / len(observed_data)
-    qq_observed['cum_weight_normed'] = qq_observed['weights'].cumsum()
+    qq_observed["weights"] = 1 / len(observed_data)
+    qq_observed["cum_weight_normed"] = qq_observed["weights"].cumsum()
 
     # Calculate the maximum model CDF value corresponding to each observed value
-    qq_observed['max_model_cdf_at_this_value'] = qq_observed['cdf_observed'].apply(
-        lambda x: qq_model[qq_model['cdf_mid'] <= x]['cum_weight_normed'].max()
+    qq_observed["max_model_cdf_at_this_value"] = qq_observed["cdf_observed"].apply(
+        lambda x: qq_model[qq_model["cdf_mid"] <= x]["cum_weight_normed"].max()
     )
 
     # Plotting the QQ plot
     fig, ax = plt.subplots()
     ax.plot([0, 1], [0, 1], linestyle="--")  # Reference line y=x
-    ax.plot(qq_observed["max_model_cdf_at_this_value"], qq_observed["cum_weight_normed"], marker=".", linewidth=0)
+    ax.plot(
+        qq_observed["max_model_cdf_at_this_value"],
+        qq_observed["cum_weight_normed"],
+        marker=".",
+        linewidth=0,
+    )
     ax.set_xlabel("Cdf of model distribution")
     ax.set_ylabel("Cdf of observed distribution")
     plt.title(title_)

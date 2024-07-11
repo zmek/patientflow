@@ -7,9 +7,6 @@ We are developing a series of notebooks that demonstrate the process of modeling
 - **For users who prefer not to set up their own coding environment:** Each notebook is designed to run using a provided dataset, aiming to replicate our results. The dataset will hopefully be based on real data from University College London Hospital; we are currently working on a Data Protection Impact Assessment (DPIA) with them. We intend that it will be possible to run these notebooks on Colab and/or BinderHub
 - **For those interested in using the 'patientflow' package:** These notebooks serve as a guide on how to use the 'patientflow' package. Through detailed walkthroughs of the functions and their applications, you can learn how to integrate this package into your own projects.
 
-
-
-
 ## Outline of the notebooks
 
 Our plan is to create the following notebooks:
@@ -20,9 +17,8 @@ Our plan is to create the following notebooks:
 - **4 Modelling probability of admission from ED:** Show how to train a machine learning model to forecast admission likelihood based on patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, evaluating and interpreting these predictions, and saving the models for future use.
 - **5 Turning individual probabilities into bed counts** Illustrate how to convert individual admission probabilities into an overall bed demand forecast.
 - **6 Modelling probability of admission to specialty if admitted:** Show that a rooted directed tree can be used to represent a sequence of consultation requests, which in turn can be mapped to a probability of being admitted to one of three specialties: medical, surgical, haematology/oncology
-- **7 Turning individual predictions into bed counts by specialty** Combine the output from previous steps into a probability distribution for each specialty. Break down the predictions by different categories (male/female). 
-- **8 Modelling patients yet to arrive:** Show the use of a time-varying Poisson distribution to predict a number of patients yet to arrive with a time window (say 8 hours) of the time of prediction, by specialty. Demonstrate the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the time window
+- **7 Turning individual predictions into bed counts by specialty** Combine the output from previous steps into a probability distribution for each specialty. Break down the predictions by different categories (male/female).
+- **8 Modelling patients yet to arrive:** Show the use of a time-varying Poisson distribution to predict a number of patients yet to arrive with a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrate the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window
 - **9 Evaluating the predictions**: Discuss the importance of evaluating predictions and talk about what it means to evaluate a model of aspirational predictions
 - **10 Modelling using only OPEL data**: Show how you might use a historical dataset, plus real-time information that is sent to your Integrated Care Board for OPEL reporting, to make demand predictions, and evaluate the loss of predictive power compared with having more data
 - **11 Putting it all together:** Show an example of doing live inference using these models
-
