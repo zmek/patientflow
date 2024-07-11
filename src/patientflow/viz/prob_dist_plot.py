@@ -20,8 +20,7 @@ def prob_dist_plot(
 
     if not file_name:
         file_name = (
-            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent")
-            + ".png"
+            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
     plt.bar(
         prob_dist_data.index[0 : truncate_at_beds + 1],

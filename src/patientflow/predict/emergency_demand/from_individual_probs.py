@@ -18,14 +18,14 @@ Functions:
 - model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
 - pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
 - get_prob_dist_for_prediction_moment(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
-- get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple horizon dates.
+- get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.
 
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
 
 Example Usage:
     # Assuming a predictive model and test data are available
-    horizon_dates = ['2023-01-01', '2023-01-02']
-    predicted_distribution = get_prob_dist(horizon_dates, dataset, X_test, y_test, model)
+    snapshot_dates = ['2023-01-01', '2023-01-02']
+    predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
     print(predicted_distribution)
 
 Note:
@@ -215,7 +215,7 @@ def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
     Parameters
     ----------
     X_test : array-like
-        Test features for a specific horizon date.
+        Test features for a specific snapshot date.
     y_test : array-like
         Actual outcomes corresponding to the test features.
     model : object
@@ -227,7 +227,7 @@ def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
     -------
     dict
         A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
-        respectively for the horizon date. Each is presented as a DataFrame or an integer.
+        respectively for the snapshot date. Each is presented as a DataFrame or an integer.
 
     """
     prediction_moment_dict = {}
@@ -248,12 +248,12 @@ def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
 
 def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     """
-    Calculate probability distributions for each horizon date based on given model predictions.
+    Calculate probability distributions for each snapshot date based on given model predictions.
 
     Parameters
     ----------
     snapshots_dict : dict
-        A dictionary mapping horizon dates (as datetime objects) to indices in `X_test` and `y_test`
+        A dictionary mapping snapshot dates (as datetime objects) to indices in `X_test` and `y_test`
         that correspond to the snapshots to be tested for each date.
     X_test : pandas.DataFrame
         A DataFrame containing the test features for prediction.
@@ -269,26 +269,26 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     Returns
     -------
     dict
-        A dictionary where each key is a horizon date and each value is the resulting probability
+        A dictionary where each key is a snapshot date and each value is the resulting probability
         distribution for that date, obtained by applying the model on the corresponding test snapshots.
 
     Notes
     -----
     - The function asserts that the length of the test features and outcomes are equal for each
       snapshot before proceeding with predictions.
-    - It notifies the user of progress in processing horizon dates, especially if there are more
-      than 10 horizon dates.
+    - It notifies the user of progress in processing snapshot dates, especially if there are more
+      than 10 snapshot dates.
 
     """
     prob_dist_dict = {}
     print(
-        f"Calculating probability distributions for {len(snapshots_dict)} horizon dates"
+        f"Calculating probability distributions for {len(snapshots_dict)} snapshot dates"
     )
 
     if len(snapshots_dict) > 10:
         print("This may take a minute or more")
 
-    # Initialize a counter for notifying the user every 10 horizon dates processed
+    # Initialize a counter for notifying the user every 10 snapshot dates processed
     count = 0
 
     for dt, snaptshots_to_include in snapshots_dict.items():
@@ -300,11 +300,9 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
         if weights is None:
             prediction_moment_weights = None
         else:
-            prediction_moment_weights = weights.loc[
-                snaptshots_to_include
-            ].values
+            prediction_moment_weights = weights.loc[snaptshots_to_include].values
 
-        # Compute the predicted and actual demand for the current horizon date
+        # Compute the predicted and actual demand for the current snapshot date
         prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
             X_test=X_test.loc[snaptshots_to_include],
             y_test=y_test.loc[snaptshots_to_include],
@@ -312,11 +310,11 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
             weights=prediction_moment_weights,
         )
 
-        # Increment the counter and notify the user every 10 horizon dates processed
+        # Increment the counter and notify the user every 10 snapshot dates processed
         count += 1
         if count % 10 == 0 and count != len(snapshots_dict):
-            print(f"Processed {count} horizon dates")
+            print(f"Processed {count} snapshot dates")
 
-    print(f"Processed {len(snapshots_dict)} horizon dates")
+    print(f"Processed {len(snapshots_dict)} snapshot dates")
 
     return prob_dist_dict

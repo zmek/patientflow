@@ -1,5 +1,3 @@
-import numpy as np
-
 """
 This module provides functions to model and analyze a curve consisting of an exponential growth segment followed by an exponential decay segment. It includes functions to create the curve, calculate specific points on it, and evaluate probabilities based on its shape.
 
@@ -18,6 +16,8 @@ The curve is applied as follows
 - calculate_probability: Compute the probability of a patient being admitted by the end of a prediction window, given how much time has elapsed since their arrival.
 
 """
+
+import numpy as np
 
 
 def growth_curve(x, a, gamma):
@@ -99,9 +99,7 @@ def create_curve(x1, y1, x2, y2, a=0.01, generate_values=False):
     if not (x1 < x2):
         raise ValueError("x1 must be less than x2")
     if not (0 < y1 < y2 < 1):
-        raise ValueError(
-            "y1 must be less than y2, and both must be between 0 and 1"
-        )
+        raise ValueError("y1 must be less than y2, and both must be between 0 and 1")
 
     # Constants for growth and decay
     gamma = np.log(y1 / a) / x1
@@ -110,11 +108,7 @@ def create_curve(x1, y1, x2, y2, a=0.01, generate_values=False):
     if generate_values:
         x_values = np.linspace(0, 20, 200)
         y_values = [
-            (
-                growth_curve(x, a, gamma)
-                if x <= x1
-                else decay_curve(x, x1, y1, lamda)
-            )
+            (growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda))
             for x in x_values
         ]
         return gamma, lamda, a, x_values, y_values
@@ -151,15 +145,11 @@ def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
 
     """
     gamma, lamda, a = create_curve(x1, y1, x2, y2)
-    y = np.where(
-        x < x1, growth_curve(x, a, gamma), decay_curve(x, x1, y1, lamda)
-    )
+    y = np.where(x < x1, growth_curve(x, a, gamma), decay_curve(x, x1, y1, lamda))
     return y
 
 
-def calculate_probability(
-    elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2, y2
-):
+def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2, y2):
     """
     Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction, based on the patient's elapsed time in the ED prior to the moment of prediction and the length of the window
 

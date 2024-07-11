@@ -80,9 +80,7 @@ def qq_plot(prediction_moments, prob_dist_dict, title_):
     )
     qq_model = qq_model.sort_values("cdf_mid")
     qq_model["cum_weight"] = qq_model["weights"].cumsum()
-    qq_model["cum_weight_normed"] = (
-        qq_model["cum_weight"] / qq_model["weights"].sum()
-    )
+    qq_model["cum_weight_normed"] = qq_model["cum_weight"] / qq_model["weights"].sum()
 
     # Prepare the observed data for plotting
     qq_observed = pd.DataFrame(observed_data, columns=["cdf_observed"])
@@ -91,9 +89,7 @@ def qq_plot(prediction_moments, prob_dist_dict, title_):
     qq_observed["cum_weight_normed"] = qq_observed["weights"].cumsum()
 
     # Calculate the maximum model CDF value corresponding to each observed value
-    qq_observed["max_model_cdf_at_this_value"] = qq_observed[
-        "cdf_observed"
-    ].apply(
+    qq_observed["max_model_cdf_at_this_value"] = qq_observed["cdf_observed"].apply(
         lambda x: qq_model[qq_model["cdf_mid"] <= x]["cum_weight_normed"].max()
     )
 

@@ -68,9 +68,7 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
 
 # Initialise the model with given hyperparameters
 def initialise_model(params):
-    model = xgb.XGBClassifier(
-        n_jobs=-1, use_label_encoder=False, eval_metric="logloss"
-    )
+    model = xgb.XGBClassifier(n_jobs=-1, use_label_encoder=False, eval_metric="logloss")
     model.set_params(**params)
     return model
 
@@ -107,9 +105,7 @@ def create_column_transformer(df, ordinal_mappings=None):
             df[col].dtype == "bool" or df[col].nunique() == 2
         ):
             # OneHotEncoding for categorical or boolean columns
-            transformers.append(
-                (col, OneHotEncoder(handle_unknown="ignore"), [col])
-            )
+            transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
         else:
             # Scaling for numerical columns
             transformers.append((col, StandardScaler(), [col]))

@@ -1,5 +1,4 @@
 import unittest
-
 import numpy as np
 import pandas as pd
 from predict.emergency_demand.specialty_of_admission import (
@@ -87,9 +86,9 @@ class TestSpecialityPredictor(unittest.TestCase):
             ),
         }
 
-        df = pd.DataFrame(data)
+        self.df = pd.DataFrame(data)
         self.train_df, self.test_df = train_test_split(
-            df[df["training_validation_test"] == "train"],
+            self.df[self.df["training_validation_test"] == "train"],
             test_size=0.2,
             random_state=42,
         )
@@ -100,9 +99,9 @@ class TestSpecialityPredictor(unittest.TestCase):
         self.assertIsInstance(self.predictor.weights, dict)
 
     def test_weights_for_urology(self):
-        urology_pred = df.loc[
-            df.final_sequence == tuple(["urology"]), "observed_category"
-        ].value_counts() / len(df[df.final_sequence == tuple(["urology"])])
+        urology_pred = self.df.loc[
+            self.df.final_sequence == tuple(["urology"]), "observed_category"
+        ].value_counts() / len(self.df[self.df.final_sequence == tuple(["urology"])])
         self.predictor.fit(self.train_df)
         self.assertTrue(
             self.predictor.weights[tuple(["urology"])]["medical"]
@@ -131,21 +130,15 @@ class TestSpecialityPredictor(unittest.TestCase):
     def test_edge_cases(self):
         self.predictor.fit(self.train_df)
         empty_sequence = tuple()
-        rare_sequence = tuple(
-            ["neuro", "neuro", "neuro"]
-        )  # Assuming 'neuro' is rare
+        rare_sequence = tuple(["neuro", "neuro", "neuro"])  # Assuming 'neuro' is rare
 
         empty_prediction = self.predictor.predict(empty_sequence)
         rare_prediction = self.predictor.predict(rare_sequence)
 
-        # print(empty_prediction)
-
         # Ensure that the method handles empty sequences without errors
         self.assertIsInstance(empty_prediction, dict)
         # Ensure probabilities are returned even for rare sequences
-        self.assertTrue(
-            all(type(v) == float for v in rare_prediction.values())
-        )
+        self.assertTrue(all(isinstance(v, float) for v in rare_prediction.values()))
 
 
 if __name__ == "__main__":

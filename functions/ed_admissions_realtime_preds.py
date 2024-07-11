@@ -1,3 +1,4 @@
+from typing import Dict, List, Tuple
 from ed_admissions_helper_functions import (
     get_specialty_probs,
     prepare_for_inference,
@@ -9,7 +10,7 @@ from predict.emergency_demand.from_individual_probs import (
 )
 
 
-def index_of_sum(sequence: list[float], max_sum: float) -> int:
+def index_of_sum(sequence: List[float], max_sum: float) -> int:
     s = 0.0
     for i, p in enumerate(sequence):
         s += p
@@ -19,21 +20,21 @@ def index_of_sum(sequence: list[float], max_sum: float) -> int:
 
 
 def create_predictions(
-    model_dir,
+    model_dir: str,
     snapshot_datetime,
     snapshots_df,
-    specialties,
-    prediction_window,
-    cdf_cut_points,
-) -> dict:  # [SpecialtyType, DemandPredictions]:
+    specialties: List[str],
+    prediction_window: str,
+    cdf_cut_points: List[float],
+) -> Dict[str, Dict[str, List[int]]]:  # [SpecialtyType, DemandPredictions]:
     # initialisation
     hour = snapshot_datetime.hour
     minute = snapshot_datetime.minute
-    prediction_time = (hour, minute)
+    prediction_time: Tuple[int, int] = (hour, minute)
 
     # initiase predictions dict
-    predictions = {
-        key: {subkey: None for subkey in ["in_ed", "yet_to_arrive"]}
+    predictions: Dict[str, Dict[str, List[int]]] = {
+        key: {subkey: [] for subkey in ["in_ed", "yet_to_arrive"]}
         for key in specialties
     }
 
@@ -47,9 +48,7 @@ def create_predictions(
     ### NOTE - probably need to drop consult sequence ######
 
     # Run inference on the patients in ED (admission probabilities)
-    prob_admission_after_ed = model_input_to_pred_proba(
-        X_test, admissions_model
-    )
+    prob_admission_after_ed = model_input_to_pred_proba(X_test, admissions_model)
 
     # Run inference on the patients in ED (admission probabilities)
     snapshots_df = get_specialty_probs(model_dir, snapshots_df)
@@ -79,9 +78,7 @@ def create_predictions(
         # These non-standard cases should not be included in the overall bed counts in such cases
 
         non_zero_indices = prob_admission_to_specialty != 0
-        filtered_prob_admission_after_ed = prob_admission_after_ed[
-            non_zero_indices
-        ]
+        filtered_prob_admission_after_ed = prob_admission_after_ed[non_zero_indices]
         filtered_prob_admission_to_specialty = prob_admission_to_specialty[
             non_zero_indices
         ]
@@ -97,15 +94,11 @@ def create_predictions(
 
         # Return the distributions at the desired cut points
         predictions[spec_]["in_ed"] = [
-            index_of_sum(
-                pred_demand_in_ED["agg_proba"].values.cumsum(), cut_point
-            )
+            index_of_sum(pred_demand_in_ED["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
         predictions[spec_]["yet_to_arrive"] = [
-            index_of_sum(
-                pred_demand_yta[spec_]["agg_proba"].values.cumsum(), cut_point
-            )
+            index_of_sum(pred_demand_yta[spec_]["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
 

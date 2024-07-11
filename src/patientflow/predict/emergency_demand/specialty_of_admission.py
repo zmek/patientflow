@@ -7,13 +7,9 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class SequencePredictor(BaseEstimator, TransformerMixin):
     def __init__(self, input_var, grouping_var, outcome_var):
         self.input_var = input_var  # Column name for the input sequence
-        self.grouping_var = (
-            grouping_var  # Column name for the grouping sequence
-        )
+        self.grouping_var = grouping_var  # Column name for the grouping sequence
         self.outcome_var = outcome_var  # Column name for the outcome category
-        self.weights = (
-            None  # Initialize the weights attribute to store model weights
-        )
+        self.weights = None  # Initialize the weights attribute to store model weights
 
     def fit(self, X: pd.DataFrame) -> Dict:
         """
@@ -61,9 +57,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         proportions = X_grouped.div(row_totals, axis=0)
 
         # Calculate the probability of each grouping sequence occurring in the original data
-        proportions["probability_of_grouping_sequence"] = (
-            row_totals / row_totals.sum()
-        )
+        proportions["probability_of_grouping_sequence"] = row_totals / row_totals.sum()
 
         # Reweight probabilities of ending with each observed specialty
         # by the likelihood of each grouping sequence occurring
@@ -83,9 +77,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         # the probability of it ending in any observed category
         proportions["prob_input_var_ends_in_observed_specialty"] = proportions[
             "grouping_sequence_to_string"
-        ].apply(
-            lambda x: self._string_match_input_var(x, proportions, prop_keys)
-        )
+        ].apply(lambda x: self._string_match_input_var(x, proportions, prop_keys))
 
         # save these as weights
         self.weights = proportions.to_dict()[
@@ -93,15 +85,13 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         ]
 
         # save the input to grouping probabilities
-        self.input_to_grouping_probs = (
-            self._probability_of_input_to_grouping_sequence(X)
+        self.input_to_grouping_probs = self._probability_of_input_to_grouping_sequence(
+            X
         )
 
         return self
 
-    def _string_match_input_var(
-        self, input_var_string, proportions, prop_keys
-    ):
+    def _string_match_input_var(self, input_var_string, proportions, prop_keys):
         """
         Matches a given input sequence string with grouped sequences (expressed as strings) in the dataset and aggregates
         their probabilities for each outcome category. This function filters the data to
@@ -125,9 +115,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         """
         # Filter rows where the grouped sequence string starts with the input sequence string
         props = proportions[
-            proportions["grouping_sequence_to_string"].str.match(
-                "^" + input_var_string
-            )
+            proportions["grouping_sequence_to_string"].str.match("^" + input_var_string)
         ][prop_keys].sum()
 
         # Sum of all probabilities to normalize them
@@ -158,9 +146,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         proportions = X_grouped.div(row_totals, axis=0)
 
         # # Calculate the probability of each input sequence occurring in the original data
-        proportions["probability_of_grouping_sequence"] = (
-            row_totals / row_totals.sum()
-        )
+        proportions["probability_of_grouping_sequence"] = row_totals / row_totals.sum()
 
         return proportions
 
@@ -189,9 +175,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         # Otherwise, if the sequence has multiple elements, work back looking for a match
         while len(input_sequence) > 1:
             input_sequence_list = list(input_sequence)
-            input_sequence = tuple(
-                input_sequence_list[:-1]
-            )  # remove last element
+            input_sequence = tuple(input_sequence_list[:-1])  # remove last element
 
             if input_sequence in self.weights:
                 return self.weights[input_sequence]

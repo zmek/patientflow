@@ -28,8 +28,7 @@ def plot_curve(
 
     if not file_name:
         file_name = (
-            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent")
-            + ".png"
+            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
 
     plt.plot(x_values, y_values)

@@ -29,7 +29,6 @@ def ed_admissions_get_data(path_ed_data):
     pd.DataFrame: A dataframe with the ED visits. See data dictionary
 
     """
-    dir_path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(Path().home(), path_ed_data)
 
     # read dataframe
@@ -37,9 +36,7 @@ def ed_admissions_get_data(path_ed_data):
 
     # sort by visit and date if in dataset
     sort_columns = [
-        col
-        for col in ["visit_number", "snapshot_datetime"]
-        if col in df.columns
+        col for col in ["visit_number", "snapshot_datetime"] if col in df.columns
     ]
     if sort_columns:
         df.sort_values(sort_columns, inplace=True)

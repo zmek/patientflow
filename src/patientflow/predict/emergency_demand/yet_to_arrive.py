@@ -38,12 +38,7 @@ def aggregate_probabilities(lam, kmax, theta, time_index):
     numpy.ndarray: Aggregated probabilities for the given time index.
 
     """
-    if (
-        kmax < 0
-        or time_index < 0
-        or len(lam) <= time_index
-        or len(theta) <= time_index
-    ):
+    if kmax < 0 or time_index < 0 or len(lam) <= time_index or len(theta) <= time_index:
         raise ValueError("Invalid kmax, time_index, or array lengths.")
 
     probabilities_matrix = np.zeros((kmax + 1, kmax + 1))

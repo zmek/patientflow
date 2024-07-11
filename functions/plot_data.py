@@ -51,9 +51,7 @@ def plot_distributions(
     elif plot_type == "kde":
         g.map(sns.kdeplot, col_name, fill=True)
     else:
-        raise ValueError(
-            "Invalid plot_type. Choose from 'both', 'hist', or 'kde'."
-        )
+        raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
 
     g.set_axis_labels(
         col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
@@ -75,9 +73,7 @@ def plot_distributions(
     if title:
         g.fig.suptitle(title, fontsize=16)
     else:
-        g.fig.suptitle(
-            f"Distribution of {col_name} by {grouping_var}", fontsize=16
-        )
+        g.fig.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=16)
 
     # # Remove grid lines for each axis in the FacetGrid
     # for ax in g.axes.flatten():

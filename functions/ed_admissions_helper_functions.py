@@ -76,8 +76,7 @@ def prepare_snapshots_dict(df):
 
     # Group the DataFrame by 'snapshot_date' and collect the indices for each group
     snapshots_dict = {
-        date: group.index.tolist()
-        for date, group in df.groupby("snapshot_date")
+        date: group.index.tolist() for date, group in df.groupby("snapshot_date")
     }
 
     return snapshots_dict
@@ -154,9 +153,7 @@ def get_specialty_probs(
     # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
     specialty_prob_series = specialty_prob_series.apply(
         lambda d: (
-            {key: d.get(key, 0) for key in all_keys}
-            if isinstance(d, dict)
-            else d
+            {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
         )
     )
 
