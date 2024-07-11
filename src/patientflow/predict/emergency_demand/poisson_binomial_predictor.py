@@ -212,7 +212,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         print(f"The error value for prediction will be {epsilon}")
         print("To see the weights saved by this model, used the get_weights() method")
 
-        return
+        return self
     
     def get_weights(self):
         """
