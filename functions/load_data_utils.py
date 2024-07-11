@@ -42,34 +42,3 @@ def convert_dict_to_values(df, column, prefix):
     dict_df.columns = [f"{prefix}_{col}" for col in dict_df.columns]
 
     return dict_df
-
-
-def get_specialty_group(x):
-    if (
-        x.count("Medicine") > 0
-        or x.count("Geriatric")
-        or x.count("Cardiology")
-        or x.count("Pharmacology ") > 0
-        or x.count("Pharmacy ") > 0
-        or x.count("Endocrinology") > 0
-        or x.count("Rheumatology") > 0
-        or x.count("Gastroenterology") > 0
-        or x.count("Infectious Diseases") > 0
-        or x.count("General Practice") > 0
-        or x.count("Dermatology") > 0
-    ):
-        return "medical"
-    elif (
-        x.count("Surgery") > 0
-        or x.count("Anaesthetics") > 0
-        or x.count("Maternity") > 0
-        or x.count("Obstetrics") > 0
-        or x.count("Orthopaedics") > 0
-        or x.count("Otolaryngology") > 0
-        or x.count("Urology") > 0
-        or x.count("Dental") > 0
-    ):
-        return "surgical"
-    elif x.count("Oncology") > 0 or x.count("Haematology") > 0:
-        return "haem_onc"
-    return "medical"

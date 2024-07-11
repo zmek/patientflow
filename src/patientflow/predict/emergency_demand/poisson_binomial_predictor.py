@@ -23,9 +23,7 @@ Classes:
         - predict(self, prediction_context): Predicts the number of admissions using the trained model.
 
 This module is designed for flexibility and customization to suit different prediction needs in hospital environments.
-Author: Zella King
-Date: 06.04.24
-Version: 1.0
+
 """
 
 import warnings
@@ -243,14 +241,16 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         closest_prediction_time = max(
             self.prediction_times,
             key=lambda prediction_time_time: datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+                "%H:%M",
             ),
         )
         min_diff = float("inf")
 
         for prediction_time_time in self.prediction_times:
             prediction_time_datetime = datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}", "%H:%M"
+                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+                "%H:%M",
             )
             diff = (requested_datetime - prediction_time_datetime).total_seconds()
 

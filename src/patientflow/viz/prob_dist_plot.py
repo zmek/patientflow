@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -12,6 +14,7 @@ def prob_dist_plot(
     text_size=None,
     bar_colour="#5B9BD5",
     file_name=None,
+    min_beds_lines=None,
 ):
     plt.figure(figsize=figsize)
 
@@ -30,6 +33,22 @@ def prob_dist_plot(
         np.arange(0, truncate_at_beds + 1, 5)
     )  # Set x-axis ticks at every 5 units
 
+    if min_beds_lines:
+        colors = itertools.cycle(
+            plt.cm.gray(np.linspace(0.3, 0.7, len(min_beds_lines)))
+        )
+
+        for point in min_beds_lines:
+            plt.axvline(
+                x=min_beds_lines[point],
+                linestyle="--",
+                linewidth=2,
+                color=next(colors),
+                label=f"{point*100:.0f}% probability",
+            )
+
+        plt.legend(loc="upper right")
+
     if text_size:
         plt.tick_params(axis="both", which="major", labelsize=text_size)
 
@@ -41,5 +60,5 @@ def prob_dist_plot(
     plt.tight_layout()
 
     if directory_path:
-        plt.savefig(directory_path / file_name, dpi=300)
+        plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
     plt.show()

@@ -1,141 +1,83 @@
-import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Define a consistent color palette
-color_palette = {0: "blue", 1: "orange"}  # Assuming is_admitted can only be 0 or 1
+# color_palette = {0: 'blue', 1: 'orange'}  # Assuming is_admitted can only be 0 or 1
+import seaborn as sns
 
 
-def calculate_bins(data):
-    q25, q75 = np.percentile(data.dropna(), [25, 75])
-    iqr = q75 - q25
-    if iqr == 0:
-        return 10  # Fallback to a default number of bins if IQR is zero
-    bin_width = 2 * iqr * len(data) ** (-1 / 3)
-    if bin_width == 0:
-        return 10  # Fallback to a default number of bins if bin width is zero
-    bins = (data.max() - data.min()) / bin_width
-    if not np.isfinite(bins):
-        return (
-            10  # Fallback to a default number of bins if bins calculation is infinite
-        )
-    return int(np.ceil(bins))
-
-
-def plot_binned_histograms(df, col_name, group_by_col="is_admitted"):
-    df_copy = df.copy()
-    if np.issubdtype(df_copy[col_name].dtype, np.timedelta64):
-        df_copy[col_name] = df_copy[col_name].dt.total_seconds()
-    num_bins = calculate_bins(df_copy[col_name])
-    bins = np.linspace(df_copy[col_name].min(), df_copy[col_name].max(), num_bins + 1)
-    unique_labels = df_copy[group_by_col].unique()
-    fig, axes = plt.subplots(
-        nrows=len(unique_labels), ncols=1, figsize=(8, 3 * len(unique_labels))
-    )  # Adjusted figsize
-    for idx, label in enumerate(unique_labels):
-        ax = axes[idx] if len(unique_labels) > 1 else axes
-        group = df_copy[df_copy[group_by_col] == label]
-        if group[col_name].dropna().empty:
-            print(
-                f"Skipping group {label}: column {col_name} contains only NaN values."
-            )
-            continue
-        ax.hist(
-            group[col_name].dropna(),
-            bins=bins,
-            edgecolor="black",
-            color=color_palette[label],
-        )
-        ax.set_title(f"{label} {group_by_col}")
-        ax.set_xlabel(col_name)
-        ax.set_ylabel("Count")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_categorical_histograms(df, col_name, group_by_col="is_admitted"):
-    df_copy = df.copy()
-    unique_labels = df_copy[group_by_col].unique()
-    fig, axes = plt.subplots(
-        nrows=len(unique_labels), ncols=1, figsize=(8, 3 * len(unique_labels))
-    )  # Adjusted figsize
-    for idx, label in enumerate(unique_labels):
-        ax = axes[idx] if len(unique_labels) > 1 else axes
-        group = df_copy[df_copy[group_by_col] == label]
-        value_counts = group[col_name].value_counts().sort_index()
-        if value_counts.empty:
-            print(
-                f"Skipping group {label}: column {col_name} contains only NaN values or no values."
-            )
-            continue
-        value_counts.plot(kind="bar", ax=ax, color=color_palette[label])
-        ax.set_title(f"{label} {group_by_col}")
-        ax.set_xlabel(col_name)
-        ax.set_ylabel("Count")
-        ax.set_xticklabels(
-            ax.get_xticklabels(), rotation=0
-        )  # Ensure x-tick labels are not rotated
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_text_histograms(
-    df, col_name, group_by_col="is_admitted", max_unique_values=20
+def plot_distributions(
+    df,
+    col_name,
+    grouping_var,
+    plot_type="both",
+    title=None,
+    rotate_x_labels=False,
+    is_discrete=False,
 ):
-    df_copy = df.copy()
-    unique_values = df_copy[col_name].nunique()
-    if unique_values > max_unique_values:
-        print(f"Skipping column {col_name}: too many unique values ({unique_values}).")
-        return
+    """
+    Creates side-by-side plots comparing the distributions of a variable
+    for each value of a grouping variable. Option to plot kde, which is useful for visualizing the distribution of data points in a smooth curve.
 
-    df_copy[col_name] = df_copy[col_name].astype("category")
-    unique_labels = df_copy[group_by_col].unique()
+    Parameters
+    df (pandas.DataFrame): The dataframe containing the data.
+    col_name (str): The name of the variable column to plot.
+    grouping_var (str): The name of the grouping variable column.
+    plot_type (str): The type of plot to display ('both', 'hist', 'kde').
+                     'both' displays both histogram and KDE,
+                     'hist' displays only the histogram,
+                     'kde' displays only the KDE plot.
+    title (str): The overall title for the plot.
+    rotate_x_labels (bool): Whether to rotate x-axis labels.
+    is_discrete (bool): Whether the variable is discrete. If True, sets number of bins to max value.
 
-    fig, ax = plt.subplots(figsize=(8, 3))
-    category_value_counts = {}
-    for label in unique_labels:
-        group = df_copy[df_copy[group_by_col] == label]
-        value_counts = group[col_name].value_counts().sort_index()
-        if value_counts.empty:
-            print(
-                f"Skipping group {label}: column {col_name} contains only NaN values or no values."
-            )
-            continue
-        category_value_counts[label] = value_counts
+    """
+    # Set the aesthetic style of the plots
+    sns.set(style="whitegrid")
 
-    if not category_value_counts:
-        print(f"Skipping column {col_name}: no valid data to plot.")
-        return
+    # Create a FacetGrid for side-by-side plots
+    g = sns.FacetGrid(df, col=grouping_var, height=5, aspect=1)
 
-    value_counts_df = pd.DataFrame(category_value_counts).fillna(0)
-    value_counts_df.plot(
-        kind="bar",
-        ax=ax,
-        color=[color_palette[label] for label in value_counts_df.columns],
+    # Determine the number of bins if discrete
+    if is_discrete:
+        bins = int(df[col_name].max()) + 1
+    else:
+        bins = "auto"
+
+    # Map the appropriate plot type to each facet
+    if plot_type == "both":
+        g.map(sns.histplot, col_name, kde=True, bins=bins)
+    elif plot_type == "hist":
+        g.map(sns.histplot, col_name, kde=False, bins=bins)
+    elif plot_type == "kde":
+        g.map(sns.kdeplot, col_name, fill=True)
+    else:
+        raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
+
+    g.set_axis_labels(
+        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
     )
 
-    ax.set_title(f"Distribution of {col_name} grouped by {group_by_col}")
-    ax.set_xlabel(col_name)
-    ax.set_ylabel("Count")
-    ax.set_xticklabels(
-        ax.get_xticklabels(), rotation=0
-    )  # Ensure x-tick labels are not rotated
-    plt.tight_layout()
+    if rotate_x_labels:
+        for ax in g.axes.flat:
+            for label in ax.get_xticklabels():
+                label.set_rotation(90)
+
+    # Force integer x-axis if discrete
+    if is_discrete:
+        for ax in g.axes.flat:
+            ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+            ax.set_xlim(df[col_name].min() - 0.5, df[col_name].max() + 0.5)
+
+    # Set the overall title
+    plt.subplots_adjust(top=0.85)
+    if title:
+        g.fig.suptitle(title, fontsize=16)
+    else:
+        g.fig.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=16)
+
+    # # Remove grid lines for each axis in the FacetGrid
+    # for ax in g.axes.flatten():
+    #     ax.grid(False)
+
+    # Show the plot
     plt.show()
-
-
-def main_plot_function(df, exclude_from_plot, group_by_col="is_admitted"):
-    for column in df.columns:
-        if column not in exclude_from_plot:
-            if pd.api.types.is_bool_dtype(df[column]):
-                plot_categorical_histograms(df, column, group_by_col)
-            elif pd.api.types.is_numeric_dtype(
-                df[column]
-            ) or pd.api.types.is_timedelta64_dtype(df[column]):
-                plot_binned_histograms(df, column, group_by_col)
-            elif isinstance(df[column].dtype, pd.CategoricalDtype):
-                plot_categorical_histograms(df, column, group_by_col)
-            elif pd.api.types.is_object_dtype(df[column]):
-                plot_text_histograms(df, column, group_by_col)
-            else:
-                print(f"Skipping column {column}: unsupported data type.")

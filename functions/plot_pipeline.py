@@ -1,8 +1,8 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def create_colour_dict():
@@ -11,7 +11,7 @@ def create_colour_dict():
         "single": {
             "medical": "#ED7D31",  # red
             "surgical": "#70AD47",  # green
-            "haem_onc": "#FFC000",  # yellow
+            "haem/onc": "#FFC000",  # yellow
             "paediatric": "#5B9BD5",  # blue
             "all": "#44546A",  # dark blue
             "window": "#A9A9A9",
@@ -59,7 +59,7 @@ def in_ED_now_plot(
 
     figsize_x, figsize_y = figsize
 
-    ex = ex[ex.elapsed_los_td / 3600 < truncate_at_hours]
+    ex = ex[ex.elapsed_los / 3600 < truncate_at_hours]
 
     # Create a dictionary to map ordinal categories to numerical values
     unique_locations = sorted(ex["loc_new"].unique())
@@ -75,7 +75,7 @@ def in_ED_now_plot(
             )
             # Collect scatter plots
             scatter = plt.scatter(
-                group["elapsed_los_td"] / 3600,
+                group["elapsed_los"] / 3600,
                 jittered_y,
                 c=group[preds_col],
                 cmap=colour_map,
@@ -88,6 +88,7 @@ def in_ED_now_plot(
         # plt.colorbar(scatter_plots[-1], orientation='vertical')
         cbar = plt.colorbar(
             plt.cm.ScalarMappable(cmap=colour_map, norm=plt.Normalize(vmin=0, vmax=1)),
+            ax=plt.gca(),
             orientation="vertical",
         )
 
@@ -99,7 +100,7 @@ def in_ED_now_plot(
                 -jitter_amount, jitter_amount, size=len(group)
             )
             plt.scatter(
-                group["elapsed_los_td"] / 3600,
+                group["elapsed_los"] / 3600,
                 jittered_y,
                 color=spec_colour_dict["single"]["all"],
                 label=location,
@@ -127,6 +128,6 @@ def in_ED_now_plot(
 
     plt.tight_layout()
     os.makedirs(directory_path, exist_ok=True)
-    plt.savefig(directory_path / file_name, dpi=300)
+    plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
 
     plt.show()

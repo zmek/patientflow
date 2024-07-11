@@ -1,14 +1,16 @@
+from typing import Dict, List, Tuple
+from ed_admissions_helper_functions import (
+    get_specialty_probs,
+    prepare_for_inference,
+)
+from ed_admissions_utils import load_saved_model
 from predict.emergency_demand.from_individual_probs import (
     model_input_to_pred_proba,
     pred_proba_to_pred_demand,
 )
-from ed_admissions_helper_functions import prepare_for_inference
-from ed_admissions_utils import load_saved_model
-
-from ed_admissions_helper_functions import get_specialty_probs
 
 
-def index_of_sum(sequence: list[float], max_sum: float) -> int:
+def index_of_sum(sequence: List[float], max_sum: float) -> int:
     s = 0.0
     for i, p in enumerate(sequence):
         s += p
@@ -18,24 +20,30 @@ def index_of_sum(sequence: list[float], max_sum: float) -> int:
 
 
 def create_predictions(
-    model_dir,
+    model_dir: str,
     snapshot_datetime,
     snapshots_df,
-    specialties,
-    prediction_window,
-    cdf_cut_points,
-) -> dict:  # [SpecialtyType, DemandPredictions]:
+    specialties: List[str],
+    prediction_window: str,
+    cdf_cut_points: List[float],
+) -> Dict[str, Dict[str, List[int]]]:  # [SpecialtyType, DemandPredictions]:
     # initialisation
     hour = snapshot_datetime.hour
     minute = snapshot_datetime.minute
-    prediction_time = (hour, minute)
+    prediction_time: Tuple[int, int] = (hour, minute)
 
     # initiase predictions dict
-    predictions: dict = {key: {} for key in specialties}
+    predictions: Dict[str, Dict[str, List[int]]] = {
+        key: {subkey: [] for subkey in ["in_ed", "yet_to_arrive"]}
+        for key in specialties
+    }
 
     # Prepare data and model for patients in ED
     X_test, y_test, admissions_model = prepare_for_inference(
-        model_dir, "ed_admission", prediction_time=prediction_time, df=snapshots_df
+        model_dir,
+        "ed_admission",
+        prediction_time=prediction_time,
+        df=snapshots_df,
     )
     ### NOTE - probably need to drop consult sequence ######
 
@@ -77,7 +85,8 @@ def create_predictions(
 
         # Call the function to predict demand for patients in ED, with the filtered data
         pred_demand_in_ED = pred_proba_to_pred_demand(
-            filtered_prob_admission_after_ed, filtered_prob_admission_to_specialty
+            filtered_prob_admission_after_ed,
+            filtered_prob_admission_to_specialty,
         )
 
         # Process patients yet-to-arrive

@@ -27,8 +27,7 @@ dynamic = [
     "dependencies",
     "version",
 ]
-keywords = [
-]
+keywords = []
 name = "patientflow"
 optional-dependencies = {dev = [
     "build",

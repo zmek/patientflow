@@ -2,11 +2,11 @@
 Contains functions for loading built-in datasets
 """
 
-import pandas as pd
-import os
 import ast  # to convert tuples to strings
-
+import os
 from pathlib import Path
+
+import pandas as pd
 
 
 def safe_literal_eval(s):
@@ -25,8 +25,9 @@ def ed_admissions_get_data(path_ed_data):
     """
     Loads XXX ED visits
 
-    Returns:
+    Returns
     pd.DataFrame: A dataframe with the ED visits. See data dictionary
+
     """
     path = os.path.join(Path().home(), path_ed_data)
 

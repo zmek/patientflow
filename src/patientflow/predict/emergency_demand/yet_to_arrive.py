@@ -61,9 +61,10 @@ def convolute_distributions(dist_a, dist_b):
     pd.DataFrame: The convoluted distribution.
 
     """
-    if not {"sum", "prob"}.issubset(dist_a.columns) or not {"sum", "prob"}.issubset(
-        dist_b.columns
-    ):
+    if not {"sum", "prob"}.issubset(dist_a.columns) or not {
+        "sum",
+        "prob",
+    }.issubset(dist_b.columns):
         raise ValueError("DataFrames must contain 'sum' and 'prob' columns.")
 
     sums = [x + y for x in dist_a["sum"] for y in dist_b["sum"]]

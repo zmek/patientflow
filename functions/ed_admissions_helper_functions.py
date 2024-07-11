@@ -1,5 +1,5 @@
-from ed_admissions_utils import preprocess_data, load_saved_model
 from ed_admissions_data_retrieval import ed_admissions_get_data
+from ed_admissions_utils import load_saved_model, preprocess_data
 
 
 def prepare_for_inference(
@@ -21,7 +21,7 @@ def prepare_for_inference(
         df = ed_admissions_get_data(data_path)
     elif df is None or df.empty:
         print("Please supply a dataset if not passing a data path")
-        return
+        return None
 
     # print("Prep for inference - df")
     # print(df[(df.training_validation_test == 'test')].index)
@@ -40,12 +40,15 @@ def prepare_for_inference(
 
     exclude_from_training_data = [
         "visit_number",
-        "snapshot_datetime",
+        "snapshot_date",
         "prediction_time",
     ]
 
     X_test, y_test = preprocess_data(
-        test_df, prediction_time, exclude_from_training_data, single_snapshot_per_visit
+        test_df,
+        prediction_time,
+        exclude_from_training_data,
+        single_snapshot_per_visit,
     )
 
     # print("Prep for inference - X_test")
@@ -61,18 +64,19 @@ def prepare_snapshots_dict(df):
     Prepares a dictionary mapping horizon dates to their corresponding snapshot indices.
 
     Args:
-    df (pd.DataFrame): DataFrame containing at least a 'snapshot_datetime' column which represents the dates.
+    df (pd.DataFrame): DataFrame containing at least a 'snapshot_date' column which represents the dates.
 
     Returns:
     dict: A dictionary where keys are dates and values are arrays of indices corresponding to each date's snapshots.
-    """
-    # Ensure 'snapshot_datetime' is in the DataFrame
-    if "snapshot_datetime" not in df.columns:
-        raise ValueError("DataFrame must include a 'snapshot_datetime' column")
 
-    # Group the DataFrame by 'snapshot_datetime' and collect the indices for each group
+    """
+    # Ensure 'snapshot_date' is in the DataFrame
+    if "snapshot_date" not in df.columns:
+        raise ValueError("DataFrame must include a 'snapshot_date' column")
+
+    # Group the DataFrame by 'snapshot_date' and collect the indices for each group
     snapshots_dict = {
-        date: group.index.tolist() for date, group in df.groupby("snapshot_datetime")
+        date: group.index.tolist() for date, group in df.groupby("snapshot_date")
     }
 
     return snapshots_dict
@@ -119,15 +123,7 @@ def get_specialty_probs(
     ValueError
         If `special_category_func` is provided but `special_category_dict` is None.
 
-    Examples
-    --------
-    >>> model_file_path = 'path/to/model'
-    >>> data = {'age_group': ['0-17', '18-65', '66+'], 'age': [16, 40, 70], 'consultation_sequence': [1, 2, 3]}
-    >>> snapshots_df = pd.DataFrame(data)
-    >>> special_category_func = lambda row: row['age'] <= 17
-    >>> special_category_dict = {'medical': 0.0, 'surgical': 0.0, 'haem_onc': 0.0, 'paediatric': 1.0}
-    >>> probs = get_specialty_probs(model_file_path, snapshots_df, special_category_func, special_category_dict)
-    >>> print(probs)
+
     """
     if special_category_func and not special_category_dict:
         raise ValueError(
@@ -156,7 +152,9 @@ def get_specialty_probs(
 
     # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
     specialty_prob_series = specialty_prob_series.apply(
-        lambda d: {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
+        lambda d: (
+            {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
+        )
     )
 
     return specialty_prob_series

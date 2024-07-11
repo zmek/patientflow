@@ -1,9 +1,9 @@
 import numpy as np
 import xgboost as xgb
 from sklearn.compose import ColumnTransformer
+from sklearn.metrics import log_loss, roc_auc_score
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import roc_auc_score, log_loss
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -73,7 +73,6 @@ def initialise_model(params):
     return model
 
 
-# Set up the feature transformation
 def create_column_transformer(df, ordinal_mappings=None):
     """
     Create a column transformer for a dataframe with dynamic column handling.
@@ -108,7 +107,7 @@ def create_column_transformer(df, ordinal_mappings=None):
             # OneHotEncoding for categorical or boolean columns
             transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
         else:
-            # Passthrough for other types of columns (e.g., numerical)
-            transformers.append((col, "passthrough", [col]))
+            # Scaling for numerical columns
+            transformers.append((col, StandardScaler(), [col]))
 
     return ColumnTransformer(transformers)

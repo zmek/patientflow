@@ -108,7 +108,7 @@ def create_curve(x1, y1, x2, y2, a=0.01, generate_values=False):
     if generate_values:
         x_values = np.linspace(0, 20, 200)
         y_values = [
-            growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda)
+            (growth_curve(x, a, gamma) if x <= x1 else decay_curve(x, x1, y1, lamda))
             for x in x_values
         ]
         return gamma, lamda, a, x_values, y_values
