@@ -23,15 +23,17 @@ Classes:
         - predict(self, prediction_context): Predicts the number of admissions using the trained model.
 
 This module is designed for flexibility and customization to suit different prediction needs in hospital environments.
-Author: Zella King
-Date: 06.04.24
-Version: 1.0
+
 """
 
 import warnings
 from datetime import datetime, timedelta
 
 import numpy as np
+
+import pandas as pd
+from typing import Dict, List, Optional
+
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
@@ -83,7 +85,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         """
         self.filters = filters if filters else {}
 
-    def filter_dataframe(self, df, filters):
+    def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
         """
         Apply a set of filters to a dataframe.
 
@@ -146,13 +148,13 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
     def fit(
         self,
-        train_df,
-        prediction_window,
-        time_interval,
-        prediction_times,
-        epsilon=10**-7,
-        y=None,
-    ):
+        train_df: pd.DataFrame,
+        prediction_window: int,
+        time_interval: int,
+        prediction_times: List[float],
+        epsilon: float = 10**-7,
+        y: Optional[None] = None,
+    ) -> "PoissonBinomialPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
 
@@ -208,6 +210,8 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         print(f"The error value for prediction will be {epsilon}")
         print("To see the weights saved by this model, used the get_weights() method")
 
+        return self
+
     def get_weights(self):
         """
         Returns the weights computed by the fit method.
@@ -261,7 +265,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         return closest_prediction_time
 
-    def predict(self, prediction_context, x1, y1, x2, y2):
+    def predict(
+        self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float
+    ) -> Dict:
         """
         Predicts the number of admissions for the given context based on the fitted model.
 
