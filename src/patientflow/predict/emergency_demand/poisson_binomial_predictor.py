@@ -213,7 +213,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         print("To see the weights saved by this model, used the get_weights() method")
 
         return self
-    
+
     def get_weights(self):
         """
         Returns the weights computed by the fit method.
