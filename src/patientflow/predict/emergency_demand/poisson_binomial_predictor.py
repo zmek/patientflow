@@ -156,7 +156,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         prediction_times: List[float],
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-    ) -> 'PoissonBinomialPredictor':
+    ) -> "PoissonBinomialPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
 
@@ -263,7 +263,9 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
         return closest_prediction_time
 
-    def predict(self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float) -> Dict:
+    def predict(
+        self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float
+    ) -> Dict:
         """
         Predicts the number of admissions for the given context based on the fitted model.
 

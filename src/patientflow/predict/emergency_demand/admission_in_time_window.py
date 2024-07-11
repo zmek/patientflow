@@ -8,7 +8,6 @@ from openpyxl import load_workbook
 from typing import List, Dict
 
 
-
 # Parsing the 'Duration in department' column to extract start and end times
 def parse_duration(duration):
     # Check if the delimiter " to " is in the duration string
@@ -32,7 +31,9 @@ def parse_duration(duration):
         return parts, None
 
 
-def load_data_into_dataframe(url: str, sheet_name: str, columns: List[str]) -> pd.DataFrame:
+def load_data_into_dataframe(
+    url: str, sheet_name: str, columns: List[str]
+) -> pd.DataFrame:
     """
     Load data into a DataFrame from a specified URL and sheet name.
 
@@ -182,7 +183,9 @@ def load_json_configuration(json_file_path: str, reference_year: str) -> Dict:
         raise ValueError("Error loading configuration: " + str(e))
 
 
-def calculate_cumulative_proportions(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+def calculate_cumulative_proportions(
+    df: pd.DataFrame, columns: List[str]
+) -> pd.DataFrame:
     """
     Calculate cumulative totals and proportions of patients.
 
@@ -200,7 +203,9 @@ def calculate_cumulative_proportions(df: pd.DataFrame, columns: List[str]) -> pd
     return df
 
 
-def interpolate_probabilities(df: pd.DataFrame, prediction_window: int, time_interval: int) -> np.ndarray:
+def interpolate_probabilities(
+    df: pd.DataFrame, prediction_window: int, time_interval: int
+) -> np.ndarray:
     """
     Interpolate probabilities at specified time intervals.
 
