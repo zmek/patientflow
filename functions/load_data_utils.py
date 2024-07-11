@@ -17,13 +17,13 @@ def set_file_locations(uclh, data_path, config_file_path=None):
         )
         data_filename = (
             "uclh_visits_exc_beds_inc_minority_"
-            + start_date
+            + str(start_date)
             + "_"
-            + end_date
+            + str(end_date)
             + ".pickle"
         )
         csv_filename = "uclh_visits.csv"
-        yta_filename = "uclh_yet_to_arrive_" + start_date + "_" + end_date + ".pickle"
+        yta_filename = "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
         yta_csv_filename = "uclh_yet_to_arrive.csv"
 
         visits_path = data_path / data_filename

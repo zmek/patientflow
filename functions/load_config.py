@@ -27,7 +27,7 @@ def load_config_file(
         if return_start_end_dates:
             # load the dates used in saved data for uclh versions
             if "file_dates" in config and config["file_dates"]:
-                start_date, end_date = [item for item in config["file_dates"]]
+                start_date, end_date = [str(item) for item in config["file_dates"]]
             else:
                 print(
                     "Error: 'file_dates' key not found or empty in the configuration file."
