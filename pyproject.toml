@@ -1,95 +1,95 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-  "setuptools",
-  "setuptools-scm",
+    "setuptools",
+    "setuptools-scm",
 ]
 
 [project]
 authors = [
-  {email = "zella.king@ucl.ac.uk", name = "Zella King"},
+    {email = "zella.king@ucl.ac.uk", name = "Zella King"},
 ]
 classifiers = [
-  "Operating System :: POSIX",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Typing :: Typed",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
 ]
 description = "Code and training materials for predicting short-term hospital bed capacity using real-time data"
 dynamic = [
-  "dependencies",
-  "version",
+    "dependencies",
+    "version",
 ]
 keywords = []
-license.file = "LICENSE.md"
 name = "patientflow"
 optional-dependencies = {dev = [
-  "build",
-  "mypy",
-  "pre-commit",
-  "ruff",
-  "tox",
-  "twine",
+    "build",
+    "mypy",
+    "pre-commit",
+    "ruff",
+    "tox",
+    "twine",
 ], docs = [
-  "mkdocs",
-  "mkdocs-include-markdown-plugin",
-  "mkdocs-material",
-  "mkdocstrings",
-  "mkdocstrings-python",
+    "mkdocs",
+    "mkdocs-include-markdown-plugin",
+    "mkdocs-material",
+    "mkdocstrings",
+    "mkdocstrings-python",
 ], test = [
-  "pytest",
-  "pytest-cov",
+    "pytest",
+    "pytest-cov",
 ]}
 readme = "README.md"
 requires-python = ">=3.6"
+license.file = "LICENSE.md"
 urls.homepage = "https://github.com/zmek/patientflow"
 
 [tool.coverage]
-paths.source = [
-  "src",
-  ".tox*/*/lib/python*/site-packages",
-]
 report = {sort = "cover"}
 run = {branch = true, parallel = true, source = [
-  "patientflow",
+    "patientflow",
 ]}
+paths.source = [
+    "src",
+    ".tox*/*/lib/python*/site-packages",
+]
 
 [tool.mypy]
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
 addopts = [
-  "--color=yes",
-  "--import-mode=importlib",
-  "--verbose",
+    "--color=yes",
+    "--import-mode=importlib",
+    "--verbose",
 ]
 testpaths = [
-  "tests",
+    "tests",
 ]
 
 [tool.ruff]
 fix = true
 force-exclude = true
 lint.ignore = []
+lint.per-file-ignores = {"tests*" = [
+    "INP001", # File is part of an implicit namespace package.
+    "S101", # Use of `assert` detected
+]}
+lint.select = ["E4", "E7", "E9", "F"]
 lint.isort.known-first-party = [
-  "patientflow",
+    "patientflow",
 ]
 lint.mccabe.max-complexity = 18
 lint.pep8-naming.classmethod-decorators = [
-  "classmethod",
+    "classmethod",
 ]
-lint.per-file-ignores = {"tests*" = [
-  "INP001", # File is part of an implicit namespace package.
-  "S101", # Use of `assert` detected
-]}
-lint.select = ["E4", "E7", "E9", "F"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
@@ -100,10 +100,10 @@ write_to = "src/patientflow/_version.py"
 
 [tool.tomlsort]
 all = true
-overrides."project.classifiers".inline_arrays = false
-overrides."tool.coverage.paths.source".inline_arrays = false
 spaces_indent_inline_array = 4
 trailing_comma_inline_array = true
+overrides."project.classifiers".inline_arrays = false
+overrides."tool.coverage.paths.source".inline_arrays = false
 
 [tool.tox]
 legacy_tox_ini = """

@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 import itertools
 
-=======
->>>>>>> main
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -17,10 +14,7 @@ def prob_dist_plot(
     text_size=None,
     bar_colour="#5B9BD5",
     file_name=None,
-<<<<<<< HEAD
     min_beds_lines=None,
-=======
->>>>>>> main
 ):
     plt.figure(figsize=figsize)
 
@@ -39,7 +33,6 @@ def prob_dist_plot(
         np.arange(0, truncate_at_beds + 1, 5)
     )  # Set x-axis ticks at every 5 units
 
-<<<<<<< HEAD
     if min_beds_lines:
         colors = itertools.cycle(
             plt.cm.gray(np.linspace(0.3, 0.7, len(min_beds_lines)))
@@ -56,8 +49,6 @@ def prob_dist_plot(
 
         plt.legend(loc="upper right")
 
-=======
->>>>>>> main
     if text_size:
         plt.tick_params(axis="both", which="major", labelsize=text_size)
 

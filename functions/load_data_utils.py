@@ -42,4 +42,3 @@ def convert_dict_to_values(df, column, prefix):
     dict_df.columns = [f"{prefix}_{col}" for col in dict_df.columns]
 
     return dict_df
-
