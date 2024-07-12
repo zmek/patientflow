@@ -4,7 +4,7 @@ from load_config import load_config_file
 def set_file_locations(uclh, data_path, config_file_path=None):
     if not uclh:
         csv_filename = "ed_visits.csv"
-        yta_csv_filename = "yet_to_arrive.csv"
+        yta_csv_filename = "arrivals.csv"
 
         visits_csv_path = data_path / csv_filename
         yta_csv_path = data_path / yta_csv_filename
@@ -24,7 +24,7 @@ def set_file_locations(uclh, data_path, config_file_path=None):
         )
         csv_filename = "uclh_visits.csv"
         yta_filename = "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
-        yta_csv_filename = "uclh_yet_to_arrive.csv"
+        yta_csv_filename = "uclh_arrivals.csv"
 
         visits_path = data_path / data_filename
         yta_path = data_path / yta_filename
