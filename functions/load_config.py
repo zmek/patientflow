@@ -42,12 +42,12 @@ def load_config_file(
             return None
 
         # Load the dates defining the beginning and end of training, validation and test sets
-        if "modelling_dates" in config:
+        if "modelling_dates" in config and len(params['modelling_dates']) == 4:
             start_training_set, start_validation_set, start_test_set, end_test_set = [
                 item for item in config["modelling_dates"]
             ]
         else:
-            print("Error: 'modelling_dates' key not found in the configuration file.")
+            print("Error: expecting 4 modelling dates and only got " + str(len(params['modelling_dates']))
             return None
 
         x1 = float(config.get("x1", 0))
