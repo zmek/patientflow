@@ -11,8 +11,8 @@ This folder contains a series of notebooks that demonstrate the process of model
 
 The intention is to create the following notebooks:
 
-- **1_Introduce_our_users:** Talk about the users of emergency demand predictions in acute hospitals. 
-- **2_Modelling_requirements_:** Explain design choices that were made to develop a practical model, and show an example of the output that is sent at UCLH. 
+- **1_Introduce_our_users:** Talk about the users of emergency demand predictions in acute hospitals.
+- **2_Modelling_requirements:** Explain design choices that were made to develop a practical model, and show an example of the output that is sent at UCLH.
 - **3_Introduce_the_datasets:** Introduce the two datasets created to accompany this repository
 - **4a_Predict_probability_of_admission_from_ED:** Show how to train a machine learning model to forecast admission likelihood based on patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, evaluating and interpreting these predictions, and saving the models for future use.
 - **4b_Predict_demand_from_patients_in_ED** Illustrate how to convert individual admission probabilities into an overall bed demand forecast. Demonstrate the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window

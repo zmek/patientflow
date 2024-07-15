@@ -52,11 +52,17 @@ Please note that you are looking at this repo prior to its first release. It is 
 - **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, and notebooks that will be runable on Colab and BinderHub.
 - **Practical:** We hope to include a dataset, derived from the work we did at University College London Hospital, which can be used to step through the modelling process. This means that, even if your hospital is not set up to do real-time prediction yet, you can still follow the same steps we took. We are currently working on a Data Protection Impact Assessment (DPIA) with our colleagues at UCLH.
 
+## Main Features of this repository
+
+Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the training materials we intend to provide for modelling of emergency demand for beds, and read the [patientflow README](src/patientflow/README.md) to understand our intentions for the Python package
+[Coming later] Installation: Follow the instructions in setup.py to set up the environment and install necessary dependencies
+[Coming later] Configuration: Utilise environment.yml and requirements.txt to configure your environment to run these models
+
+## About
+
 This project was inspired by the excellent [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is developed in collaboration with the
 [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University
 College London.
-
-## About
 
 ### Project Team
 

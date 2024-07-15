@@ -16,7 +16,7 @@ def plot_curve(
     y2,
     include_titles=False,
     text_size=None,
-    directory_path = None,
+    directory_path=None,
     file_name=None,
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
@@ -52,7 +52,7 @@ def plot_curve(
 
     plt.tight_layout()
 
-    if (directory_path):
+    if directory_path:
         os.makedirs(directory_path, exist_ok=True)
         plt.savefig(directory_path / file_name, dpi=300)
 

@@ -23,7 +23,9 @@ def set_file_locations(uclh, data_path, config_file_path=None):
             + ".pickle"
         )
         csv_filename = "uclh_visits.csv"
-        yta_filename = "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
+        yta_filename = (
+            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
+        )
         yta_csv_filename = "uclh_arrivals.csv"
 
         visits_path = data_path / data_filename
