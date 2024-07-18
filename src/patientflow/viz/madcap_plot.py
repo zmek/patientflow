@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_madcap(predict_proba, label, dataset, media_path = None):
+def plot_madcap(predict_proba, label, dataset, media_path=None):
     """
     Save a MADCAP plot comparing predicted probabilities and actual outcomes.
 
@@ -58,18 +58,19 @@ def plot_madcap(predict_proba, label, dataset, media_path = None):
     fig.tight_layout(pad=1.08, rect=[0, 0, 1, 0.97])
 
     fig.suptitle("MADCAP plot: " + dataset)
-    
-    if media_path:
 
+    if media_path:
         plot_name = "madcap_plot_" + dataset + ".png"
         madcap_plot_path = Path(media_path) / plot_name
         plt.savefig(madcap_plot_path)
-        
+
     plt.show()
     plt.close(fig)
 
 
-def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media_path = None):
+def plot_madcap_by_group(
+    predict_proba, label, group, dataset, group_name, media_path=None
+):
     """
     Save MADCAP plots subdivided by a specified grouping variable.
 
@@ -126,9 +127,8 @@ def plot_madcap_by_group(predict_proba, label, group, dataset, group_name, media
 
     fig.suptitle(f"MADCAP plots by {group_name}: {dataset}")
     fig.tight_layout(pad=1.08, rect=[0, 0, 1, 0.97])
-    
-    if media_path:
 
+    if media_path:
         plot_name = f"madcap_plot_by_{group_name}_{dataset}.png"
         madcap_plot_path = Path(media_path) / plot_name
         plt.savefig(madcap_plot_path)
