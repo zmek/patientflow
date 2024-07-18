@@ -8,7 +8,6 @@ from predict.emergency_demand.admission_in_prediction_window_using_aspirational_
 
 
 def plot_curve(
-    directory_path,
     figsize,
     title_,
     x1,
@@ -17,6 +16,7 @@ def plot_curve(
     y2,
     include_titles=False,
     text_size=None,
+    directory_path=None,
     file_name=None,
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
@@ -51,7 +51,9 @@ def plot_curve(
     plt.legend(fontsize=text_size)
 
     plt.tight_layout()
-    os.makedirs(directory_path, exist_ok=True)
-    plt.savefig(directory_path / file_name, dpi=300)
+
+    if directory_path:
+        os.makedirs(directory_path, exist_ok=True)
+        plt.savefig(directory_path / file_name, dpi=300)
 
     plt.show()

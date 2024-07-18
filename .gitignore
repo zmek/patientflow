@@ -1,5 +1,11 @@
+*data-raw*
+*.joblib
+
 *.vscode*
 *.DS_Store
+
+# config local to uclh
+config-uclh.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

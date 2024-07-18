@@ -4,3 +4,8 @@ pandas>=1.0.1
 requests
 scipy>=1.4.1
 seaborn>=0.10.0
+shap>=0.42.1
+sympy>=1.12
+xgboost>=2.0.3
+joblib>=1.4.2
+scikit-learn>=1.4.2
