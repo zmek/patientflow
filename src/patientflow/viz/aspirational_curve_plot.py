@@ -8,12 +8,12 @@ from predict.emergency_demand.admission_in_prediction_window_using_aspirational_
 
 
 def plot_curve(
-    figsize,
-    title_,
+    title,
     x1,
     y1,
     x2,
     y2,
+    figsize = (6,3),
     include_titles=False,
     text_size=None,
     directory_path=None,
@@ -28,7 +28,7 @@ def plot_curve(
 
     if not file_name:
         file_name = (
-            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
+            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
 
     plt.plot(x_values, y_values)
@@ -42,7 +42,7 @@ def plot_curve(
     plt.xticks(x_ticks)
 
     if include_titles:
-        plt.title(title_, fontsize=text_size)
+        plt.title(title, fontsize=text_size)
         plt.xlabel("Hours since admission")
         plt.ylabel("Probability of admission by this point")
 

@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 def prob_dist_plot(
     prob_dist_data,
-    title_,
+    title,
     directory_path=None,
     figsize=(6, 3),
     include_titles=False,
@@ -20,7 +20,7 @@ def prob_dist_plot(
 
     if not file_name:
         file_name = (
-            title_.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
+            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
     plt.bar(
         prob_dist_data.index[0 : truncate_at_beds + 1],
@@ -53,7 +53,7 @@ def prob_dist_plot(
         plt.tick_params(axis="both", which="major", labelsize=text_size)
 
     if include_titles:
-        plt.title(title_, fontsize=text_size)
+        plt.title(title, fontsize=text_size)
         plt.xlabel("Number of beds")
         plt.ylabel("Probability")
 
