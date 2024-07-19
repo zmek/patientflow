@@ -9,7 +9,18 @@ def load_config_file(
         Dict[str, Any],
         Tuple[str, str],
         Tuple[
-            List[Tuple[int, int]], str, str, str, str, float, float, float, float, int, float, float
+            List[Tuple[int, int]],
+            str,
+            str,
+            str,
+            str,
+            float,
+            float,
+            float,
+            float,
+            int,
+            float,
+            float,
         ],
     ]
 ]:
