@@ -9,7 +9,7 @@ def load_config_file(
         Dict[str, Any],
         Tuple[str, str],
         Tuple[
-            List[Tuple[int, int]], str, str, str, str, float, float, float, float, int
+            List[Tuple[int, int]], str, str, str, str, float, float, float, float, int, float, float
         ],
     ]
 ]:
@@ -56,15 +56,14 @@ def load_config_file(
         x1 = float(config.get("x1", 4))
         y1 = float(config.get("y1", 0.76))
         x2 = float(config.get("x2", 12))
-        y2 = float(config.get("y2", .99))
+        y2 = float(config.get("y2", 0.99))
         prediction_window = config.get("prediction_window", 480)
 
         # desired error for Poisson distribution (1 - sum of each approximated Poisson)
         epsilon = config.get("epsilon", 10**-7)
-         
-        # time interval for the calculation of aspiration yet-to-arrive in minutes
-        yta_time_interval= config.get("yta_time_interval", 15)
 
+        # time interval for the calculation of aspiration yet-to-arrive in minutes
+        yta_time_interval = config.get("yta_time_interval", 15)
 
         if return_start_end_dates:
             return (start_date, end_date)
@@ -81,7 +80,7 @@ def load_config_file(
                 y2,
                 prediction_window,
                 epsilon,
-                yta_time_interval
+                yta_time_interval,
             )
     except KeyError as e:
         print(f"Error: Missing key in the configuration file: {e}")

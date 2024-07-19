@@ -13,7 +13,7 @@ def plot_curve(
     y1,
     x2,
     y2,
-    figsize = (6,3),
+    figsize=(6, 3),
     include_titles=False,
     text_size=None,
     directory_path=None,
