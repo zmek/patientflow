@@ -17,7 +17,7 @@ Functions:
 - return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
 - model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
 - pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
-- get_prob_dist_for_prediction_moment(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
+- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) actual demands for a specific date.
 - get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.
 
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
@@ -172,7 +172,7 @@ def model_input_to_pred_proba(model_input, model):
 
     """
     predictions = model.predict_proba(model_input)[:, 1]
-    return pd.DataFrame(predictions, columns=["pred_proba"])
+    return pd.DataFrame(predictions, index=model_input.index, columns=["pred_proba"])
 
 
 def pred_proba_to_pred_demand(predictions_proba, weights=None):
@@ -208,7 +208,7 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     return pred_demand
 
 
-def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
+def get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_time=False, y_test=None):
     """
     Calculate both predicted and actual demand distributions for a given date using test data.
 
@@ -216,34 +216,49 @@ def get_prob_dist_for_prediction_moment(X_test, y_test, model, weights=None):
     ----------
     X_test : array-like
         Test features for a specific snapshot date.
-    y_test : array-like
-        Actual outcomes corresponding to the test features.
     model : object
         A predictive model which should provide a `predict_proba` method.
     weights : array-like, optional
         Weights to apply to the predictions for demand calculation.
+    inference_time : bool, optional (default=False)
+        If True, do not calculate or return actual demand.
+    y_test : array-like, optional
+        Actual outcomes corresponding to the test features. Required if inference_time is False.
 
     Returns
     -------
     dict
-        A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
-        respectively for the snapshot date. Each is presented as a DataFrame or an integer.
+        A dictionary with keys 'pred_demand' and, if inference_time is False, 'actual_demand' containing the
+        predicted and actual demands respectively for the snapshot date. Each is presented as a DataFrame or an integer.
+
+    Raises
+    ------
+    ValueError
+        If y_test is not provided when inference_time is False.
 
     """
+    if not inference_time and y_test is None:
+        raise ValueError("y_test must be provided if inference_time is False.")
+
     prediction_moment_dict = {}
 
     if len(X_test) > 0:
         pred_proba = model_input_to_pred_proba(X_test, model)
         pred_demand = pred_proba_to_pred_demand(pred_proba, weights)
         prediction_moment_dict["pred_demand"] = pred_demand
-        prediction_moment_dict["actual_demand"] = sum(y_test)
+        
+        if not inference_time:
+            prediction_moment_dict["actual_demand"] = sum(y_test)
     else:
         prediction_moment_dict["pred_demand"] = pd.DataFrame(
             {"agg_proba": [1]}, index=[0]
         )
-        prediction_moment_dict["actual_demand"] = 0
+        if not inference_time:
+            prediction_moment_dict["actual_demand"] = 0
 
     return prediction_moment_dict
+
+
 
 
 def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
@@ -291,21 +306,21 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     # Initialize a counter for notifying the user every 10 snapshot dates processed
     count = 0
 
-    for dt, snaptshots_to_include in snapshots_dict.items():
+    for dt, snapshots_to_include in snapshots_dict.items():
         # Ensure the lengths of test features and outcomes are equal
-        assert len(X_test.loc[snaptshots_to_include]) == len(
-            y_test.loc[snaptshots_to_include]
+        assert len(X_test.loc[snapshots_to_include]) == len(
+            y_test.loc[snapshots_to_include]
         ), "Mismatch in lengths of X_test and y_test snapshots."
 
         if weights is None:
             prediction_moment_weights = None
         else:
-            prediction_moment_weights = weights.loc[snaptshots_to_include].values
+            prediction_moment_weights = weights.loc[snapshots_to_include].values
 
         # Compute the predicted and actual demand for the current snapshot date
         prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
-            X_test=X_test.loc[snaptshots_to_include],
-            y_test=y_test.loc[snaptshots_to_include],
+            X_test=X_test.loc[snapshots_to_include],
+            y_test=y_test.loc[snapshots_to_include],
             model=model,
             weights=prediction_moment_weights,
         )
