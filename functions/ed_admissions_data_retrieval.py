@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+
 def safe_literal_eval(s):
     try:
         if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
@@ -28,7 +29,9 @@ def ed_admissions_get_data(path_ed_data):
     path = os.path.join(Path().home(), path_ed_data)
     df = pd.read_csv(path, parse_dates=True)
 
-    sort_columns = [col for col in ["visit_number", "snapshot_datetime"] if col in df.columns]
+    sort_columns = [
+        col for col in ["visit_number", "snapshot_datetime"] if col in df.columns
+    ]
     if sort_columns:
         df.sort_values(sort_columns, inplace=True)
 

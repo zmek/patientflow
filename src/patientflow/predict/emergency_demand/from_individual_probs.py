@@ -208,7 +208,9 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     return pred_demand
 
 
-def get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_time=False, y_test=None):
+def get_prob_dist_for_prediction_moment(
+    X_test, model, weights=None, inference_time=False, y_test=None
+):
     """
     Calculate both predicted and actual demand distributions for a given date using test data.
 
@@ -246,7 +248,7 @@ def get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_t
         pred_proba = model_input_to_pred_proba(X_test, model)
         pred_demand = pred_proba_to_pred_demand(pred_proba, weights)
         prediction_moment_dict["pred_demand"] = pred_demand
-        
+
         if not inference_time:
             prediction_moment_dict["actual_demand"] = sum(y_test)
     else:
@@ -257,8 +259,6 @@ def get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_t
             prediction_moment_dict["actual_demand"] = 0
 
     return prediction_moment_dict
-
-
 
 
 def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
