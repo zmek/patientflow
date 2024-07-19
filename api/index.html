@@ -906,6 +906,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1720,6 +1729,15 @@
   <a href="#patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--returns" class="md-nav__link">
     <span class="md-ellipsis">
       Returns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
     </span>
   </a>
   
@@ -2743,7 +2761,7 @@ gamma : float
 - return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
 - model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
 - pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
-- get_prob_dist_for_prediction_moment(X_test, y_test, model, weights): Calculates predicted and actual demands for a specific date.
+- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) actual demands for a specific date.
 - get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.</p>
 <p>These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method</p>
 
@@ -3089,22 +3107,7 @@ weights : pandas.Series, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand/from_individual_probs.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
 <span class="normal">265</span>
 <span class="normal">266</span>
 <span class="normal">267</span>
@@ -3160,7 +3163,22 @@ weights : pandas.Series, optional
 <span class="normal">317</span>
 <span class="normal">318</span>
 <span class="normal">319</span>
-<span class="normal">320</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate probability distributions for each snapshot date based on given model predictions.</span>
 
@@ -3205,21 +3223,21 @@ weights : pandas.Series, optional
     <span class="c1"># Initialize a counter for notifying the user every 10 snapshot dates processed</span>
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="k">for</span> <span class="n">dt</span><span class="p">,</span> <span class="n">snaptshots_to_include</span> <span class="ow">in</span> <span class="n">snapshots_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">dt</span><span class="p">,</span> <span class="n">snapshots_to_include</span> <span class="ow">in</span> <span class="n">snapshots_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="c1"># Ensure the lengths of test features and outcomes are equal</span>
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snaptshots_to_include</span><span class="p">])</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span>
-            <span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snaptshots_to_include</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">])</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span>
         <span class="p">),</span> <span class="s2">&quot;Mismatch in lengths of X_test and y_test snapshots.&quot;</span>
 
         <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snaptshots_to_include</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
 
         <span class="c1"># Compute the predicted and actual demand for the current snapshot date</span>
         <span class="n">prob_dist_dict</span><span class="p">[</span><span class="n">dt</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
-            <span class="n">X_test</span><span class="o">=</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snaptshots_to_include</span><span class="p">],</span>
-            <span class="n">y_test</span><span class="o">=</span><span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snaptshots_to_include</span><span class="p">],</span>
+            <span class="n">X_test</span><span class="o">=</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
+            <span class="n">y_test</span><span class="o">=</span><span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
             <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
             <span class="n">weights</span><span class="o">=</span><span class="n">prediction_moment_weights</span><span class="p">,</span>
         <span class="p">)</span>
@@ -3242,7 +3260,7 @@ weights : pandas.Series, optional
 
 
 <h5 id="patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inference_time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_test</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h5>
 
@@ -3253,16 +3271,21 @@ weights : pandas.Series, optional
 <h6 id="patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--parameters">Parameters</h6>
 <p>X_test : array-like
     Test features for a specific snapshot date.
-y_test : array-like
-    Actual outcomes corresponding to the test features.
 model : object
     A predictive model which should provide a <code>predict_proba</code> method.
 weights : array-like, optional
-    Weights to apply to the predictions for demand calculation.</p>
+    Weights to apply to the predictions for demand calculation.
+inference_time : bool, optional (default=False)
+    If True, do not calculate or return actual demand.
+y_test : array-like, optional
+    Actual outcomes corresponding to the test features. Required if inference_time is False.</p>
 <h6 id="patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--returns">Returns</h6>
 <p>dict
-    A dictionary with keys 'pred_demand' and 'actual_demand' containing the predicted and actual demands
-    respectively for the snapshot date. Each is presented as a DataFrame or an integer.</p>
+    A dictionary with keys 'pred_demand' and, if inference_time is False, 'actual_demand' containing the
+    predicted and actual demands respectively for the snapshot date. Each is presented as a DataFrame or an integer.</p>
+<h6 id="patientflow.predict.emergency_demand.from_individual_probs.get_prob_dist_for_prediction_moment--raises">Raises</h6>
+<p>ValueError
+    If y_test is not provided when inference_time is False.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand/from_individual_probs.py</code></summary>
@@ -3301,7 +3324,24 @@ weights : array-like, optional
 <span class="normal">243</span>
 <span class="normal">244</span>
 <span class="normal">245</span>
-<span class="normal">246</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
+    <span class="n">X_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inference_time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_test</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate both predicted and actual demand distributions for a given date using test data.</span>
 
@@ -3309,32 +3349,45 @@ weights : array-like, optional
 <span class="sd">    ----------</span>
 <span class="sd">    X_test : array-like</span>
 <span class="sd">        Test features for a specific snapshot date.</span>
-<span class="sd">    y_test : array-like</span>
-<span class="sd">        Actual outcomes corresponding to the test features.</span>
 <span class="sd">    model : object</span>
 <span class="sd">        A predictive model which should provide a `predict_proba` method.</span>
 <span class="sd">    weights : array-like, optional</span>
 <span class="sd">        Weights to apply to the predictions for demand calculation.</span>
+<span class="sd">    inference_time : bool, optional (default=False)</span>
+<span class="sd">        If True, do not calculate or return actual demand.</span>
+<span class="sd">    y_test : array-like, optional</span>
+<span class="sd">        Actual outcomes corresponding to the test features. Required if inference_time is False.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
-<span class="sd">        A dictionary with keys &#39;pred_demand&#39; and &#39;actual_demand&#39; containing the predicted and actual demands</span>
-<span class="sd">        respectively for the snapshot date. Each is presented as a DataFrame or an integer.</span>
+<span class="sd">        A dictionary with keys &#39;pred_demand&#39; and, if inference_time is False, &#39;actual_demand&#39; containing the</span>
+<span class="sd">        predicted and actual demands respectively for the snapshot date. Each is presented as a DataFrame or an integer.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If y_test is not provided when inference_time is False.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inference_time</span> <span class="ow">and</span> <span class="n">y_test</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;y_test must be provided if inference_time is False.&quot;</span><span class="p">)</span>
+
     <span class="n">prediction_moment_dict</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">pred_proba</span> <span class="o">=</span> <span class="n">model_input_to_pred_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
         <span class="n">pred_demand</span> <span class="o">=</span> <span class="n">pred_proba_to_pred_demand</span><span class="p">(</span><span class="n">pred_proba</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
         <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;pred_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pred_demand</span>
-        <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;actual_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y_test</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inference_time</span><span class="p">:</span>
+            <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;actual_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y_test</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;pred_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span><span class="s2">&quot;agg_proba&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">]},</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="p">)</span>
-        <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;actual_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inference_time</span><span class="p">:</span>
+            <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;actual_demand&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="k">return</span> <span class="n">prediction_moment_dict</span>
 </code></pre></div></td></tr></table></div>
@@ -3405,7 +3458,7 @@ model : object
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">model_input</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pred_proba&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">model_input</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pred_proba&quot;</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
