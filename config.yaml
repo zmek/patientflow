@@ -22,9 +22,6 @@ yta_time_interval: 15
 # time window after prediction time in minutes
 prediction_window: 480
 
-# reference year for probability of admission in time window
-reference_year: 2009-10
-
 # Target number of hours for ED admissions
 x1: 4
 
