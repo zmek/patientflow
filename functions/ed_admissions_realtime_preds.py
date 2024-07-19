@@ -56,10 +56,6 @@ def create_predictions(
         model_only=True,
     )
 
-    spec_model = prepare_for_inference(
-        model_file_path=model_file_path, model_name="ed_specialty", model_only=True
-    )
-
     yet_to_arrive_model_name = (
         "ed_yet_to_arrive_by_spec_" + str(int(prediction_window_hrs)) + "_hours"
     )
