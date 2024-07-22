@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Any, Tuple
+from typing import List, Callable, Dict, Any, Tuple, Optional
 from ed_admissions_helper_functions import (
     get_specialty_probs,
     prepare_for_inference,
