@@ -35,10 +35,9 @@ def create_predictions(
     y1: float,
     x2: float,
     y2: float,
-    special_category_func: Callable[[Any], Any] = None,
-    special_category_dict: Dict[str, Any] = None,
-    special_func_map: Dict[str, Any] = None,
-
+    special_category_func: Optional[Callable[[Any], Any]] = None,
+    special_category_dict: Optional[Dict[str, Any]] = None,
+    special_func_map: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Dict[str, List[int]]]:  # [SpecialtyType, DemandPredictions]:
     # initialisation
     hour = snapshot_datetime.hour
@@ -75,13 +74,12 @@ def create_predictions(
     )
 
     # get predictions of admission to specialty
-    prediction_snapshots['specialty_probs'] = get_specialty_probs(
+    prediction_snapshots["specialty_probs"] = get_specialty_probs(
         model_file_path,
         prediction_snapshots,
         special_category_func=special_category_func,
-        special_category_dict=special_category_dict
+        special_category_dict=special_category_dict,
     )
-
 
     # get probability of admission in prediction window
     prediction_snapshots["elapsed_los_hrs"] = prediction_snapshots["elapsed_los"] / 3600
@@ -95,13 +93,12 @@ def create_predictions(
     )
 
     for _spec in specialties:
-        func = special_func_map.get(_spec, special_func_map['default'])
-        
+        func = special_func_map.get(_spec, special_func_map["default"])
+
         # Apply the function to filter indices
         non_zero_indices = prediction_snapshots[
             prediction_snapshots.apply(func, axis=1)
         ].index.values
-
 
         # Filter the weights and the patients to exclude any with zero probability,
         # before calling the function to generate a distribution over bed numbers
@@ -112,7 +109,9 @@ def create_predictions(
         # non_zero_indices = prob_admission_to_specialty != 0
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
 
-        prob_admission_to_specialty = prediction_snapshots['specialty_prob'].apply(lambda x: x['medical'])
+        prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
+            lambda x: x["medical"]
+        )
 
         filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
             non_zero_indices
@@ -124,7 +123,6 @@ def create_predictions(
         filtered_weights = (
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
-
 
         # Call the function to predict demand for patients in ED, with the filtered data
         pred_demand_in_ED = pred_proba_to_pred_demand(
