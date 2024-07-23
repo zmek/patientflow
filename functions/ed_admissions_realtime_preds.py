@@ -94,7 +94,7 @@ def create_predictions(
 
     if special_func_map is None:
         special_func_map = {
-            'default': lambda row: True  # Default function 
+            "default": lambda row: True  # Default function
         }
 
     for _spec in specialties:
