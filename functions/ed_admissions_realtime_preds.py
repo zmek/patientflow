@@ -74,7 +74,7 @@ def create_predictions(
     )
 
     # get predictions of admission to specialty
-    prediction_snapshots["specialty_probs"] = get_specialty_probs(
+    prediction_snapshots["specialty_prob"] = get_specialty_probs(
         model_file_path,
         prediction_snapshots,
         special_category_func=special_category_func,
@@ -91,6 +91,11 @@ def create_predictions(
         ),
         axis=1,
     )
+
+    if special_func_map is None:
+        special_func_map = {
+            'default': lambda row: True  # Default function 
+        }
 
     for _spec in specialties:
         func = special_func_map.get(_spec, special_func_map["default"])
@@ -110,7 +115,7 @@ def create_predictions(
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
 
         prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
-            lambda x: x["medical"]
+            lambda x: x[_spec]
         )
 
         filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
