@@ -68,5 +68,3 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     except Exception as e:
         print(f"Error loading model: {e}")
         return None
-
-

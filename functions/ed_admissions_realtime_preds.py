@@ -45,7 +45,7 @@ def create_predictions(
 
     Parameters:
     - model_file_path (str): Path to the model files.
-    - prediction_moment (datetime): Datetime of predition 
+    - prediction_moment (datetime): Datetime of predition
     - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots.
     - specialties (List[str]): List of specialty names for which predictions are required.
     - prediction_window_hrs (float): Prediction window in hours.
@@ -71,7 +71,7 @@ def create_predictions(
     }
 
     # Function to determine if the patient is a child
-    special_category_func = lambda row: row['age_on_arrival'] < 18 
+    special_category_func = lambda row: row['age_on_arrival'] < 18
 
     special_func_map = {
         'paediatric': special_category_func,
@@ -104,7 +104,9 @@ def create_predictions(
     ```
     """
     prediction_time = (prediction_moment.hour, prediction_moment.minute)
-    predictions = {specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties}
+    predictions: Dict[str, Dict[str, List[int]]] = {
+        specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
+    }
 
     # Load models
     admissions_model = prepare_for_inference(
@@ -114,7 +116,9 @@ def create_predictions(
         model_only=True,
     )
 
-    yet_to_arrive_model_name = f"ed_yet_to_arrive_by_spec_{int(prediction_window_hrs)}_hours"
+    yet_to_arrive_model_name = (
+        f"ed_yet_to_arrive_by_spec_{int(prediction_window_hrs)}_hours"
+    )
     yet_to_arrive_model = prepare_for_inference(
         model_file_path=model_file_path,
         model_name=yet_to_arrive_model_name,
@@ -122,7 +126,9 @@ def create_predictions(
     )
 
     # Get predictions of admissions for ED patients
-    prob_admission_after_ed = model_input_to_pred_proba(prediction_snapshots, admissions_model)
+    prob_admission_after_ed = model_input_to_pred_proba(
+        prediction_snapshots, admissions_model
+    )
 
     # Get predictions of admission to specialty
     prediction_snapshots["specialty_prob"] = get_specialty_probs(
@@ -135,7 +141,9 @@ def create_predictions(
 
     # Get probability of admission within prediction window
     prob_admission_in_window = prediction_snapshots.apply(
-        lambda row: calculate_probability(row["elapsed_los_hrs"], prediction_window_hrs, x1, y1, x2, y2),
+        lambda row: calculate_probability(
+            row["elapsed_los_hrs"], prediction_window_hrs, x1, y1, x2, y2
+        ),
         axis=1,
     )
 
@@ -144,25 +152,41 @@ def create_predictions(
 
     for specialty in specialties:
         func = special_func_map.get(specialty, special_func_map["default"])
-        non_zero_indices = prediction_snapshots[prediction_snapshots.apply(func, axis=1)].index
+        non_zero_indices = prediction_snapshots[
+            prediction_snapshots.apply(func, axis=1)
+        ].index
 
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
-        prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(lambda x: x[specialty])
-        filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[non_zero_indices]
-        filtered_prob_admission_in_window = prob_admission_in_window.loc[non_zero_indices]
+        prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
+            lambda x: x[specialty]
+        )
+        filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
+            non_zero_indices
+        ]
+        filtered_prob_admission_in_window = prob_admission_in_window.loc[
+            non_zero_indices
+        ]
 
-        filtered_weights = filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
+        filtered_weights = (
+            filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
+        )
 
-        pred_demand_in_ed = pred_proba_to_pred_demand(filtered_prob_admission_after_ed, weights=filtered_weights)
+        pred_demand_in_ed = pred_proba_to_pred_demand(
+            filtered_prob_admission_after_ed, weights=filtered_weights
+        )
         prediction_context = {specialty: {"prediction_time": prediction_time}}
-        pred_demand_yta = yet_to_arrive_model.predict(prediction_context, x1, y1, x2, y2)
+        pred_demand_yta = yet_to_arrive_model.predict(
+            prediction_context, x1, y1, x2, y2
+        )
 
         predictions[specialty]["in_ed"] = [
             index_of_sum(pred_demand_in_ed["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
         predictions[specialty]["yet_to_arrive"] = [
-            index_of_sum(pred_demand_yta[specialty]["agg_proba"].values.cumsum(), cut_point)
+            index_of_sum(
+                pred_demand_yta[specialty]["agg_proba"].values.cumsum(), cut_point
+            )
             for cut_point in cdf_cut_points
         ]
 
