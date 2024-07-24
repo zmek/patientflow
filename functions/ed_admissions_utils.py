@@ -58,6 +58,15 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
 
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")
-    model = load(full_path)
 
-    return model
+    try:
+        model = load(full_path)
+        return model
+    except FileNotFoundError:
+        print(f"Model named {model_name} not found at path: {model_file_path}")
+        return None
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
+
+

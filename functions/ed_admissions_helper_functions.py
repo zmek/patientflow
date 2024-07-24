@@ -27,7 +27,14 @@ def prepare_for_inference(
     # print(df[(df.training_validation_test == 'test')].index)
 
     if df.index.name != "snapshot_id":
-        df = df.set_index("snapshot_id")
+        try:
+            df = df.set_index("snapshot_id")
+        except KeyError:
+            print("Column 'snapshot_id' not found in the dataset at {data_path}")
+            return None
+        except Exception as e:
+            print(f"Error setting snapshot_id as index in file at {data_path}: {e}")
+            return None
 
     test_df = (
         df[df.training_validation_test == "test"]
