@@ -20,14 +20,22 @@ def safe_literal_eval(s):
 
 def ed_admissions_get_data(path_ed_data):
     """
-    Loads XXX ED visits
+    Loads ED visits
 
     Returns
     pd.DataFrame: A dataframe with the ED visits. See data dictionary
 
     """
     path = os.path.join(Path().home(), path_ed_data)
-    df = pd.read_csv(path, parse_dates=True)
+
+    try:
+        df = pd.read_csv(path, parse_dates=True)
+    except FileNotFoundError:
+        print(f"Data file not found at path: {path_ed_data}")
+        return None
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return None
 
     sort_columns = [
         col for col in ["visit_number", "snapshot_datetime"] if col in df.columns

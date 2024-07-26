@@ -1,11 +1,11 @@
-from typing import List, Callable, Dict, Any, Tuple, Optional
+from typing import List, Callable, Dict, Any, Optional
+from datetime import datetime
+import pandas as pd
+
 from ed_admissions_helper_functions import (
     get_specialty_probs,
     prepare_for_inference,
 )
-from datetime import datetime
-import pandas as pd
-
 from predict.emergency_demand.from_individual_probs import (
     model_input_to_pred_proba,
     pred_proba_to_pred_demand,
@@ -16,41 +16,99 @@ from predict.emergency_demand.admission_in_prediction_window_using_aspirational_
 
 
 def index_of_sum(sequence: List[float], max_sum: float) -> int:
-    s = 0.0
-    for i, p in enumerate(sequence):
-        s += p
-        if s >= 1 - max_sum:  ## only this line has changed
+    """Returns the index where the cumulative sum of a sequence of probabilities exceeds max_sum."""
+    cumulative_sum = 0.0
+    for i, value in enumerate(sequence):
+        cumulative_sum += value
+        if cumulative_sum >= 1 - max_sum:
             return i
-    return i
+    return len(sequence) - 1  # Return the last index if the sum doesn't exceed max_sum
 
 
 def create_predictions(
     model_file_path: str,
-    snapshot_datetime: datetime,
+    prediction_moment: datetime,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
     prediction_window_hrs: float,
-    cdf_cut_points: List[float],
     x1: float,
     y1: float,
     x2: float,
     y2: float,
+    cdf_cut_points: List[float],
     special_category_func: Optional[Callable[[Any], Any]] = None,
     special_category_dict: Optional[Dict[str, Any]] = None,
-    special_func_map: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Dict[str, List[int]]]:  # [SpecialtyType, DemandPredictions]:
-    # initialisation
-    hour = snapshot_datetime.hour
-    minute = snapshot_datetime.minute
-    prediction_time: Tuple[int, int] = (hour, minute)
+    special_func_map: Optional[Dict[str, Callable[[pd.Series], bool]]] = None,
+) -> Dict[str, Dict[str, List[int]]]:
+    """
+    Create predictions for emergency demand for a single prediction moment.
 
-    # initialise predictions dict
-    predictions: Dict[str, Dict[str, List[int]]] = {
-        key: {subkey: [] for subkey in ["in_ed", "yet_to_arrive"]}
-        for key in specialties
+    Parameters:
+    - model_file_path (str): Path to the model files.
+    - prediction_moment (datetime): Datetime of predition
+    - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots.
+    - specialties (List[str]): List of specialty names for which predictions are required.
+    - prediction_window_hrs (float): Prediction window in hours.
+    - x1, y1, x2, y2 (float): Parameters for calculating probability of admission within prediction window.
+    - cdf_cut_points (List[float]): List of cumulative distribution function cut points.
+    - special_category_func (Optional[Callable[[Any], Any]]): Function identifying patients whose specialty predictions are handled outside the get_specialty_probs() function.
+    - special_category_dict (Optional[Dict[str, Any]]): Dictionary of probabilities applied to those patients
+    - special_func_map (Optional[Dict[str, Callable[[pd.Series], bool]]]): A dictionary mapping specialties to specific functions that are applied to each row of the prediction snapshots to filter indices
+
+    Returns:
+    - Dict[str, Dict[str, List[int]]]: Predictions for each specialty.
+
+    Example:
+    ```python
+    from datetime import datetime
+    import pandas as pd
+
+    special_category_dict = {
+        'medical': 0.0,
+        'surgical': 0.0,
+        'haem/onc': 0.0,
+        'paediatric': 1.0
     }
 
-    # load models
+    # Function to determine if the patient is a child
+    special_category_func = lambda row: row['age_on_arrival'] < 18
+
+    special_func_map = {
+        'paediatric': special_category_func,
+        'default': lambda row: True  # Default function for other specialties
+    }
+
+    prediction_moment = datetime.now()
+    prediction_snapshots = pd.DataFrame([
+        {'age_on_arrival': 15, 'elapsed_los': 3600},
+        {'age_on_arrival': 45, 'elapsed_los': 7200}
+    ])
+    specialties = ['paediatric', 'medical']
+    prediction_window_hrs = 4.0
+    cdf_cut_points = [0.7, 0.9]
+    x1, y1, x2, y2 = 4.0, 0.76, 12.0, 0.99
+
+    predictions = create_predictions(
+        model_file_path='path/to/model/file',
+        prediction_moment=prediction_moment,
+        prediction_snapshots=prediction_snapshots,
+        specialties=specialties,
+        prediction_window_hrs=prediction_window_hrs,
+        cdf_cut_points=cdf_cut_points,
+        x1=x1,
+        y1=y1,
+        x2=x2,
+        y2=y2,
+        special_func_map=special_func_map,
+    )
+    ```
+    """
+    prediction_time = (prediction_moment.hour, prediction_moment.minute)
+    predictions: Dict[str, Dict[str, List[int]]] = {
+        specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
+    }
+
+    # Load models
     admissions_model = prepare_for_inference(
         model_file_path=model_file_path,
         model_name="ed_admission",
@@ -59,32 +117,29 @@ def create_predictions(
     )
 
     yet_to_arrive_model_name = (
-        "ed_yet_to_arrive_by_spec_" + str(int(prediction_window_hrs)) + "_hours"
+        f"ed_yet_to_arrive_by_spec_{int(prediction_window_hrs)}_hours"
     )
-
     yet_to_arrive_model = prepare_for_inference(
         model_file_path=model_file_path,
         model_name=yet_to_arrive_model_name,
         model_only=True,
     )
 
-    # get predictions of admissions for ED patients
+    # Get predictions of admissions for ED patients
     prob_admission_after_ed = model_input_to_pred_proba(
         prediction_snapshots, admissions_model
     )
 
-    # get predictions of admission to specialty
+    # Get predictions of admission to specialty
     prediction_snapshots["specialty_prob"] = get_specialty_probs(
         model_file_path,
         prediction_snapshots,
         special_category_func=special_category_func,
         special_category_dict=special_category_dict,
     )
-
-    # get probability of admission in prediction window
     prediction_snapshots["elapsed_los_hrs"] = prediction_snapshots["elapsed_los"] / 3600
 
-    # get probability of admission within prediction window
+    # Get probability of admission within prediction window
     prob_admission_in_window = prediction_snapshots.apply(
         lambda row: calculate_probability(
             row["elapsed_los_hrs"], prediction_window_hrs, x1, y1, x2, y2
@@ -93,31 +148,18 @@ def create_predictions(
     )
 
     if special_func_map is None:
-        special_func_map = {
-            "default": lambda row: True  # Default function
-        }
+        special_func_map = {"default": lambda row: True}
 
-    for _spec in specialties:
-        func = special_func_map.get(_spec, special_func_map["default"])
-
-        # Apply the function to filter indices
+    for specialty in specialties:
+        func = special_func_map.get(specialty, special_func_map["default"])
         non_zero_indices = prediction_snapshots[
             prediction_snapshots.apply(func, axis=1)
-        ].index.values
+        ].index
 
-        # Filter the weights and the patients to exclude any with zero probability,
-        # before calling the function to generate a distribution over bed numbers
-        # Where prob_admission_to_specialty are equal to zero, this is either because
-        # a child has zero probability of being admitted to an adult ward, or vice versa
-        # These non-standard cases should not be included in the overall bed counts in such cases
-
-        # non_zero_indices = prob_admission_to_specialty != 0
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
-
         prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
-            lambda x: x[_spec]
+            lambda x: x[specialty]
         )
-
         filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
             non_zero_indices
         ]
@@ -129,24 +171,23 @@ def create_predictions(
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
 
-        # Call the function to predict demand for patients in ED, with the filtered data
-        pred_demand_in_ED = pred_proba_to_pred_demand(
+        pred_demand_in_ed = pred_proba_to_pred_demand(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
-
-        # Process patients yet-to-arrive
-        prediction_context = {_spec: {"prediction_time": prediction_time}}
+        prediction_context = {specialty: {"prediction_time": prediction_time}}
         pred_demand_yta = yet_to_arrive_model.predict(
             prediction_context, x1, y1, x2, y2
         )
 
-        # Return the distributions at the desired cut points
-        predictions[_spec]["in_ed"] = [
-            index_of_sum(pred_demand_in_ED["agg_proba"].values.cumsum(), cut_point)
+        predictions[specialty]["in_ed"] = [
+            index_of_sum(pred_demand_in_ed["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
-        predictions[_spec]["yet_to_arrive"] = [
-            index_of_sum(pred_demand_yta[_spec]["agg_proba"].values.cumsum(), cut_point)
+        predictions[specialty]["yet_to_arrive"] = [
+            index_of_sum(
+                pred_demand_yta[specialty]["agg_proba"].values.cumsum(), cut_point
+            )
             for cut_point in cdf_cut_points
         ]
+
     return predictions
