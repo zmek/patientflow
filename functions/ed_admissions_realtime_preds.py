@@ -1,6 +1,7 @@
-from typing import List, Callable, Dict, Any, Optional
+from typing import List, Callable, Dict, Any, Optional, Tuple
 from datetime import datetime
 import pandas as pd
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 from ed_admissions_helper_functions import (
     get_specialty_probs,
@@ -14,6 +15,40 @@ from predict.emergency_demand.admission_in_prediction_window_using_aspirational_
     calculate_probability,
 )
 
+def add_missing_columns(pipeline, df): 
+
+    # check input data for missing columns 
+    column_transformer = pipeline.named_steps['feature_transformer']
+    
+    # Function to get feature names before one-hot encoding
+    def get_feature_names_before_encoding(column_transformer):
+        feature_names = []
+        for name, transformer, columns in column_transformer.transformers:
+            if isinstance(transformer, OneHotEncoder):
+                feature_names.extend(columns)
+            elif isinstance(transformer, OrdinalEncoder):
+                feature_names.extend(columns)
+            elif isinstance(transformer, StandardScaler):
+                feature_names.extend(columns)
+            else:
+                feature_names.extend(columns)
+        return feature_names
+        
+    feature_names_before_encoding = get_feature_names_before_encoding(column_transformer)
+
+    for missing_col in set(feature_names_before_encoding).difference(set(df.columns)):
+        if missing_col.startswith(('lab_orders_', 'visited_', 'has_')):
+            df[missing_col] = False
+        elif missing_col.startswith(('num_', 'total_')):
+            df[missing_col] = 0
+        elif missing_col.startswith('latest_'):
+            df[missing_col] = pd.NA
+        elif missing_col == 'arrival_method':
+            df[missing_col] = 'None'
+        else:
+            df[missing_col] = pd.NA
+    return df
+    
 
 def index_of_sum(sequence: List[float], max_sum: float) -> int:
     """Returns the index where the cumulative sum of a sequence of probabilities exceeds max_sum."""
@@ -27,7 +62,7 @@ def index_of_sum(sequence: List[float], max_sum: float) -> int:
 
 def create_predictions(
     model_file_path: str,
-    prediction_moment: datetime,
+    prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
     prediction_window_hrs: float,
@@ -45,7 +80,7 @@ def create_predictions(
 
     Parameters:
     - model_file_path (str): Path to the model files.
-    - prediction_moment (datetime): Datetime of predition
+    - prediction_moment (Tuple): Hour and minute of time for which model to be used for inference was trained
     - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots.
     - specialties (List[str]): List of specialty names for which predictions are required.
     - prediction_window_hrs (float): Prediction window in hours.
@@ -78,7 +113,7 @@ def create_predictions(
         'default': lambda row: True  # Default function for other specialties
     }
 
-    prediction_moment = datetime.now()
+    prediction_time = (15,30)
     prediction_snapshots = pd.DataFrame([
         {'age_on_arrival': 15, 'elapsed_los': 3600},
         {'age_on_arrival': 45, 'elapsed_los': 7200}
@@ -90,7 +125,7 @@ def create_predictions(
 
     predictions = create_predictions(
         model_file_path='path/to/model/file',
-        prediction_moment=prediction_moment,
+        prediction_time=prediction_time,
         prediction_snapshots=prediction_snapshots,
         specialties=specialties,
         prediction_window_hrs=prediction_window_hrs,
@@ -103,7 +138,6 @@ def create_predictions(
     )
     ```
     """
-    prediction_time = (prediction_moment.hour, prediction_moment.minute)
     predictions: Dict[str, Dict[str, List[int]]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
@@ -115,6 +149,10 @@ def create_predictions(
         prediction_time=prediction_time,
         model_only=True,
     )
+
+    # add missing columns to predictions_snapshots that are expected by the model
+    prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
+    
 
     yet_to_arrive_model_name = (
         f"ed_yet_to_arrive_by_spec_{int(prediction_window_hrs)}_hours"

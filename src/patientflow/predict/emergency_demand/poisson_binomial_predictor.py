@@ -34,7 +34,6 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional
 
-
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
     get_y_from_aspirational_curve,
@@ -55,6 +54,49 @@ from predict.emergency_demand.yet_to_arrive import (
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
+def find_nearest_previous_prediction_time(requested_time, prediction_times):
+    """
+    Finds the nearest previous time of day in 'prediction_times' relative to the requested time.
+    If the requested time is earlier than all times in 'prediction_times', the function returns
+    the latest time in 'prediction_times'.
+
+    Args:
+        requested_time (tuple): The requested time as (hour, minute).
+        prediction_times (list): List of available prediction times.
+
+    Returns:
+        tuple: The closest previous time of day from 'prediction_times'.
+
+    """
+    requested_datetime = datetime.strptime(
+        f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
+    )
+    closest_prediction_time = max(
+        prediction_times,
+        key=lambda prediction_time_time: datetime.strptime(
+            f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+            "%H:%M",
+        ),
+    )
+    min_diff = float("inf")
+
+    for prediction_time_time in prediction_times:
+        prediction_time_datetime = datetime.strptime(
+            f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
+            "%H:%M",
+        )
+        diff = (requested_datetime - prediction_time_datetime).total_seconds()
+
+        # If the difference is negative, it means the prediction_time_time is ahead of the requested_time,
+        # hence we calculate the difference by considering a day's wrap around.
+        if diff < 0:
+            diff += 24 * 60 * 60  # Add 24 hours in seconds
+
+        if 0 <= diff < min_diff:
+            closest_prediction_time = prediction_time_time
+            min_diff = diff
+
+    return closest_prediction_time
 
 class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     """
@@ -222,49 +264,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         """
         return self.weights
 
-    def _find_nearest_previous_prediction_time(self, requested_time):
-        """
-        Finds the nearest previous time of day in 'prediction_times' relative to the requested time.
-        If the requested time is earlier than all times in 'prediction_times', the function returns
-        the latest time in 'prediction_times'.
-
-        Args:
-            requested_time (tuple): The requested time as (hour, minute).
-
-        Returns:
-            tuple: The closest previous time of day from 'prediction_times'.
-
-        """
-        requested_datetime = datetime.strptime(
-            f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
-        )
-        closest_prediction_time = max(
-            self.prediction_times,
-            key=lambda prediction_time_time: datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
-                "%H:%M",
-            ),
-        )
-        min_diff = float("inf")
-
-        for prediction_time_time in self.prediction_times:
-            prediction_time_datetime = datetime.strptime(
-                f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
-                "%H:%M",
-            )
-            diff = (requested_datetime - prediction_time_datetime).total_seconds()
-
-            # If the difference is negative, it means the prediction_time_time is ahead of the requested_time,
-            # hence we calculate the difference by considering a day's wrap around.
-            if diff < 0:
-                diff += 24 * 60 * 60  # Add 24 hours in seconds
-
-            if 0 <= diff < min_diff:
-                closest_prediction_time = prediction_time_time
-                min_diff = diff
-
-        return closest_prediction_time
-
     def predict(
         self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float
     ) -> Dict:
@@ -318,8 +317,8 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
                 if prediction_time not in self.prediction_times:
                     original_prediction_time = prediction_time
-                    prediction_time = self._find_nearest_previous_prediction_time(
-                        prediction_time
+                    prediction_time = find_nearest_previous_prediction_time(
+                        prediction_time, self.prediction_times
                     )
                     warnings.warn(
                         f"Time of day requested of {original_prediction_time} was not in model training. "
