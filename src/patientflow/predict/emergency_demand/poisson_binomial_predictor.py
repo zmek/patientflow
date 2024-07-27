@@ -68,6 +68,10 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
         tuple: The closest previous time of day from 'prediction_times'.
 
     """
+    if requested_time in prediction_times:
+        return requested_time
+        
+    original_prediction_time = requested_time
     requested_datetime = datetime.strptime(
         f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
     )
@@ -96,6 +100,11 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
             closest_prediction_time = prediction_time_time
             min_diff = diff
 
+    warnings.warn(
+        f"Time of day requested of {original_prediction_time} was not in model training. "
+        f"Reverting to predictions for {closest_prediction_time}."
+    )
+    
     return closest_prediction_time
 
 class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
@@ -316,14 +325,10 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                     )
 
                 if prediction_time not in self.prediction_times:
-                    original_prediction_time = prediction_time
                     prediction_time = find_nearest_previous_prediction_time(
                         prediction_time, self.prediction_times
                     )
-                    warnings.warn(
-                        f"Time of day requested of {original_prediction_time} was not in model training. "
-                        f"Reverting to predictions for {prediction_time}."
-                    )
+
 
                 lambda_t = self.weights[filter_key][prediction_time].get("lambda_t")
                 if lambda_t is None:

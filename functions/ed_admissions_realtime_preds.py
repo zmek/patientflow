@@ -36,6 +36,7 @@ def add_missing_columns(pipeline, df):
         
     feature_names_before_encoding = get_feature_names_before_encoding(column_transformer)
 
+    added_columns = []
     for missing_col in set(feature_names_before_encoding).difference(set(df.columns)):
         if missing_col.startswith(('lab_orders_', 'visited_', 'has_')):
             df[missing_col] = False
@@ -47,6 +48,11 @@ def add_missing_columns(pipeline, df):
             df[missing_col] = 'None'
         else:
             df[missing_col] = pd.NA
+        added_columns.append(missing_col)
+
+    if added_columns:
+        print(f"Warning: The following columns were used in training, but not found in the real-time data. These have been added to the dataframe: {', '.join(added_columns)}")
+
     return df
     
 
