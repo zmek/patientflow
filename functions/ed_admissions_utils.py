@@ -62,6 +62,8 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")
 
+    print(full_path)
+
     try:
         model = load(full_path)
         return model

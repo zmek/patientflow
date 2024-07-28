@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime
 import pandas as pd
+import numpy as np
 
 from pathlib import Path
 import sys
@@ -28,6 +29,33 @@ from xgboost import XGBClassifier
 # df = pd.read_csv('your_data.csv')
 # pipeline = create_pipeline(df)
 
+class ProbabilityModel:
+    def __init__(self, probabilities):
+        self.probabilities = probabilities
+    
+    def predict(self):
+        return self.probabilities
+        
+class PoissonModel:
+    def __init__(self, lambdas):
+        self.lambdas = lambdas
+    
+    def predict(self):
+        result = {}
+        for spec, lam in self.lambdas.items():
+            # Generate Poisson distribution
+            poisson_dist = np.random.poisson(lam, 1000)
+            
+            # Create DataFrame
+            df = pd.DataFrame(poisson_dist, columns=['agg_prob'])
+            df['sum'] = df.index
+            
+            # Set 'sum' as the index
+            df.set_index('sum', inplace=True)
+            
+            result[spec] = df
+        
+        return result
 
 class TestCreatePredictions(unittest.TestCase):
     
@@ -39,6 +67,8 @@ class TestCreatePredictions(unittest.TestCase):
         self.cdf_cut_points = [0.7, 0.9]
         self.specialties = ['paediatric', 'medical']
         self.create_admissions_model(self.model_file_path)
+        self.create_yta_model(self.model_file_path)
+        self.create_spec_model(self.model_file_path)
 
     def create_admissions_model(self, model_file_path):
         # Define the feature columns and target
@@ -66,15 +96,36 @@ class TestCreatePredictions(unittest.TestCase):
         # Fit the pipeline to the data
         pipeline.fit(X, y)
 
-        model_name = get_model_name('ed_admissions_', self.prediction_time)
-        full_path = self.model_file_path /  str(model_name + '.joblib')
-        
+        model_name = get_model_name('ed_admission', self.prediction_time)
+        full_path = self.model_file_path /  str(model_name + '.joblib')        
         joblib.dump(pipeline, full_path)
 
+    def create_spec_model(self, model_file_path):
+        probabilities = {
+            'surgical': 0.3,
+            'haem/onc': 0.1,
+            'medical': 0.6
+        }
+
+        model = ProbabilityModel(probabilities)
+        
+        full_path = self.model_file_path /  str('ed_specialty.joblib')        
+        joblib.dump(model, full_path)
+                    
+    def create_yta_model(self, model_file_path):
+        lambdas = {
+            'medical': 5,
+            'paediatric': 3
+        }
+        model = PoissonModel(lambdas)
+        
+        full_path = self.model_file_path /  str('ed_yet_to_arrive_by_spec_8_hours.joblib')        
+        joblib.dump(model, full_path)
+        
     def test_basic_functionality(self):
         prediction_snapshots = pd.DataFrame([
-            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1},
-            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0},
+            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1, 'consultation_sequence' : []},
+            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0, 'consultation_sequence' : []},
         ])
 
         special_category_dict = {
