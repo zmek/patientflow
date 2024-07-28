@@ -2,21 +2,79 @@ import unittest
 from datetime import datetime
 import pandas as pd
 
+from pathlib import Path
+import sys
+import joblib
+
+PROJECT_ROOT = Path().home() 
+USER_ROOT = Path().home() / 'work'
+
+sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
+sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
+
+from ed_admissions_realtime_preds import create_predictions
+from ed_admissions_machine_learning import create_column_transformer
+from ed_admissions_utils import get_model_name
+
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
+
+
+# Example usage:
+# Assuming you have a dataframe `df` with the necessary columns
+# df = pd.read_csv('your_data.csv')
+# pipeline = create_pipeline(df)
+
 
 class TestCreatePredictions(unittest.TestCase):
     
     def setUp(self):
-        self.model_file_path = 'dummy/path/to/model/file'
-        self.prediction_moment = datetime(2023, 1, 1, 12, 0)
+        self.model_file_path = USER_ROOT / 'patientflow' / 'tests' / 'tmp' 
+        self.prediction_time = (7,0)
         self.prediction_window_hrs = 8.0
         self.x1, self.y1, self.x2, self.y2 = 4.0, 0.76, 12.0, 0.99
         self.cdf_cut_points = [0.7, 0.9]
         self.specialties = ['paediatric', 'medical']
+        self.create_admissions_model(self.model_file_path)
+
+    def create_admissions_model(self, model_file_path):
+        # Define the feature columns and target
+        feature_columns = ['elapsed_los', 'sex', 'age_on_arrival', 'arrival_method']
+        target_column = 'is_admitted'
+
+        df = pd.DataFrame([
+            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1},
+            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0},
+        ])
+
+        # Split the data into features and target
+        X = df[feature_columns]
+        y = df[target_column]
+
+        # Define the model
+        model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+        column_transformer = create_column_transformer(X)
+
+        # create a pipeline with the feature transformer and the model
+        pipeline = Pipeline(
+            [("feature_transformer", column_transformer), ("classifier", model)]
+        )
+
+        # Fit the pipeline to the data
+        pipeline.fit(X, y)
+
+        model_name = get_model_name('ed_admissions_', self.prediction_time)
+        full_path = self.model_file_path /  str(model_name + '.joblib')
+        
+        joblib.dump(pipeline, full_path)
 
     def test_basic_functionality(self):
         prediction_snapshots = pd.DataFrame([
-            {'age_on_arrival': 15, 'elapsed_los': 3600, 'consultation_sequence':[],
-            {'age_on_arrival': 45, 'elapsed_los': 7200, 'consultation_sequence':[]}
+            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1},
+            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0},
         ])
 
         special_category_dict = {
@@ -32,9 +90,11 @@ class TestCreatePredictions(unittest.TestCase):
             'default': lambda row: True  
         }
 
+        print(self.model_file_path)
+
         predictions = create_predictions(
             model_file_path=self.model_file_path,
-            prediction_moment=self.prediction_moment,
+            prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
             prediction_window_hrs=self.prediction_window_hrs,
@@ -218,3 +278,5 @@ class TestCreatePredictions(unittest.TestCase):
 
     #     self.assertIsInstance(predictions, dict)
        
+if __name__ == '__main__':
+    unittest.main()
