@@ -2,16 +2,21 @@ import unittest
 from datetime import datetime
 import pandas as pd
 import numpy as np
+import sys
+import os
 
 from pathlib import Path
 import sys
 import joblib
 
-PROJECT_ROOT = Path().home() 
-USER_ROOT = Path().home() / 'work'
+# PROJECT_ROOT = Path().home() 
+# USER_ROOT = Path().home() / 'work'
 
-sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
-sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../functions')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/patientflow')))
+
+# sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
+# sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
 
 from ed_admissions_realtime_preds import create_predictions
 from ed_admissions_machine_learning import create_column_transformer
@@ -22,6 +27,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
+import os
 
 
 # Example usage:
@@ -60,7 +66,9 @@ class PoissonModel:
 class TestCreatePredictions(unittest.TestCase):
     
     def setUp(self):
-        self.model_file_path = USER_ROOT / 'patientflow' / 'tests' / 'tmp' 
+        self.model_file_path = Path('tmp')
+        os.makedirs(self.model_file_path, exist_ok=True)
+        print(self.model_file_path)
         self.prediction_time = (7,0)
         self.prediction_window_hrs = 8.0
         self.x1, self.y1, self.x2, self.y2 = 4.0, 0.76, 12.0, 0.99
