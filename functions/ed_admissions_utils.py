@@ -18,7 +18,7 @@ def get_model_name(model_name, prediction_time_):
     model_name = model_name + "_" + f"{hour_:02}" + min_
     return model_name
 
-def select_one_snapshot_per_visit(df, visit_col, seed=None):
+def select_one_snapshot_per_visit(df, visit_col, seed=42):
     # Generate random numbers if not present
     if 'random_number' not in df.columns:
         if seed is not None:
