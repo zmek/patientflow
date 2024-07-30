@@ -1,4 +1,5 @@
 from joblib import load
+import numpy as np
 
 
 def get_model_name(model_name, prediction_time_):
@@ -18,8 +19,15 @@ def get_model_name(model_name, prediction_time_):
     return model_name
 
 
-def select_one_snapshot_per_visit(df):
-    max_indices = df.groupby("visit_number")["random_number"].idxmax()
+def select_one_snapshot_per_visit(df, visit_col, seed=42):
+    # Generate random numbers if not present
+    if "random_number" not in df.columns:
+        if seed is not None:
+            np.random.seed(seed)
+        df["random_number"] = np.random.random(size=len(df))
+
+    # Select the row with the maximum random_number for each visit
+    max_indices = df.groupby(visit_col)["random_number"].idxmax()
     return df.loc[max_indices].drop(columns=["random_number"])
 
 
