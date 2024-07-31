@@ -39,21 +39,22 @@ class ProbabilityModel:
     def __init__(self, probabilities):
         self.probabilities = probabilities
     
-    def predict(self):
+    def predict(self, weights = None):
         return self.probabilities
         
 class PoissonModel:
     def __init__(self, lambdas):
         self.lambdas = lambdas
     
-    def predict(self):
+    def predict(self, prediction_context = None, 
+                x1 = None, y1 = None, x2 = None, y2 = None):
         result = {}
         for spec, lam in self.lambdas.items():
             # Generate Poisson distribution
             poisson_dist = np.random.poisson(lam, 1000)
             
             # Create DataFrame
-            df = pd.DataFrame(poisson_dist, columns=['agg_prob'])
+            df = pd.DataFrame(poisson_dist, columns=['agg_proba'])
             df['sum'] = df.index
             
             # Set 'sum' as the index
@@ -68,17 +69,16 @@ class TestCreatePredictions(unittest.TestCase):
     def setUp(self):
         self.model_file_path = Path('tmp')
         os.makedirs(self.model_file_path, exist_ok=True)
-        print(self.model_file_path)
         self.prediction_time = (7,0)
         self.prediction_window_hrs = 8.0
         self.x1, self.y1, self.x2, self.y2 = 4.0, 0.76, 12.0, 0.99
         self.cdf_cut_points = [0.7, 0.9]
         self.specialties = ['paediatric', 'medical']
-        self.create_admissions_model(self.model_file_path)
-        self.create_yta_model(self.model_file_path)
-        self.create_spec_model(self.model_file_path)
+        self.create_admissions_model()
+        self.create_yta_model()
+        self.create_spec_model()
 
-    def create_admissions_model(self, model_file_path):
+    def create_admissions_model(self):
         # Define the feature columns and target
         feature_columns = ['elapsed_los', 'sex', 'age_on_arrival', 'arrival_method']
         target_column = 'is_admitted'
@@ -108,11 +108,12 @@ class TestCreatePredictions(unittest.TestCase):
         full_path = self.model_file_path /  str(model_name + '.joblib')        
         joblib.dump(pipeline, full_path)
 
-    def create_spec_model(self, model_file_path):
+    def create_spec_model(self):
         probabilities = {
             'surgical': 0.3,
             'haem/onc': 0.1,
-            'medical': 0.6
+            'medical': 0.6,
+            'paediatric':0.0
         }
 
         model = ProbabilityModel(probabilities)
@@ -120,7 +121,7 @@ class TestCreatePredictions(unittest.TestCase):
         full_path = self.model_file_path /  str('ed_specialty.joblib')        
         joblib.dump(model, full_path)
                     
-    def create_yta_model(self, model_file_path):
+    def create_yta_model(self):
         lambdas = {
             'medical': 5,
             'paediatric': 3
@@ -132,8 +133,8 @@ class TestCreatePredictions(unittest.TestCase):
         
     def test_basic_functionality(self):
         prediction_snapshots = pd.DataFrame([
-            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1, 'consultation_sequence' : []},
-            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0, 'consultation_sequence' : []},
+            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1, 'consultation_sequence' : tuple(['medical'])},
+            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0, 'consultation_sequence' : tuple(['medical'])},
         ])
 
         special_category_dict = {
@@ -148,8 +149,6 @@ class TestCreatePredictions(unittest.TestCase):
             'paediatric': special_category_func,
             'default': lambda row: True  
         }
-
-        print(self.model_file_path)
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,
