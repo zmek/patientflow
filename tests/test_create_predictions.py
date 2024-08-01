@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+from scipy.stats import poisson
+
 
 from pathlib import Path
 import sys
@@ -28,6 +30,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 import os
+import numpy as np
 
 
 # Example usage:
@@ -35,6 +38,42 @@ import os
 # df = pd.read_csv('your_data.csv')
 # pipeline = create_pipeline(df)
 
+# class AdmissionModel:
+#     def __init__(self, df):
+#         self.df = df
+
+#     def fit(self, df, weights = None):
+#         pass
+    
+#     def predict(self, df):
+#         return [0.7] * len(df)
+
+def create_random_df(n = 1000, include_consults = False):
+
+    # Generate random data
+    np.random.seed(0)
+    age_on_arrival = np.random.randint(1, 100, size=n)
+    elapsed_los = np.random.randint(0, 3*24*3600, size=n)
+    arrival_method = np.random.choice(['ambulance', 'public_transport', 'walk-in'], size=n)
+    sex = np.random.choice(['M', 'F'], size=n)
+    is_admitted = np.random.choice([0, 1], size=n)
+
+    # Create the DataFrame
+    df = pd.DataFrame({
+        'age_on_arrival': age_on_arrival,
+        'elapsed_los': elapsed_los,
+        'arrival_method': arrival_method,
+        'sex': sex,
+        'is_admitted': is_admitted
+    })
+
+    if include_consults:
+        # Generate random consultation sequence
+        consultations = ['medical', 'surgical', 'haem/onc', 'paediatric']
+        df['consultation_sequence'] = [np.random.choice(consultations, size=np.random.randint(1, 4)).tolist() for _ in range(n)]
+
+    return(df)
+    
 class ProbabilityModel:
     def __init__(self, probabilities):
         self.probabilities = probabilities
@@ -51,7 +90,8 @@ class PoissonModel:
         result = {}
         for spec, lam in self.lambdas.items():
             # Generate Poisson distribution
-            poisson_dist = np.random.poisson(lam, 1000)
+            x = np.arange(0, 20)
+            poisson_dist = poisson.pmf(x, lam)
             
             # Create DataFrame
             df = pd.DataFrame(poisson_dist, columns=['agg_proba'])
@@ -73,7 +113,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.prediction_window_hrs = 8.0
         self.x1, self.y1, self.x2, self.y2 = 4.0, 0.76, 12.0, 0.99
         self.cdf_cut_points = [0.7, 0.9]
-        self.specialties = ['paediatric', 'medical']
+        self.specialties = ['paediatric', 'surgical', 'haem/onc', 'medical']
         self.create_admissions_model()
         self.create_yta_model()
         self.create_spec_model()
@@ -83,10 +123,7 @@ class TestCreatePredictions(unittest.TestCase):
         feature_columns = ['elapsed_los', 'sex', 'age_on_arrival', 'arrival_method']
         target_column = 'is_admitted'
 
-        df = pd.DataFrame([
-            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1},
-            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0},
-        ])
+        df = create_random_df()
 
         # Split the data into features and target
         X = df[feature_columns]
@@ -94,18 +131,26 @@ class TestCreatePredictions(unittest.TestCase):
 
         # Define the model
         model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-        column_transformer = create_column_transformer(X)
+        # column_transformer = create_column_transformer(X)
+        column_transformer = ColumnTransformer([
+            ('onehot', OneHotEncoder(), ['sex', 'arrival_method']),
+            ('passthrough', 'passthrough', ['elapsed_los', 'age_on_arrival'])
+        ])
+        
 
         # create a pipeline with the feature transformer and the model
         pipeline = Pipeline(
             [("feature_transformer", column_transformer), ("classifier", model)]
         )
 
+
         # Fit the pipeline to the data
         pipeline.fit(X, y)
+        # transformed_X = pipeline.named_steps['feature_transformer'].transform(X)
 
         model_name = get_model_name('ed_admission', self.prediction_time)
-        full_path = self.model_file_path /  str(model_name + '.joblib')        
+        full_path = self.model_file_path /  str(model_name + '.joblib')    
+        print(full_path)    
         joblib.dump(pipeline, full_path)
 
     def create_spec_model(self):
@@ -124,7 +169,9 @@ class TestCreatePredictions(unittest.TestCase):
     def create_yta_model(self):
         lambdas = {
             'medical': 5,
-            'paediatric': 3
+            'paediatric': 3,
+            'surgical': 2,
+            'haem/onc':1
         }
         model = PoissonModel(lambdas)
         
@@ -132,13 +179,12 @@ class TestCreatePredictions(unittest.TestCase):
         joblib.dump(model, full_path)
         
     def test_basic_functionality(self):
-        prediction_snapshots = pd.DataFrame([
-            {'age_on_arrival': 15, 'elapsed_los': 3600, 'arrival_method': 'ambulance', 'sex':'M', 'is_admitted' :1, 'consultation_sequence' : tuple(['medical'])},
-            {'age_on_arrival': 45, 'elapsed_los': 7200, 'arrival_method': 'walk-in', 'sex':'F', 'is_admitted' : 0, 'consultation_sequence' : tuple(['medical'])},
-        ])
+        prediction_snapshots = create_random_df(n = 50, include_consults = True)
 
         special_category_dict = {
             'medical': 0.0,
+            'haem/onc': 0.0,
+            'surgical' : 0.0,
             'paediatric': 1.0
         }
         
@@ -162,7 +208,12 @@ class TestCreatePredictions(unittest.TestCase):
             x2=self.x2,
             y2=self.y2,
             special_func_map=special_func_map,
+            special_category_dict=special_category_dict,
+            special_category_func=special_category_func
+
         )
+
+        print(predictions)
 
         self.assertIsInstance(predictions, dict)
         self.assertIn('paediatric', predictions)

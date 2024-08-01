@@ -181,6 +181,7 @@ def create_predictions(
         special_category_func=special_category_func,
         special_category_dict=special_category_dict,
     )
+
     prediction_snapshots["elapsed_los_hrs"] = prediction_snapshots["elapsed_los"] / 3600
 
     # Get probability of admission within prediction window
