@@ -74,6 +74,32 @@ def create_random_df(n = 1000, include_consults = False):
 
     return(df)
     
+def create_special_params():
+    special_category_dict = {
+        'medical': 0.0,
+        'haem/onc': 0.0,
+        'surgical' : 0.0,
+        'paediatric': 1.0
+    }
+    
+    # Function to determine if the patient is a child
+    special_category_func = lambda row: row['age_on_arrival'] < 18 
+    
+    special_func_map = {
+        'paediatric': special_category_func,
+        'default': lambda row: True  
+    }
+
+    special_params = {
+        'special_category_func': special_category_func,
+        'special_category_dict': special_category_dict,
+        'special_func_map': special_func_map
+    }
+
+    return(special_params)
+
+
+
 class ProbabilityModel:
     def __init__(self, probabilities):
         self.probabilities = probabilities
@@ -150,7 +176,6 @@ class TestCreatePredictions(unittest.TestCase):
 
         model_name = get_model_name('ed_admission', self.prediction_time)
         full_path = self.model_file_path /  str(model_name + '.joblib')    
-        print(full_path)    
         joblib.dump(pipeline, full_path)
 
     def create_spec_model(self):
@@ -180,28 +205,33 @@ class TestCreatePredictions(unittest.TestCase):
         
     def test_basic_functionality(self):
         prediction_snapshots = create_random_df(n = 50, include_consults = True)
+        
+        predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=self.prediction_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            special_params=None
 
-        special_category_dict = {
-            'medical': 0.0,
-            'haem/onc': 0.0,
-            'surgical' : 0.0,
-            'paediatric': 1.0
-        }
-        
-        # Function to determine if the patient is a child
-        special_category_func = lambda row: row['age_on_arrival'] < 18 
-        
-        special_func_map = {
-            'paediatric': special_category_func,
-            'default': lambda row: True  
-        }
+        )
 
-        special_params = {
-            'special_category_func': special_category_func,
-            'special_category_dict': special_category_dict,
-            'special_func_map': special_func_map
-        }
-        
+        print(predictions)
+
+        self.assertIsInstance(predictions, dict)
+        self.assertIn('paediatric', predictions)
+        self.assertIn('medical', predictions)
+        self.assertIn('in_ed', predictions['paediatric'])
+        self.assertIn('yet_to_arrive', predictions['paediatric'])
+
+    def test_basic_functionality_with_special_category(self):
+        prediction_snapshots = create_random_df(n = 50, include_consults = True)
+        special_params = create_special_params()
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,
@@ -226,160 +256,93 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn('in_ed', predictions['paediatric'])
         self.assertIn('yet_to_arrive', predictions['paediatric'])
 
-    # def test_empty_prediction_snapshots(self):
-    #     prediction_snapshots = pd.DataFrame()
+    def test_empty_prediction_snapshots(self):
+        prediction_snapshots = create_random_df(n = 0, include_consults = True)
+        # special_params = create_special_params()
 
-    #     predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=self.prediction_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #     )
+        predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=self.prediction_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            special_params=None
+        )
 
-    #     self.assertIsInstance(predictions, dict)
-    #     for specialty in self.specialties:
-    #         self.assertEqual(predictions[specialty]['in_ed'], [])
-    #         self.assertEqual(predictions[specialty]['yet_to_arrive'], [])
+        print(predictions)
 
-    # def test_single_row_prediction_snapshots(self):
-    #     prediction_snapshots = pd.DataFrame([
-    #         {'age_on_arrival': 15, 'elapsed_los': 3600}
-    #     ])
+        self.assertIsInstance(predictions, dict)
+        for specialty in self.specialties:
+            self.assertEqual(predictions[specialty]['in_ed'], [])
+            self.assertEqual(predictions[specialty]['yet_to_arrive'], [])
 
-    #     special_func_map = {
-    #         'paediatric': lambda row: row['age_on_arrival'] < 18,
-    #         'default': lambda row: True
-    #     }
+    def test_single_row_prediction_snapshots(self):
+        prediction_snapshots = create_random_df(n = 1, include_consults = True)
 
-    #     predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=self.prediction_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #         special_func_map=special_func_map,
-    #     )
+        predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=self.prediction_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            special_params=None
+        )
 
-    #     self.assertIsInstance(predictions, dict)
-    #     self.assertIn('paediatric', predictions)
-    #     self.assertIn('medical', predictions)
-    #     self.assertEqual(len(predictions['paediatric']['in_ed']), len(self.cdf_cut_points))
-    #     self.assertEqual(len(predictions['paediatric']['yet_to_arrive']), len(self.cdf_cut_points))
+        self.assertIsInstance(predictions, dict)
+        for specialty in self.specialties:
+            self.assertEqual(predictions[specialty]['in_ed'], [0, 0])
 
-    # def test_without_optional_parameters(self):
-    #     prediction_snapshots = pd.DataFrame([
-    #         {'age_on_arrival': 15, 'elapsed_los': 3600},
-    #         {'age_on_arrival': 45, 'elapsed_los': 7200}
-    #     ])
+    def test_prediction_window_extremes(self):
+        prediction_snapshots = create_random_df(n = 50, include_consults = True)
 
-    #     predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=self.prediction_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #     )
+        short_window_hrs = 0.1
+        long_window_hrs = 100.0
 
-    #     self.assertIsInstance(predictions, dict)
-    #     self.assertIn('paediatric', predictions)
-    #     self.assertIn('medical', predictions)
+        short_window_predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=short_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
 
-    # def test_special_category_handling(self):
-    #     prediction_snapshots = pd.DataFrame([
-    #         {'age_on_arrival': 15, 'elapsed_los': 3600},
-    #         {'age_on_arrival': 45, 'elapsed_los': 7200}
-    #     ])
+        long_window_predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=long_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
 
-    #     special_category_func = lambda row: row['age_on_arrival'] < 18
-    #     special_category_dict = {'paediatric': 1.0}
-
-    #     special_func_map = {
-    #         'paediatric': special_category_func,
-    #         'default': lambda row: True
-    #     }
-
-    #     predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=self.prediction_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #         special_category_func=special_category_func,
-    #         special_category_dict=special_category_dict,
-    #         special_func_map=special_func_map,
-    #     )
-
-    #     self.assertIsInstance(predictions, dict)
-    #     self.assertIn('paediatric', predictions)
-    #     self.assertIn('medical', predictions)
-    #     self.assertEqual(len(predictions['paediatric']['in_ed']), len(self.cdf_cut_points))
-    #     self.assertEqual(len(predictions['paediatric']['yet_to_arrive']), len(self.cdf_cut_points))
-
-    # def test_prediction_window_extremes(self):
-    #     prediction_snapshots = pd.DataFrame([
-    #         {'age_on_arrival': 15, 'elapsed_los': 3600},
-    #         {'age_on_arrival': 45, 'elapsed_los': 7200}
-    #     ])
-
-    #     short_window_hrs = 0.1
-    #     long_window_hrs = 100.0
-
-    #     short_window_predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=short_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #     )
-
-    #     long_window_predictions = create_predictions(
-    #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
-    #         prediction_snapshots=prediction_snapshots,
-    #         specialties=self.specialties,
-    #         prediction_window_hrs=long_window_hrs,
-    #         cdf_cut_points=self.cdf_cut_points,
-    #         x1=self.x1,
-    #         y1=self.y1,
-    #         x2=self.x2,
-    #         y2=self.y2,
-    #     )
-
-    #     self.assertIsInstance(short_window_predictions, dict)
-    #     self.assertIsInstance(long_window_predictions, dict)
+        self.assertIsInstance(short_window_predictions, dict)
+        self.assertIsInstance(long_window_predictions, dict)
 
     # def test_large_dataset_performance(self):
-    #     prediction_snapshots = pd.DataFrame([{'age_on_arrival': i % 100, 'elapsed_los': i * 3600} for i in range(10000)])
+        # prediction_snapshots = create_random_df(n = 10000, include_consults = True)
 
     #     predictions = create_predictions(
     #         model_file_path=self.model_file_path,
-    #         prediction_moment=self.prediction_moment,
+    #         prediction_time=self.prediction_time,
     #         prediction_snapshots=prediction_snapshots,
     #         specialties=self.specialties,
     #         prediction_window_hrs=self.prediction_window_hrs,
