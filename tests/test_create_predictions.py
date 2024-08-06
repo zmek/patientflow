@@ -196,6 +196,13 @@ class TestCreatePredictions(unittest.TestCase):
             'default': lambda row: True  
         }
 
+        special_params = {
+            'special_category_func': special_category_func,
+            'special_category_dict': special_category_dict,
+            'special_func_map': special_func_map
+        }
+        
+
         predictions = create_predictions(
             model_file_path=self.model_file_path,
             prediction_time=self.prediction_time,
@@ -207,9 +214,7 @@ class TestCreatePredictions(unittest.TestCase):
             y1=self.y1,
             x2=self.x2,
             y2=self.y2,
-            special_func_map=special_func_map,
-            special_category_dict=special_category_dict,
-            special_category_func=special_category_func
+            special_params=special_params
 
         )
 

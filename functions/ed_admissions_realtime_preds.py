@@ -77,9 +77,7 @@ def create_predictions(
     x2: float,
     y2: float,
     cdf_cut_points: List[float],
-    special_category_func: Optional[Callable[[Any], Any]] = None,
-    special_category_dict: Optional[Dict[str, Any]] = None,
-    special_func_map: Optional[Dict[str, Callable[[pd.Series], bool]]] = None,
+    special_params: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Dict[str, List[int]]]:
     """
     Create predictions for emergency demand for a single prediction moment.
@@ -92,9 +90,10 @@ def create_predictions(
     - prediction_window_hrs (float): Prediction window in hours.
     - x1, y1, x2, y2 (float): Parameters for calculating probability of admission within prediction window.
     - cdf_cut_points (List[float]): List of cumulative distribution function cut points.
-    - special_category_func (Optional[Callable[[Any], Any]]): Function identifying patients whose specialty predictions are handled outside the get_specialty_probs() function.
-    - special_category_dict (Optional[Dict[str, Any]]): Dictionary of probabilities applied to those patients
-    - special_func_map (Optional[Dict[str, Callable[[pd.Series], bool]]]): A dictionary mapping specialties to specific functions that are applied to each row of the prediction snapshots to filter indices
+    - special_params (Optional[Dict[str, Any]]): Dictionary containing 'special_category_func', 'special_category_dict', and 'special_func_map'.
+      - special_category_func (Callable[[Any], Any]): Function identifying patients whose specialty predictions are handled outside the get_specialty_probs() function.
+      - special_category_dict (Dict[str, Any]): Dictionary of probabilities applied to those patients.
+      - special_func_map (Dict[str, Callable[[pd.Series], bool]]): A dictionary mapping specialties to specific functions that are applied to each row of the prediction snapshots to filter indices.
 
     Returns:
     - Dict[str, Dict[str, List[int]]]: Predictions for each specialty.
@@ -141,9 +140,24 @@ def create_predictions(
         x2=x2,
         y2=y2,
         special_func_map=special_func_map,
+        special_category_dict=special_category_dict,
+        special_category_func=special_category_func
+
+
     )
     ```
     """
+
+    if special_params:
+        required_keys = ['special_category_func', 'special_category_dict', 'special_func_map']
+        if not all(key in special_params for key in required_keys):
+            raise ValueError(f"special_params must include {required_keys} if specified.")
+        special_category_func = special_params['special_category_func']
+        special_category_dict = special_params['special_category_dict']
+        special_func_map = special_params['special_func_map']
+    else:
+        special_category_func = special_category_dict = special_func_map = None
+
     predictions: Dict[str, Dict[str, List[int]]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
