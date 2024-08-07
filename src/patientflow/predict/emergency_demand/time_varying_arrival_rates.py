@@ -36,9 +36,9 @@ def calculate_rates(df, time_interval):
         end_dt = datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S%z")
 
     # Calculate the total number of days covered by the dataset
-    num_days = (end_dt - start_dt).days
+    num_days = pd.Series(df.index.date).nunique()
     print(
-        f"Calculating time-varying arrival rates for data provided, which spans {num_days} days"
+        f"Calculating time-varying arrival rates for data provided, which spans {num_days} unique dates"
     )
 
     arrival_rates_dict = {}

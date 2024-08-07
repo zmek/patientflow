@@ -1,4 +1,5 @@
 from joblib import load
+from errors import ModelLoadError
 import numpy as np
 
 
@@ -71,8 +72,10 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         model = load(full_path)
         return model
     except FileNotFoundError:
-        print(f"Model named {model_name} not found at path: {model_file_path}")
-        return None
+        # print(f"Model named {model_name} not found at path: {model_file_path}")
+        raise ModelLoadError(
+            f"Model named {model_name} not found at path: {model_file_path}"
+        )
     except Exception as e:
-        print(f"Error loading model: {e}")
-        return None
+        # print(f"Error loading model: {e}")
+        raise ModelLoadError(f"Error loading model: {e}")

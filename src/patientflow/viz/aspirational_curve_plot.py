@@ -43,10 +43,10 @@ def plot_curve(
 
     if include_titles:
         plt.title(title, fontsize=text_size)
-        plt.xlabel("Hours since admission")
-        plt.ylabel("Probability of admission by this point")
+        plt.xlabel("Hours since admission", fontsize=text_size)
+        plt.ylabel("Probability of admission by this point", fontsize=text_size)
 
-    plt.axhline(y=y1, color="green", linestyle="--", label="y = 76%")
+    plt.axhline(y=y1, color="green", linestyle="--", label=f"y ={int(y1*100)}%")
     plt.axvline(x=x1, color="gray", linestyle="--", label="x = 4 hours")
     plt.legend(fontsize=text_size)
 
