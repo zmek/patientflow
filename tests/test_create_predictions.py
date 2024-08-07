@@ -24,6 +24,7 @@ sys.path.append(
 
 from ed_admissions_realtime_preds import create_predictions
 from ed_admissions_utils import get_model_name
+from ed_specialty_paediatric_functions import create_special_category_objects
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -31,7 +32,8 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 import os
 
-from errors import ModelLoadError
+from errors import ModelLoadError, MissingKeysError
+
 
 # Example usage:
 # Assuming you have a dataframe `df` with the necessary columns
@@ -81,30 +83,6 @@ def create_random_df(n=1000, include_consults=False):
 
     return df
 
-
-def create_special_params():
-    special_category_dict = {
-        "medical": 0.0,
-        "haem/onc": 0.0,
-        "surgical": 0.0,
-        "paediatric": 1.0,
-    }
-
-    # Function to determine if the patient is a child
-    special_category_func = lambda row: row["age_on_arrival"] < 18
-
-    special_func_map = {
-        "paediatric": special_category_func,
-        "default": lambda row: True,
-    }
-
-    special_params = {
-        "special_category_func": special_category_func,
-        "special_category_dict": special_category_dict,
-        "special_func_map": special_func_map,
-    }
-
-    return special_params
 
 
 class ProbabilityModel:
@@ -220,7 +198,7 @@ class TestCreatePredictions(unittest.TestCase):
         joblib.dump(model, full_path)
 
     def test_basic_functionality(self):
-        prediction_snapshots = create_random_df(n = 50, include_consults = True)
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,
@@ -233,25 +211,23 @@ class TestCreatePredictions(unittest.TestCase):
             y1=self.y1,
             x2=self.x2,
             y2=self.y2,
-            special_params=None
-
+            special_params=None,
         )
 
         # print(predictions)
 
         self.assertIsInstance(predictions, dict)
-        self.assertIn('paediatric', predictions)
-        self.assertIn('medical', predictions)
-        self.assertIn('in_ed', predictions['paediatric'])
-        self.assertIn('yet_to_arrive', predictions['paediatric'])
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
 
-        self.assertEqual(predictions['paediatric']["in_ed"], [0, 0])
-        self.assertEqual(predictions['medical']["in_ed"], [11, 10])
-
+        self.assertEqual(predictions["paediatric"]["in_ed"], [0, 0])
+        self.assertEqual(predictions["medical"]["in_ed"], [11, 10])
 
     def test_basic_functionality_with_special_category(self):
-        prediction_snapshots = create_random_df(n = 50, include_consults = True)
-        special_params = create_special_params()
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        special_params = create_special_category_objects(uclh = True)
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,
@@ -264,26 +240,40 @@ class TestCreatePredictions(unittest.TestCase):
             y1=self.y1,
             x2=self.x2,
             y2=self.y2,
-            special_params=special_params
-
+            special_params=special_params,
         )
 
         # print(predictions)
 
-
         self.assertIsInstance(predictions, dict)
-        self.assertIn('paediatric', predictions)
-        self.assertIn('medical', predictions)
-        self.assertIn('in_ed', predictions['paediatric'])
-        self.assertIn('yet_to_arrive', predictions['paediatric'])
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
 
-        self.assertEqual(predictions['paediatric']["in_ed"], [1, 1])
-        self.assertEqual(predictions['medical']["in_ed"], [10, 9])
+        self.assertEqual(predictions["paediatric"]["in_ed"], [1, 1])
+        self.assertEqual(predictions["medical"]["in_ed"], [10, 9])
 
+    def test_incorrect_special_params(self):
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
 
+        with self.assertRaises(MissingKeysError):
+            create_predictions(
+                model_file_path=self.model_file_path,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window_hrs=self.prediction_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+                special_params={'dict'},
+            )
+            
     def test_empty_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=0, include_consults=True)
-        # special_params = create_special_params()
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,

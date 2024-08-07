@@ -1,3 +1,6 @@
+from typing import Dict
+from errors import MissingKeysError
+
 def create_special_category_objects(uclh):
     special_category_dict = {
         "medical": 0.0,
@@ -26,5 +29,18 @@ def create_special_category_objects(uclh):
         "default": default_specialty,
     }
 
-    return special_category_dict, special_category_func, special_func_map
+    special_params = {
+        "special_category_func": special_category_func,
+        "special_category_dict": special_category_dict,
+        "special_func_map": special_func_map,
+    }
 
+    return special_params
+
+
+def validate_special_category_objects(special_params: Dict[str, any]) -> None:
+    required_keys = ["special_category_func", "special_category_dict", "special_func_map"]
+    missing_keys = [key for key in required_keys if key not in special_params]
+
+    if missing_keys:
+        raise MissingKeysError(missing_keys)

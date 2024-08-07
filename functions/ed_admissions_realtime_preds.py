@@ -14,6 +14,8 @@ from predict.emergency_demand.admission_in_prediction_window_using_aspirational_
     calculate_probability,
 )
 
+from ed_specialty_paediatric_functions import validate_special_category_objects
+
 
 def add_missing_columns(pipeline, df):
     # check input data for missing columns
@@ -152,15 +154,7 @@ def create_predictions(
     """
 
     if special_params:
-        required_keys = [
-            "special_category_func",
-            "special_category_dict",
-            "special_func_map",
-        ]
-        if not all(key in special_params for key in required_keys):
-            raise ValueError(
-                f"special_params must include {required_keys} if specified."
-            )
+        validate_special_category_objects(special_params)
         special_category_func = special_params["special_category_func"]
         special_category_dict = special_params["special_category_dict"]
         special_func_map = special_params["special_func_map"]
