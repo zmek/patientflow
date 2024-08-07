@@ -54,6 +54,7 @@ from predict.emergency_demand.yet_to_arrive import (
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
+
 def find_nearest_previous_prediction_time(requested_time, prediction_times):
     """
     Finds the nearest previous time of day in 'prediction_times' relative to the requested time.
@@ -70,7 +71,7 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
     """
     if requested_time in prediction_times:
         return requested_time
-        
+
     original_prediction_time = requested_time
     requested_datetime = datetime.strptime(
         f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
@@ -104,8 +105,9 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
         f"Time of day requested of {original_prediction_time} was not in model training. "
         f"Reverting to predictions for {closest_prediction_time}."
     )
-    
+
     return closest_prediction_time
+
 
 class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
     """
@@ -328,7 +330,6 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                     prediction_time = find_nearest_previous_prediction_time(
                         prediction_time, self.prediction_times
                     )
-
 
                 lambda_t = self.weights[filter_key][prediction_time].get("lambda_t")
                 if lambda_t is None:

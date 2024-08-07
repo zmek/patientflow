@@ -2,8 +2,6 @@ from joblib import load
 from errors import ModelLoadError
 
 
-
-
 def get_model_name(model_name, prediction_time_):
     """
     Create a model name based on the time of day.
@@ -67,7 +65,9 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         return model
     except FileNotFoundError:
         # print(f"Model named {model_name} not found at path: {model_file_path}")
-        raise ModelLoadError(f"Model named {model_name} not found at path: {model_file_path}")
+        raise ModelLoadError(
+            f"Model named {model_name} not found at path: {model_file_path}"
+        )
     except Exception as e:
         # print(f"Error loading model: {e}")
         raise ModelLoadError(f"Error loading model: {e}")

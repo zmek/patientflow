@@ -175,7 +175,9 @@ def model_input_to_pred_proba(model_input, model):
         return pd.DataFrame(columns=["pred_proba"])
     else:
         predictions = model.predict_proba(model_input)[:, 1]
-        return pd.DataFrame(predictions, index=model_input.index, columns=["pred_proba"])
+        return pd.DataFrame(
+            predictions, index=model_input.index, columns=["pred_proba"]
+        )
 
 
 def pred_proba_to_pred_demand(predictions_proba, weights=None):
@@ -198,7 +200,6 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     """
     n = len(predictions_proba)
 
-
     if n == 0:
         pred_demand_dict = {0: 1}
     else:
@@ -210,7 +211,7 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
         expression = build_expression(syms, n)
         expression = expression_subs(expression, n, local_proba["pred_proba"])
         pred_demand_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
-    
+
     pred_demand = pd.DataFrame.from_dict(
         pred_demand_dict, orient="index", columns=["agg_proba"]
     )
