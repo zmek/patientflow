@@ -198,7 +198,6 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     """
     n = len(predictions_proba)
 
-    print(predictions_proba)
 
     if n == 0:
         pred_demand_dict = {0: 1}

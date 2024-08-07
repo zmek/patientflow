@@ -32,6 +32,7 @@ from xgboost import XGBClassifier
 import os
 import numpy as np
 
+from errors import ModelLoadError
 
 # Example usage:
 # Assuming you have a dataframe `df` with the necessary columns
@@ -191,7 +192,20 @@ class TestCreatePredictions(unittest.TestCase):
         full_path = self.model_file_path /  str('ed_specialty.joblib')        
         joblib.dump(model, full_path)
                     
-    def create_yta_model(self):
+    def create_yta_model(self, prediction_window_hrs=None):
+        if prediction_window_hrs is None:
+            prediction_window_hrs = self.prediction_window_hrs
+
+        lambdas = {
+            'medical': 5,
+            'paediatric': 3,
+            'surgical': 2,
+            'haem/onc': 1
+        }
+        model = PoissonModel(lambdas)
+
+        full_path = self.model_file_path / f'ed_yet_to_arrive_by_spec_{str(int(prediction_window_hrs))}_hours.joblib'
+        joblib.dump(model, full_path)
         lambdas = {
             'medical': 5,
             'paediatric': 3,
@@ -200,7 +214,7 @@ class TestCreatePredictions(unittest.TestCase):
         }
         model = PoissonModel(lambdas)
         
-        full_path = self.model_file_path /  str('ed_yet_to_arrive_by_spec_8_hours.joblib')        
+        full_path = self.model_file_path /  f'ed_yet_to_arrive_by_spec_{str(int(self.prediction_window_hrs))}_hours.joblib'    
         joblib.dump(model, full_path)
         
     # def test_basic_functionality(self):
@@ -220,8 +234,6 @@ class TestCreatePredictions(unittest.TestCase):
     #         special_params=None
 
     #     )
-
-    #     # print(predictions)
 
     #     self.assertIsInstance(predictions, dict)
     #     self.assertIn('paediatric', predictions)
@@ -248,8 +260,6 @@ class TestCreatePredictions(unittest.TestCase):
 
     #     )
 
-    #     # print(predictions)
-
     #     self.assertIsInstance(predictions, dict)
     #     self.assertIn('paediatric', predictions)
     #     self.assertIn('medical', predictions)
@@ -273,8 +283,6 @@ class TestCreatePredictions(unittest.TestCase):
             y2=self.y2,
             special_params=None
         )
-
-        print(predictions)
 
         self.assertIsInstance(predictions, dict)
         for specialty in self.specialties:
@@ -301,11 +309,33 @@ class TestCreatePredictions(unittest.TestCase):
         for specialty in self.specialties:
             self.assertEqual(predictions[specialty]['in_ed'], [0, 0])
 
+    def test_model_not_found(self):
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        non_existing_window_hrs = 10.0
+
+        with self.assertRaises(ModelLoadError):
+            create_predictions(
+                model_file_path=self.model_file_path,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window_hrs=non_existing_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+                special_params=None
+            )
+
     def test_prediction_window_extremes(self):
         prediction_snapshots = create_random_df(n = 50, include_consults = True)
 
         short_window_hrs = 0.1
         long_window_hrs = 100.0
+
+        self.create_yta_model(prediction_window_hrs=short_window_hrs)
+        self.create_yta_model(prediction_window_hrs=long_window_hrs)
 
         short_window_predictions = create_predictions(
             model_file_path=self.model_file_path,

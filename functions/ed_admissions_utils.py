@@ -1,7 +1,7 @@
 from joblib import load
+from errors import ModelLoadError
 
-class ModelLoadError(Exception):
-    pass
+
 
 
 def get_model_name(model_name, prediction_time_):
