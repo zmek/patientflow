@@ -66,7 +66,7 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
         prediction_times (list): List of available prediction times.
 
     Returns:
-        tuple: The closest previous time of day from 'prediction_times'.
+        closest_prediction_time (tuple): The closest previous time of day from 'prediction_times'.
 
     """
     if requested_time in prediction_times:
