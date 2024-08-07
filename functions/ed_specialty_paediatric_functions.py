@@ -1,5 +1,6 @@
-from typing import Dict
+from typing import Dict, Any
 from errors import MissingKeysError
+
 
 def create_special_category_objects(uclh):
     special_category_dict = {
@@ -38,8 +39,12 @@ def create_special_category_objects(uclh):
     return special_params
 
 
-def validate_special_category_objects(special_params: Dict[str, any]) -> None:
-    required_keys = ["special_category_func", "special_category_dict", "special_func_map"]
+def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
+    required_keys = [
+        "special_category_func",
+        "special_category_dict",
+        "special_func_map",
+    ]
     missing_keys = [key for key in required_keys if key not in special_params]
 
     if missing_keys:

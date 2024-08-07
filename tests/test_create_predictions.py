@@ -84,7 +84,6 @@ def create_random_df(n=1000, include_consults=False):
     return df
 
 
-
 class ProbabilityModel:
     def __init__(self, probabilities):
         self.probabilities = probabilities
@@ -227,7 +226,7 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_basic_functionality_with_special_category(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
-        special_params = create_special_category_objects(uclh = True)
+        special_params = create_special_category_objects(uclh=True)
 
         predictions = create_predictions(
             model_file_path=self.model_file_path,
@@ -269,9 +268,9 @@ class TestCreatePredictions(unittest.TestCase):
                 y1=self.y1,
                 x2=self.x2,
                 y2=self.y2,
-                special_params={'dict'},
+                special_params={"dict"},
             )
-            
+
     def test_empty_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=0, include_consults=True)
 
