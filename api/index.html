@@ -3196,7 +3196,14 @@ weights : pandas.Series, optional
 <span class="normal">342</span>
 <span class="normal">343</span>
 <span class="normal">344</span>
-<span class="normal">345</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate probability distributions for each snapshot date based on given model predictions.</span>
 
@@ -3242,23 +3249,30 @@ weights : pandas.Series, optional
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="k">for</span> <span class="n">dt</span><span class="p">,</span> <span class="n">snapshots_to_include</span> <span class="ow">in</span> <span class="n">snapshots_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="c1"># Ensure the lengths of test features and outcomes are equal</span>
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">])</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span>
-            <span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span>
-        <span class="p">),</span> <span class="s2">&quot;Mismatch in lengths of X_test and y_test snapshots.&quot;</span>
-
-        <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">snapshots_to_include</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Create an empty dictionary for the current snapshot date</span>
+            <span class="n">prob_dist_dict</span><span class="p">[</span><span class="n">dt</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;pred_demand&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;agg_proba&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">]},</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="s2">&quot;actual_demand&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="c1"># Ensure the lengths of test features and outcomes are equal</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">])</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span>
+            <span class="p">),</span> <span class="s2">&quot;Mismatch in lengths of X_test and y_test snapshots.&quot;</span>
 
-        <span class="c1"># Compute the predicted and actual demand for the current snapshot date</span>
-        <span class="n">prob_dist_dict</span><span class="p">[</span><span class="n">dt</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
-            <span class="n">X_test</span><span class="o">=</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
-            <span class="n">y_test</span><span class="o">=</span><span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
-            <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-            <span class="n">weights</span><span class="o">=</span><span class="n">prediction_moment_weights</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="c1"># Compute the predicted and actual demand for the current snapshot date</span>
+            <span class="n">prob_dist_dict</span><span class="p">[</span><span class="n">dt</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
+                <span class="n">X_test</span><span class="o">=</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
+                <span class="n">y_test</span><span class="o">=</span><span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
+                <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">weights</span><span class="o">=</span><span class="n">prediction_moment_weights</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="c1"># Increment the counter and notify the user every 10 snapshot dates processed</span>
         <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
