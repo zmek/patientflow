@@ -95,7 +95,7 @@ def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
     # If start_dt and end_dt are specified, add any missing keys from prediction_dates
     if start_dt:
 
-        prediction_dates = pd.date_range(start=start_dt, end=end_dt, freq='D').date.tolist()
+        prediction_dates = pd.date_range(start=start_dt, end=end_dt, freq='D').date.tolist()[:-1]
         for dt in prediction_dates:
             if dt not in snapshots_dict:
                 print(dt)

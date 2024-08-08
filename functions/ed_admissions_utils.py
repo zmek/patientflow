@@ -40,7 +40,7 @@ def preprocess_data(
 
     if single_snapshot_per_visit:
         # Group by 'visit_number' and get the row with the maximum 'random_number'
-        df_single = select_one_snapshot_per_visit(df_tod)
+        df_single = select_one_snapshot_per_visit(df_tod, visit_col = 'visit_number')
 
         # Create label array with the same index
         y = df_single.pop("is_admitted").astype(int)
