@@ -317,17 +317,17 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     count = 0
 
     for dt, snapshots_to_include in snapshots_dict.items():
-
         if len(snapshots_to_include) == 0:
             # Create an empty dictionary for the current snapshot date
-            prob_dist_dict[dt] = {'pred_demand': pd.DataFrame({"agg_proba": [1]}, index=[0]),
-                                  'actual_demand': 0}
+            prob_dist_dict[dt] = {
+                "pred_demand": pd.DataFrame({"agg_proba": [1]}, index=[0]),
+                "actual_demand": 0,
+            }
         else:
             # Ensure the lengths of test features and outcomes are equal
             assert len(X_test.loc[snapshots_to_include]) == len(
                 y_test.loc[snapshots_to_include]
             ), "Mismatch in lengths of X_test and y_test snapshots."
-
 
             if weights is None:
                 prediction_moment_weights = None
