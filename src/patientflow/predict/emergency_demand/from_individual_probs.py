@@ -317,23 +317,30 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     count = 0
 
     for dt, snapshots_to_include in snapshots_dict.items():
-        # Ensure the lengths of test features and outcomes are equal
-        assert len(X_test.loc[snapshots_to_include]) == len(
-            y_test.loc[snapshots_to_include]
-        ), "Mismatch in lengths of X_test and y_test snapshots."
-
-        if weights is None:
-            prediction_moment_weights = None
+        if len(snapshots_to_include) == 0:
+            # Create an empty dictionary for the current snapshot date
+            prob_dist_dict[dt] = {
+                "pred_demand": pd.DataFrame({"agg_proba": [1]}, index=[0]),
+                "actual_demand": 0,
+            }
         else:
-            prediction_moment_weights = weights.loc[snapshots_to_include].values
+            # Ensure the lengths of test features and outcomes are equal
+            assert len(X_test.loc[snapshots_to_include]) == len(
+                y_test.loc[snapshots_to_include]
+            ), "Mismatch in lengths of X_test and y_test snapshots."
 
-        # Compute the predicted and actual demand for the current snapshot date
-        prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
-            X_test=X_test.loc[snapshots_to_include],
-            y_test=y_test.loc[snapshots_to_include],
-            model=model,
-            weights=prediction_moment_weights,
-        )
+            if weights is None:
+                prediction_moment_weights = None
+            else:
+                prediction_moment_weights = weights.loc[snapshots_to_include].values
+
+            # Compute the predicted and actual demand for the current snapshot date
+            prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
+                X_test=X_test.loc[snapshots_to_include],
+                y_test=y_test.loc[snapshots_to_include],
+                model=model,
+                weights=prediction_moment_weights,
+            )
 
         # Increment the counter and notify the user every 10 snapshot dates processed
         count += 1

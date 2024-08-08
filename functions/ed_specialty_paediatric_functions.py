@@ -22,12 +22,13 @@ def create_special_category_objects(uclh):
     else:
         special_category_func = is_paediatric_non_uclh
 
-    def default_specialty(row):
-        return True  # Default function for other specialties
+    # Function to return the opposite of special_category_func
+    def opposite_special_category_func(row):
+        return not special_category_func(row)
 
     special_func_map = {
         "paediatric": special_category_func,
-        "default": default_specialty,
+        "default": opposite_special_category_func,
     }
 
     special_params = {
