@@ -60,22 +60,3 @@ def preprocess_data(
     # include one one snapshot per visit and drop the random number
 
 
-def load_saved_model(model_file_path, model_name, prediction_time=None):
-    if prediction_time:
-        # retrieve model based on the time of day it is trained for
-        model_name = get_model_name(model_name, prediction_time)
-
-    full_path = model_file_path / model_name
-    full_path = full_path.with_suffix(".joblib")
-
-    try:
-        model = load(full_path)
-        return model
-    except FileNotFoundError:
-        # print(f"Model named {model_name} not found at path: {model_file_path}")
-        raise ModelLoadError(
-            f"Model named {model_name} not found at path: {model_file_path}"
-        )
-    except Exception as e:
-        # print(f"Error loading model: {e}")
-        raise ModelLoadError(f"Error loading model: {e}")

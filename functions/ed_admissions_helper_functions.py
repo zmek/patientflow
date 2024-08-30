@@ -1,7 +1,7 @@
 import pandas as pd
-from load import ed_admissions_get_data
-from ed_admissions_utils import load_saved_model, preprocess_data
-
+from load import data_from_csv
+from ed_admissions_utils import preprocess_data
+from load import load_saved_model
 
 def prepare_for_inference(
     model_file_path,
@@ -19,7 +19,7 @@ def prepare_for_inference(
         return model
 
     if data_path:
-        df = ed_admissions_get_data(data_path)
+        df = data_from_csv(data_path)
     elif df is None or df.empty:
         print("Please supply a dataset if not passing a data path")
         return None
