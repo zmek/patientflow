@@ -1,5 +1,5 @@
 import pandas as pd
-from ed_admissions_data_retrieval import ed_admissions_get_data
+from load import ed_admissions_get_data
 from ed_admissions_utils import load_saved_model, preprocess_data
 
 
