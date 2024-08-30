@@ -9,8 +9,7 @@ from pathlib import Path
 import pandas as pd
 from joblib import load
 from errors import ModelLoadError
-from ed_admissions_utils import get_model_name
-
+from prepare import get_model_name
 
 def safe_literal_eval(s):
     try:
@@ -21,10 +20,7 @@ def safe_literal_eval(s):
         return None
 
 
-
-def data_from_csv(csv_path, index_column = None, 
-                  sort_columns = None, 
-                            eval_columns = None):
+def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
     """
     Loads data from csv file
 
@@ -48,7 +44,7 @@ def data_from_csv(csv_path, index_column = None,
     except Exception as e:
         print(f"Error loading data: {e}")
         return None
-    
+
     if index_column:
         try:
             if df.index.name != index_column:

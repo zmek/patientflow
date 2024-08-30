@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from ed_admissions_helper_functions import (
+from prepare import (
     get_specialty_probs,
     prepare_for_inference,
 )
