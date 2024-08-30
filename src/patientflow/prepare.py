@@ -86,6 +86,7 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
     if missing_keys:
         raise MissingKeysError(missing_keys)
 
+
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
     # Generate random numbers if not present
     if "random_number" not in df.columns:
@@ -219,7 +220,7 @@ def prepare_for_inference(
     except KeyError:
         print("Column training_validation_test not found in dataframe")
         return None
-    
+
     X_test, y_test = get_snapshots_at_prediction_time(
         test_df,
         prediction_time,
@@ -324,5 +325,3 @@ def calculate_time_varying_arrival_rates(df, time_interval):
         _start_datetime = _start_datetime + timedelta(minutes=time_interval)
 
     return arrival_rates_dict
-
-

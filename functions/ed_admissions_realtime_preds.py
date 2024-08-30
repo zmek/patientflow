@@ -14,7 +14,7 @@ from predict.admission_in_prediction_window_using_aspirational_curve import (
 
 from predict.specialty_of_admission import get_specialty_probs
 
-from prepare_uclh_specific import validate_special_category_objects
+from prepare import validate_special_category_objects
 
 
 def add_missing_columns(pipeline, df):

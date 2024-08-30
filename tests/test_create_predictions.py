@@ -24,7 +24,7 @@ sys.path.append(
 
 from ed_admissions_realtime_preds import create_predictions
 from load import get_model_name
-from prepare_uclh_specific import create_special_category_objects
+from prepare import create_special_category_objects
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder

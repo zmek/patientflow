@@ -1,9 +1,9 @@
 """
 Module for calculating specialty probability distributions for patient visits.
 
-This module provides a function `get_specialty_probs` that leverages a predictive model 
-to compute specialty probability distributions for patient visits based on their data. 
-It supports custom classification of certain visits into special categories that can 
+This module provides a function `get_specialty_probs` that leverages a predictive model
+to compute specialty probability distributions for patient visits based on their data.
+It supports custom classification of certain visits into special categories that can
 have predefined probability distributions.
 
 Functions
@@ -12,8 +12,8 @@ get_specialty_probs(model_file_path, snapshots_df, special_category_func=None, s
     Calculate specialty probability distributions for patient visits based on their data.
 """
 
-import pandas as pd
 from prepare import prepare_for_inference
+
 
 def get_specialty_probs(
     model_file_path,
