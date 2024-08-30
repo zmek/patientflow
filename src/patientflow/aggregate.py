@@ -31,7 +31,7 @@ Example Usage:
 
 Note:
     This module is designed to be generic and can be adapted to various domains where aggregate
-    prediction is applicable. 
+    prediction is applicable.
 
 """
 

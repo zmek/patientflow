@@ -1,3 +1,31 @@
+"""
+Module for preparing data, loading models, and organizing snapshots for inference.
+
+This module provides functionality to load a trained model, prepare data for
+making predictions, and organize snapshot data. It allows for selecting one 
+snapshot per visit, filtering snapshots by prediction time, and mapping 
+snapshot dates to corresponding indices.
+
+Functions
+---------
+prepare_for_inference(model_file_path, model_name, prediction_time=None,
+                      model_only=False, df=None, data_path=None,
+                      single_snapshot_per_visit=True, index_column='snapshot_id',
+                      sort_columns=None, eval_columns=None,
+                      exclude_from_training_data=None)
+    Loads a model and prepares data for inference.
+
+select_one_snapshot_per_visit(df, visit_col, seed=42)
+    Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
+
+get_snapshots_at_prediction_time(df, prediction_time_, exclude_columns, single_snapshot_per_visit=True)
+    Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
+
+prepare_snapshots_dict(df, start_dt=None, end_dt=None)
+    Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
+"""
+
+
 import pandas as pd
 import numpy as np
 from load import data_from_csv, load_saved_model
@@ -44,23 +72,7 @@ def get_snapshots_at_prediction_time(
 
 
 
-"""
-Module for preparing data and loading models for inference.
 
-This module provides functionality to load a trained model and prepare data for 
-making predictions. It allows either returning the model alone or returning 
-prepared features and labels along with the model.
-
-Functions
----------
-prepare_for_inference(model_file_path, model_name, prediction_time=None, 
-                      model_only=False, df=None, data_path=None, 
-                      single_snapshot_per_visit=True, index_column='snapshot_id', 
-                      sort_columns=None, eval_columns=None, 
-                      exclude_from_training_data=None)
-    Loads a model and prepares data for inference.
-
-"""
 
 def prepare_for_inference(
     model_file_path,
@@ -69,18 +81,18 @@ def prepare_for_inference(
     model_only=False,
     df=None,
     data_path=None,
-    single_snapshot_per_visit=True, 
-    index_column='snapshot_id',
-    sort_columns=None, 
-    eval_columns=None, 
-    exclude_from_training_data=None
+    single_snapshot_per_visit=True,
+    index_column="snapshot_id",
+    sort_columns=None,
+    eval_columns=None,
+    exclude_from_training_data=None,
 ):
     """
     Load a trained model and prepare data for making predictions.
 
-    This function retrieves a trained model from a specified file path and, 
-    if requested, prepares the data required for inference. The data can be 
-    provided either as a DataFrame or as a file path to a CSV file. The function 
+    This function retrieves a trained model from a specified file path and,
+    if requested, prepares the data required for inference. The data can be
+    provided either as a DataFrame or as a file path to a CSV file. The function
     allows filtering and processing of the data to match the model's requirements.
 
     Parameters
@@ -90,16 +102,16 @@ def prepare_for_inference(
     model_name : str
         The name of the model to be loaded.
     prediction_time : str, optional
-        The time at which predictions are to be made. This is used to filter 
+        The time at which predictions are to be made. This is used to filter
         the data for the relevant time snapshot.
     model_only : bool, optional
-        If True, only the model is returned. If False, both the prepared data 
+        If True, only the model is returned. If False, both the prepared data
         and the model are returned. Default is False.
     df : pandas.DataFrame, optional
-        The DataFrame containing the data to be used for inference. If not 
+        The DataFrame containing the data to be used for inference. If not
         provided, data_path must be specified.
     data_path : str, optional
-        The file path to a CSV file containing the data to be used for inference. 
+        The file path to a CSV file containing the data to be used for inference.
         Ignored if `df` is provided.
     single_snapshot_per_visit : bool, optional
         If True, only a single snapshot per visit is considered. Default is True.
@@ -108,7 +120,7 @@ def prepare_for_inference(
     sort_columns : list of str, optional
         The columns to sort the data by. Default is ["visit_number", "snapshot_date", "prediction_time"].
     eval_columns : list of str, optional
-        The columns that require literal evaluation of their content when loading from csv. 
+        The columns that require literal evaluation of their content when loading from csv.
         Default is ["prediction_time", "consultation_sequence", "final_sequence"].
     exclude_from_training_data : list of str, optional
         The columns to be excluded from the training data. Default is ["visit_number", "snapshot_date", "prediction_time"].
@@ -129,11 +141,11 @@ def prepare_for_inference(
 
     Notes
     -----
-    Either `df` or `data_path` must be provided. If neither is provided or if `df` 
+    Either `df` or `data_path` must be provided. If neither is provided or if `df`
     is empty, the function will print an error message and return None.
 
     """
-    
+
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
@@ -153,7 +165,7 @@ def prepare_for_inference(
             .copy()
         )
     except KeyError:
-        print(f"Column training_validation_test not found in dataframe")
+        print("Column training_validation_test not found in dataframe")
         return None
 
     X_test, y_test = get_snapshots_at_prediction_time(
