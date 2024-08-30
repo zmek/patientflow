@@ -10,7 +10,7 @@ from aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )
-from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
+from predict.admission_in_prediction_window_using_aspirational_curve import (
     calculate_probability,
 )
 

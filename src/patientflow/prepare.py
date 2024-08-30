@@ -2,7 +2,7 @@
 Module for preparing data, loading models, and organizing snapshots for inference.
 
 This module provides functionality to load a trained model, prepare data for
-making predictions, and organize snapshot data. It allows for selecting one 
+making predictions, calculate arrival rates, and organize snapshot data. It allows for selecting one 
 snapshot per visit, filtering snapshots by prediction time, and mapping 
 snapshot dates to corresponding indices.
 
@@ -23,12 +23,17 @@ get_snapshots_at_prediction_time(df, prediction_time_, exclude_columns, single_s
 
 prepare_snapshots_dict(df, start_dt=None, end_dt=None)
     Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
+
+calculate_time_varying_arrival_rates(df, time_interval)
+    Calculates the time-varying arrival rates for a dataset indexed by datetime.
 """
 
 
 import pandas as pd
 import numpy as np
 from load import data_from_csv, load_saved_model
+from datetime import datetime, timedelta
+
 
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
@@ -69,9 +74,6 @@ def get_snapshots_at_prediction_time(
         return df_tod, y
 
     # include one one snapshot per visit and drop the random number
-
-
-
 
 
 def prepare_for_inference(
@@ -212,6 +214,69 @@ def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
                 snapshots_dict[dt] = []
 
     return snapshots_dict
+
+
+
+
+def calculate_time_varying_arrival_rates(df, time_interval):
+    """
+    Calculate the time-varying arrival rates for a dataset indexed by datetime.
+
+    This function computes the arrival rates for each time interval specified, across the entire date range present in the dataframe. The arrival rate is calculated as the number of entries in the dataframe for each time interval, divided by the number of days in the dataset's timespan.
+
+    Parameters
+    df (pandas.DataFrame): A DataFrame indexed by datetime, representing the data for which arrival rates are to be calculated. The index of the DataFrame should be of datetime type.
+    time_interval (int): The time interval, in minutes, for which the arrival rates are to be calculated. For example, if `time_interval=60`, the function will calculate hourly arrival rates.
+
+    Returns
+    dict: A dictionary where the keys are the start times of each interval (as `datetime.time` objects), and the values are the corresponding arrival rates (as floats).
+
+    Raises
+    TypeError: If the index of the DataFrame is not a datetime index.
+
+    """
+    # Validate that the DataFrame index is a datetime object
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise TypeError("The DataFrame index must be a DatetimeIndex.")
+
+    # Determine the start and end date of the data
+    start_dt = df.index.min()
+    end_dt = df.index.max()
+
+    # Convert start and end times to datetime if they are not already
+    if not isinstance(start_dt, datetime):
+        start_dt = datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S%z")
+
+    if not isinstance(end_dt, datetime):
+        end_dt = datetime.strptime(end_dt, "%Y-%m-%d %H:%M:%S%z")
+
+    # Calculate the total number of days covered by the dataset
+    num_days = pd.Series(df.index.date).nunique()
+    print(
+        f"Calculating time-varying arrival rates for data provided, which spans {num_days} unique dates"
+    )
+
+    arrival_rates_dict = {}
+
+    # Initialize a time object to iterate through one day in the specified intervals
+    _start_datetime = datetime(1970, 1, 1, 0, 0, 0, 0)
+    _stop_datetime = _start_datetime + timedelta(days=1)
+
+    # Iterate over each interval in a single day to calculate the arrival rate
+    while _start_datetime != _stop_datetime:
+        _start_time = _start_datetime.time()
+        _end_time = (_start_datetime + timedelta(minutes=time_interval)).time()
+
+        # Filter the dataframe for entries within the current time interval
+        _df = df.between_time(_start_time, _end_time, inclusive="left")
+
+        # Calculate and store the arrival rate for the interval
+        arrival_rates_dict[_start_time] = _df.shape[0] / num_days
+
+        # Move to the next interval
+        _start_datetime = _start_datetime + timedelta(minutes=time_interval)
+
+    return arrival_rates_dict
 
 
 def get_specialty_probs(
