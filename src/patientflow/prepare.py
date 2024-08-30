@@ -1,23 +1,6 @@
 import pandas as pd
+import numpy as np
 from load import data_from_csv, load_saved_model
-
-
-
-def get_model_name(model_name, prediction_time_):
-    """
-    Create a model name based on the time of day.
-
-    Parameters
-    prediction_time_ (tuple): A tuple representing the time of day (hour, minute).
-
-    Returns
-    str: A string representing the model name based on the time of day.
-
-    """
-    hour_, min_ = prediction_time_
-    min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
-    model_name = model_name + "_" + f"{hour_:02}" + min_
-    return model_name
 
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
@@ -61,6 +44,24 @@ def get_snapshots_at_prediction_time(
 
 
 
+"""
+Module for preparing data and loading models for inference.
+
+This module provides functionality to load a trained model and prepare data for 
+making predictions. It allows either returning the model alone or returning 
+prepared features and labels along with the model.
+
+Functions
+---------
+prepare_for_inference(model_file_path, model_name, prediction_time=None, 
+                      model_only=False, df=None, data_path=None, 
+                      single_snapshot_per_visit=True, index_column='snapshot_id', 
+                      sort_columns=None, eval_columns=None, 
+                      exclude_from_training_data=None)
+    Loads a model and prepares data for inference.
+
+"""
+
 def prepare_for_inference(
     model_file_path,
     model_name,
@@ -68,8 +69,71 @@ def prepare_for_inference(
     model_only=False,
     df=None,
     data_path=None,
-    single_snapshot_per_visit=True,
+    single_snapshot_per_visit=True, 
+    index_column='snapshot_id',
+    sort_columns=None, 
+    eval_columns=None, 
+    exclude_from_training_data=None
 ):
+    """
+    Load a trained model and prepare data for making predictions.
+
+    This function retrieves a trained model from a specified file path and, 
+    if requested, prepares the data required for inference. The data can be 
+    provided either as a DataFrame or as a file path to a CSV file. The function 
+    allows filtering and processing of the data to match the model's requirements.
+
+    Parameters
+    ----------
+    model_file_path : str
+        The file path where the trained model is saved.
+    model_name : str
+        The name of the model to be loaded.
+    prediction_time : str, optional
+        The time at which predictions are to be made. This is used to filter 
+        the data for the relevant time snapshot.
+    model_only : bool, optional
+        If True, only the model is returned. If False, both the prepared data 
+        and the model are returned. Default is False.
+    df : pandas.DataFrame, optional
+        The DataFrame containing the data to be used for inference. If not 
+        provided, data_path must be specified.
+    data_path : str, optional
+        The file path to a CSV file containing the data to be used for inference. 
+        Ignored if `df` is provided.
+    single_snapshot_per_visit : bool, optional
+        If True, only a single snapshot per visit is considered. Default is True.
+    index_column : str, optional
+        The name of the index column in the data. Default is 'snapshot_id'.
+    sort_columns : list of str, optional
+        The columns to sort the data by. Default is ["visit_number", "snapshot_date", "prediction_time"].
+    eval_columns : list of str, optional
+        The columns that require literal evaluation of their content when loading from csv. 
+        Default is ["prediction_time", "consultation_sequence", "final_sequence"].
+    exclude_from_training_data : list of str, optional
+        The columns to be excluded from the training data. Default is ["visit_number", "snapshot_date", "prediction_time"].
+
+    Returns
+    -------
+    model : object
+        The loaded model.
+    X_test : pandas.DataFrame, optional
+        The features prepared for testing, returned only if model_only is False.
+    y_test : pandas.Series, optional
+        The labels corresponding to X_test, returned only if model_only is False.
+
+    Raises
+    ------
+    KeyError
+        If the 'training_validation_test' column is not found in the provided DataFrame.
+
+    Notes
+    -----
+    Either `df` or `data_path` must be provided. If neither is provided or if `df` 
+    is empty, the function will print an error message and return None.
+
+    """
+    
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
@@ -77,25 +141,20 @@ def prepare_for_inference(
         return model
 
     if data_path:
-        df = data_from_csv(data_path, index_column = 'snapshot_id')
+        df = data_from_csv(data_path, index_column, sort_columns, eval_columns)
     elif df is None or df.empty:
         print("Please supply a dataset if not passing a data path")
         return None
 
-    test_df = (
-        df[df.training_validation_test == "test"]
-        .drop(columns="training_validation_test")
-        .copy()
-    )
-
-    # print("Prep for inference - test_df")
-    # print(test_df.index)
-
-    exclude_from_training_data = [
-        "visit_number",
-        "snapshot_date",
-        "prediction_time",
-    ]
+    try:
+        test_df = (
+            df[df.training_validation_test == "test"]
+            .drop(columns="training_validation_test")
+            .copy()
+        )
+    except KeyError:
+        print(f"Column training_validation_test not found in dataframe")
+        return None
 
     X_test, y_test = get_snapshots_at_prediction_time(
         test_df,
@@ -104,17 +163,12 @@ def prepare_for_inference(
         single_snapshot_per_visit,
     )
 
-    # print("Prep for inference - X_test")
-    # print(X_test.index)
-    # print("Prep for inference - y_test")
-    # print(y_test.index)
-
     return X_test, y_test, model
 
 
 def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
     """
-    Prepares a dictionary mapping horizon dates to their corresponding snapshot indices.
+    Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
 
     Args:
     df (pd.DataFrame): DataFrame containing at least a 'snapshot_date' column which represents the dates.

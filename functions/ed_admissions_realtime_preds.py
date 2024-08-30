@@ -6,9 +6,9 @@ from prepare import (
     get_specialty_probs,
     prepare_for_inference,
 )
-from predict.emergency_demand.from_individual_probs import (
+from aggregate import (
     model_input_to_pred_proba,
-    pred_proba_to_pred_demand,
+    pred_proba_to_agg_predicted,
 )
 from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
     calculate_probability,
@@ -232,21 +232,21 @@ def create_predictions(
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
 
-        pred_demand_in_ed = pred_proba_to_pred_demand(
+        agg_predicted_in_ed = pred_proba_to_agg_predicted(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
         prediction_context = {specialty: {"prediction_time": prediction_time}}
-        pred_demand_yta = yet_to_arrive_model.predict(
+        agg_predicted_yta = yet_to_arrive_model.predict(
             prediction_context, x1, y1, x2, y2
         )
 
         predictions[specialty]["in_ed"] = [
-            index_of_sum(pred_demand_in_ed["agg_proba"].values.cumsum(), cut_point)
+            index_of_sum(agg_predicted_in_ed["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
         predictions[specialty]["yet_to_arrive"] = [
             index_of_sum(
-                pred_demand_yta[specialty]["agg_proba"].values.cumsum(), cut_point
+                agg_predicted_yta[specialty]["agg_proba"].values.cumsum(), cut_point
             )
             for cut_point in cdf_cut_points
         ]

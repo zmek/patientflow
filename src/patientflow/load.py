@@ -9,7 +9,8 @@ from pathlib import Path
 import pandas as pd
 from joblib import load
 from errors import ModelLoadError
-from prepare import get_model_name
+
+
 
 def safe_literal_eval(s):
     try:
@@ -68,6 +69,22 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     return df
 
+
+def get_model_name(model_name, prediction_time_):
+    """
+    Create a model name based on the time of day.
+
+    Parameters
+    prediction_time_ (tuple): A tuple representing the time of day (hour, minute).
+
+    Returns
+    str: A string representing the model name based on the time of day.
+
+    """
+    hour_, min_ = prediction_time_
+    min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
+    model_name = model_name + "_" + f"{hour_:02}" + min_
+    return model_name
 
 def load_saved_model(model_file_path, model_name, prediction_time=None):
     if prediction_time:

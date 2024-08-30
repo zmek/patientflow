@@ -11,7 +11,8 @@ from joblib import dump
 import json
 
 from prepare import get_snapshots_at_prediction_time
-from prepare import get_model_name
+from load import get_model_name
+
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
     """
