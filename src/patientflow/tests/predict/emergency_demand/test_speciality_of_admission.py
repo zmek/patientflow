@@ -1,13 +1,12 @@
 import unittest
 import numpy as np
 import pandas as pd
-from predict.emergency_demand.specialty_of_admission import (
-    SpecialityPredictor,
-)
+from predictors import SequencePredictor
+
 from sklearn.model_selection import train_test_split
 
 
-class TestSpecialityPredictor(unittest.TestCase):
+class TestSequencePredictor(unittest.TestCase):
     def setUp(self):
         # Sample data generation as provided
         np.random.seed(42)  # For reproducibility
@@ -92,7 +91,7 @@ class TestSpecialityPredictor(unittest.TestCase):
             test_size=0.2,
             random_state=42,
         )
-        self.predictor = SpecialityPredictor()
+        self.predictor = SequencePredictor()
 
     def test_train_returns_weights_as_dict(self):
         self.predictor.fit(self.train_df)

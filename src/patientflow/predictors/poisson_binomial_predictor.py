@@ -50,8 +50,6 @@ from prepare import (
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
-import numpy as np
-import pandas as pd
 from scipy.stats import binom, poisson
 
 

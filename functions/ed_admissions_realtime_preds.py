@@ -2,10 +2,8 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from prepare import (
-    get_specialty_probs,
-    prepare_for_inference,
-)
+from prepare import prepare_for_inference
+
 from aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
@@ -14,7 +12,9 @@ from predict.admission_in_prediction_window_using_aspirational_curve import (
     calculate_probability,
 )
 
-from ed_specialty_paediatric_functions import validate_special_category_objects
+from predict.specialty_of_admission import get_specialty_probs
+
+from prepare_uclh_specific import validate_special_category_objects
 
 
 def add_missing_columns(pipeline, df):

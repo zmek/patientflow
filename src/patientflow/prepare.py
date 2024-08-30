@@ -2,8 +2,8 @@
 Module for preparing data, loading models, and organizing snapshots for inference.
 
 This module provides functionality to load a trained model, prepare data for
-making predictions, calculate arrival rates, and organize snapshot data. It allows for selecting one 
-snapshot per visit, filtering snapshots by prediction time, and mapping 
+making predictions, calculate arrival rates, and organize snapshot data. It allows for selecting one
+snapshot per visit, filtering snapshots by prediction time, and mapping
 snapshot dates to corresponding indices.
 
 Functions
@@ -28,13 +28,63 @@ calculate_time_varying_arrival_rates(df, time_interval)
     Calculates the time-varying arrival rates for a dataset indexed by datetime.
 """
 
-
 import pandas as pd
 import numpy as np
 from load import data_from_csv, load_saved_model
 from datetime import datetime, timedelta
 
+from typing import Dict, Any
+from errors import MissingKeysError
 
+
+def create_special_category_objects(uclh):
+    special_category_dict = {
+        "medical": 0.0,
+        "surgical": 0.0,
+        "haem/onc": 0.0,
+        "paediatric": 1.0,
+    }
+
+    # Function to determine if the patient is a child
+    def is_paediatric_uclh(row):
+        return row["age_on_arrival"] < 18
+
+    def is_paediatric_non_uclh(row):
+        return row["age_group"] == "0-17"
+
+    if uclh:
+        special_category_func = is_paediatric_uclh
+    else:
+        special_category_func = is_paediatric_non_uclh
+
+    # Function to return the opposite of special_category_func
+    def opposite_special_category_func(row):
+        return not special_category_func(row)
+
+    special_func_map = {
+        "paediatric": special_category_func,
+        "default": opposite_special_category_func,
+    }
+
+    special_params = {
+        "special_category_func": special_category_func,
+        "special_category_dict": special_category_dict,
+        "special_func_map": special_func_map,
+    }
+
+    return special_params
+
+
+def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
+    required_keys = [
+        "special_category_func",
+        "special_category_dict",
+        "special_func_map",
+    ]
+    missing_keys = [key for key in required_keys if key not in special_params]
+
+    if missing_keys:
+        raise MissingKeysError(missing_keys)
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
     # Generate random numbers if not present
@@ -85,9 +135,9 @@ def prepare_for_inference(
     data_path=None,
     single_snapshot_per_visit=True,
     index_column="snapshot_id",
-    sort_columns=None,
-    eval_columns=None,
-    exclude_from_training_data=None,
+    sort_columns=["visit_number", "snapshot_date", "prediction_time"],
+    eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
+    exclude_from_training_data=["visit_number", "snapshot_date", "prediction_time"],
 ):
     """
     Load a trained model and prepare data for making predictions.
@@ -169,7 +219,7 @@ def prepare_for_inference(
     except KeyError:
         print("Column training_validation_test not found in dataframe")
         return None
-
+    
     X_test, y_test = get_snapshots_at_prediction_time(
         test_df,
         prediction_time,
@@ -210,12 +260,9 @@ def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
         ).date.tolist()[:-1]
         for dt in prediction_dates:
             if dt not in snapshots_dict:
-                print(dt)
                 snapshots_dict[dt] = []
 
     return snapshots_dict
-
-
 
 
 def calculate_time_varying_arrival_rates(df, time_interval):
@@ -279,79 +326,3 @@ def calculate_time_varying_arrival_rates(df, time_interval):
     return arrival_rates_dict
 
 
-def get_specialty_probs(
-    model_file_path,
-    snapshots_df,
-    special_category_func=None,
-    special_category_dict=None,
-):
-    """
-    Calculate specialty probability distributions for patient visits based on their data.
-
-    This function applies a predictive model to each row of the input DataFrame to compute
-    specialty probability distributions. Optionally, it can classify certain rows as
-    belonging to a special category (like pediatric cases) based on a user-defined function,
-    applying a fixed probability distribution for these cases.
-
-    Parameters
-    ----------
-    model_file_path : str
-        Path to the predictive model file.
-    snapshots_df : pandas.DataFrame
-        DataFrame containing the data on which predictions are to be made. Must include
-        a 'consultation_sequence' column if no special_category_func is applied.
-    special_category_func : callable, optional
-        A function that takes a DataFrame row (Series) as input and returns True if the row
-        belongs to a special category that requires a fixed probability distribution.
-        If not provided, no special categorization is applied.
-    special_category_dict : dict, optional
-        A dictionary containing the fixed probability distribution for special category cases.
-        This dictionary is applied to rows identified by `special_category_func`. If
-        `special_category_func` is provided, this parameter must also be provided.
-
-    Returns
-    -------
-    pandas.Series
-        A Series containing dictionaries as values. Each dictionary represents the probability
-        distribution of specialties for each patient visit.
-
-    Raises
-    ------
-    ValueError
-        If `special_category_func` is provided but `special_category_dict` is None.
-
-
-    """
-    if special_category_func and not special_category_dict:
-        raise ValueError(
-            "special_category_dict must be provided if special_category_func is specified."
-        )
-
-    # Load model for specialty predictions
-    specialty_model = prepare_for_inference(
-        model_file_path, "ed_specialty", model_only=True
-    )
-
-    # Function to determine the specialty probabilities
-    def determine_specialty(row):
-        if special_category_func and special_category_func(row):
-            return special_category_dict
-        else:
-            return specialty_model.predict(row["consultation_sequence"])
-
-    # Apply the determine_specialty function to each row
-    specialty_prob_series = snapshots_df.apply(determine_specialty, axis=1)
-
-    # Find all unique keys used in any dictionary within the series
-    all_keys = set().union(
-        *(d.keys() for d in specialty_prob_series if isinstance(d, dict))
-    )
-
-    # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
-    specialty_prob_series = specialty_prob_series.apply(
-        lambda d: (
-            {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
-        )
-    )
-
-    return specialty_prob_series
