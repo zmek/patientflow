@@ -13,6 +13,7 @@ from errors import ModelLoadError
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
 
+
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
 ) -> Optional[
@@ -207,7 +208,6 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     except Exception as e:
         # print(f"Error loading model: {e}")
         raise ModelLoadError(f"Error loading model called {model_name}: {e}")
-
 
 
 def set_file_locations(uclh, data_path, config_file_path=None):

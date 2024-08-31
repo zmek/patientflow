@@ -5,9 +5,9 @@ Our intention is to release this folder, and its subfolders, as a Python package
 The package will support predictions of bed demand and discharges by providing functions that
 
 - predict patient-level probabilities of admission and discharge, by specialty
-- create probability distributions predicting number of beds needed for or vacated by those patients, at different levels of aggregation 
+- create probability distributions predicting number of beds needed for or vacated by those patients, at different levels of aggregation
 - return a net bed position by combining predictions of demand and supply of beds
-- evaluate and provide visualisation of the performance of these predictions 
+- evaluate and provide visualisation of the performance of these predictions
 
 The package is intended to serve as a wrapper of the functions typically used for such purposes in the `sklearn` and `scipy` python packages, with additional context to support their application and evaluation in bed management in healthcare
 
