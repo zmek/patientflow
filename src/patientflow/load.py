@@ -87,6 +87,7 @@ def get_model_name(model_name, prediction_time_):
 
 
 def load_saved_model(model_file_path, model_name, prediction_time=None):
+    print(model_name)
     if prediction_time:
         # retrieve model based on the time of day it is trained for
         model_name = get_model_name(model_name, prediction_time)
@@ -104,4 +105,4 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         )
     except Exception as e:
         # print(f"Error loading model: {e}")
-        raise ModelLoadError(f"Error loading model: {e}")
+        raise ModelLoadError(f"Error loading model called {model_name}: {e}")

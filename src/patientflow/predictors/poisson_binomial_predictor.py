@@ -35,7 +35,7 @@ import pandas as pd
 from typing import Dict, List, Optional
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
-from predict.admission_in_prediction_window_using_aspirational_curve import (
+from predict.admission_in_prediction_window import (
     get_y_from_aspirational_curve,
 )
 

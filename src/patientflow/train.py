@@ -75,7 +75,7 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
 
 
 # Initialise the model with given hyperparameters
-def initialise_model(params):
+def initialise_xgb(params):
     model = xgb.XGBClassifier(n_jobs=-1, use_label_encoder=False, eval_metric="logloss")
     model.set_params(**params)
     return model
@@ -183,7 +183,7 @@ def train_models(
 
         # iterate through the grid of hyperparameters
         for g in ParameterGrid(grid):
-            model = initialise_model(g)
+            model = initialise_xgb(g)
 
             # define a column transformer for the ordinal and categorical variables
             column_transformer = create_column_transformer(X_test, ordinal_mappings)

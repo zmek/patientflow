@@ -22,7 +22,7 @@ sys.path.append(
 # sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
 # sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
 
-from ed_admissions_realtime_preds import create_predictions
+from predict.realtime_demand import create_predictions
 from load import get_model_name
 from prepare import create_special_category_objects
 
