@@ -22,9 +22,9 @@ sys.path.append(
 # sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
 # sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
 
-from ed_admissions_realtime_preds import create_predictions
-from ed_admissions_utils import get_model_name
-from ed_specialty_paediatric_functions import create_special_category_objects
+from predict.realtime_demand import create_predictions
+from load import get_model_name
+from prepare import create_special_category_objects
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder

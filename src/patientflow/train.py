@@ -10,7 +10,8 @@ from sklearn.pipeline import Pipeline
 from joblib import dump
 import json
 
-from ed_admissions_utils import get_model_name, preprocess_data
+from prepare import get_snapshots_at_prediction_time
+from load import get_model_name
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -74,7 +75,7 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
 
 
 # Initialise the model with given hyperparameters
-def initialise_model(params):
+def initialise_xgb(params):
     model = xgb.XGBClassifier(n_jobs=-1, use_label_encoder=False, eval_metric="logloss")
     model.set_params(**params)
     return model
@@ -161,13 +162,13 @@ def train_models(
         results_dict = {}
 
         # get visits that were in at the time of day in question and preprocess the training, validation and test sets
-        X_train, y_train = preprocess_data(
+        X_train, y_train = get_snapshots_at_prediction_time(
             train_visits, _prediction_time, exclude_from_training_data
         )
-        X_valid, y_valid = preprocess_data(
+        X_valid, y_valid = get_snapshots_at_prediction_time(
             valid_visits, _prediction_time, exclude_from_training_data
         )
-        X_test, y_test = preprocess_data(
+        X_test, y_test = get_snapshots_at_prediction_time(
             test_visits, _prediction_time, exclude_from_training_data
         )
 
@@ -182,7 +183,7 @@ def train_models(
 
         # iterate through the grid of hyperparameters
         for g in ParameterGrid(grid):
-            model = initialise_model(g)
+            model = initialise_xgb(g)
 
             # define a column transformer for the ordinal and categorical variables
             column_transformer = create_column_transformer(X_test, ordinal_mappings)

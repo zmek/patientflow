@@ -39,7 +39,7 @@ def qq_plot(prediction_moments, prob_dist_dict, title_):
     Parameters
     - prediction_moments (list): A list of time points of interest.
     - prob_dist_dict (dict): A nested dictionary containing predicted and actual demands for each time point.
-      The structure is {time_point: {'pred_demand': pd.DataFrame of predicted value, 'actual_demand': integer}}.
+      The structure is {time_point: {'agg_predicted': pd.DataFrame of predicted value, 'agg_observed': integer}}.
     - title_ (str): Title for the plot.
 
     Returns
@@ -55,18 +55,18 @@ def qq_plot(prediction_moments, prob_dist_dict, title_):
         # Check if there is data for the current time point
         if dt in prob_dist_dict:
             # Extract predicted demand and actual demand
-            pred_demand = np.array(prob_dist_dict[dt]["pred_demand"])
-            actual_demand = prob_dist_dict[dt]["actual_demand"]
+            agg_predicted = np.array(prob_dist_dict[dt]["agg_predicted"])
+            agg_observed = prob_dist_dict[dt]["agg_observed"]
 
             # Calculate the CDF for predicted demand
-            upper = pred_demand.cumsum()
+            upper = agg_predicted.cumsum()
             lower = np.hstack((0, upper[:-1]))
             mid = (upper + lower) / 2
 
             # Collect the CDF data and the observed data point
-            cdf_data.append(np.column_stack((upper, lower, mid, pred_demand)))
+            cdf_data.append(np.column_stack((upper, lower, mid, agg_predicted)))
             observed_data.append(
-                mid[actual_demand]
+                mid[agg_observed]
             )  # CDF value at the observed admission count
 
     # Return None if there is no data to plot

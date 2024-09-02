@@ -45,6 +45,7 @@ optional-dependencies = {dev = [
 ], test = [
     "pytest",
     "pytest-cov",
+    "pyyaml",
 ]}
 readme = "README.md"
 requires-python = ">=3.6"

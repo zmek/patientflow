@@ -2,19 +2,18 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from ed_admissions_helper_functions import (
-    get_specialty_probs,
-    prepare_for_inference,
-)
-from predict.emergency_demand.from_individual_probs import (
-    model_input_to_pred_proba,
-    pred_proba_to_pred_demand,
-)
-from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
+from prepare import prepare_for_inference, validate_special_category_objects
+
+from predict.admission_in_prediction_window import (
     calculate_probability,
 )
 
-from ed_specialty_paediatric_functions import validate_special_category_objects
+from predict.specialty_of_admission import get_specialty_probs
+
+from aggregate import (
+    model_input_to_pred_proba,
+    pred_proba_to_agg_predicted,
+)
 
 
 def add_missing_columns(pipeline, df):
@@ -232,21 +231,21 @@ def create_predictions(
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
 
-        pred_demand_in_ed = pred_proba_to_pred_demand(
+        agg_predicted_in_ed = pred_proba_to_agg_predicted(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
         prediction_context = {specialty: {"prediction_time": prediction_time}}
-        pred_demand_yta = yet_to_arrive_model.predict(
+        agg_predicted_yta = yet_to_arrive_model.predict(
             prediction_context, x1, y1, x2, y2
         )
 
         predictions[specialty]["in_ed"] = [
-            index_of_sum(pred_demand_in_ed["agg_proba"].values.cumsum(), cut_point)
+            index_of_sum(agg_predicted_in_ed["agg_proba"].values.cumsum(), cut_point)
             for cut_point in cdf_cut_points
         ]
         predictions[specialty]["yet_to_arrive"] = [
             index_of_sum(
-                pred_demand_yta[specialty]["agg_proba"].values.cumsum(), cut_point
+                agg_predicted_yta[specialty]["agg_proba"].values.cumsum(), cut_point
             )
             for cut_point in cdf_cut_points
         ]

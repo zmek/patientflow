@@ -1,7 +1,8 @@
 """
-Emergency Demand Prediction From Patient-Level Probababilities
 
-This submodule provides functions to predict demand as a probability distribution, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate expressions dynamically, facilitating the computation of aggregate demand probabilities.
+Aggregate Prediction From Patient-Level Probababilities
+
+This submodule provides functions to generate a probability distribution, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate expressions dynamically, facilitating the computation of aggregate probabilities.
 
 Dependencies:
     - numpy: Used for array and numerical operations.
@@ -16,8 +17,8 @@ Functions:
 - expression_subs(expression, n, predictions): Substitutes numerical values into a symbolic expression.
 - return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
 - model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
-- pred_proba_to_pred_demand(predictions_proba, weights): Aggregates probability predictions into demand predictions.
-- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) actual demands for a specific date.
+- pred_proba_to_agg_predicted(predictions_proba, weights): Aggregates probability predictions .
+- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) observed values for a specific date.
 - get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.
 
 These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
@@ -29,13 +30,8 @@ Example Usage:
     print(predicted_distribution)
 
 Note:
-    This module is designed to be generic and can be adapted to various domains where probabilistic demand
-    prediction is applicable. Ensure that the input data and the model adhere to the expected formats and
-    conventions as required by the functions.
-
-Author: Zella King
-Date: 25.03.24
-Version: 0.1
+    This module is designed to be generic and can be adapted to various domains where aggregate
+    prediction is applicable.
 
 """
 
@@ -180,9 +176,9 @@ def model_input_to_pred_proba(model_input, model):
         )
 
 
-def pred_proba_to_pred_demand(predictions_proba, weights=None):
+def pred_proba_to_agg_predicted(predictions_proba, weights=None):
     """
-    Aggregate individual probability predictions into predicted demand using optional weights.
+    Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
 
     Parameters
     ----------
@@ -194,14 +190,14 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
     Returns
     -------
     DataFrame
-        A DataFrame with a single column 'agg_proba' showing the aggregated probability demand,
+        A DataFrame with a single column 'agg_proba' showing the aggregated probability,
         indexed from 0 to n, where n is the number of predictions.
 
     """
     n = len(predictions_proba)
 
     if n == 0:
-        pred_demand_dict = {0: 1}
+        agg_predicted_dict = {0: 1}
     else:
         local_proba = predictions_proba.copy()
         if weights is not None:
@@ -210,19 +206,19 @@ def pred_proba_to_pred_demand(predictions_proba, weights=None):
         syms = create_symbols(n)
         expression = build_expression(syms, n)
         expression = expression_subs(expression, n, local_proba["pred_proba"])
-        pred_demand_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
+        agg_predicted_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
 
-    pred_demand = pd.DataFrame.from_dict(
-        pred_demand_dict, orient="index", columns=["agg_proba"]
+    agg_predicted = pd.DataFrame.from_dict(
+        agg_predicted_dict, orient="index", columns=["agg_proba"]
     )
-    return pred_demand
+    return agg_predicted
 
 
 def get_prob_dist_for_prediction_moment(
     X_test, model, weights=None, inference_time=False, y_test=None
 ):
     """
-    Calculate both predicted and actual demand distributions for a given date using test data.
+    Calculate both predicted distributions and observed values for a given date using test data.
 
     Parameters
     ----------
@@ -231,17 +227,17 @@ def get_prob_dist_for_prediction_moment(
     model : object
         A predictive model which should provide a `predict_proba` method.
     weights : array-like, optional
-        Weights to apply to the predictions for demand calculation.
+        Weights to apply to the predictions for aggregate calculation.
     inference_time : bool, optional (default=False)
-        If True, do not calculate or return actual demand.
+        If True, do not calculate or return actual aggregate.
     y_test : array-like, optional
         Actual outcomes corresponding to the test features. Required if inference_time is False.
 
     Returns
     -------
     dict
-        A dictionary with keys 'pred_demand' and, if inference_time is False, 'actual_demand' containing the
-        predicted and actual demands respectively for the snapshot date. Each is presented as a DataFrame or an integer.
+        A dictionary with keys 'agg_predicted' and, if inference_time is False, 'agg_observed' containing the
+        predicted and observed respectively for the snapshot date. Each is presented as a DataFrame or an integer.
 
     Raises
     ------
@@ -256,17 +252,17 @@ def get_prob_dist_for_prediction_moment(
 
     if len(X_test) > 0:
         pred_proba = model_input_to_pred_proba(X_test, model)
-        pred_demand = pred_proba_to_pred_demand(pred_proba, weights)
-        prediction_moment_dict["pred_demand"] = pred_demand
+        agg_predicted = pred_proba_to_agg_predicted(pred_proba, weights)
+        prediction_moment_dict["agg_predicted"] = agg_predicted
 
         if not inference_time:
-            prediction_moment_dict["actual_demand"] = sum(y_test)
+            prediction_moment_dict["agg_observed"] = sum(y_test)
     else:
-        prediction_moment_dict["pred_demand"] = pd.DataFrame(
+        prediction_moment_dict["agg_predicted"] = pd.DataFrame(
             {"agg_proba": [1]}, index=[0]
         )
         if not inference_time:
-            prediction_moment_dict["actual_demand"] = 0
+            prediction_moment_dict["agg_observed"] = 0
 
     return prediction_moment_dict
 
@@ -320,8 +316,8 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
         if len(snapshots_to_include) == 0:
             # Create an empty dictionary for the current snapshot date
             prob_dist_dict[dt] = {
-                "pred_demand": pd.DataFrame({"agg_proba": [1]}, index=[0]),
-                "actual_demand": 0,
+                "agg_predicted": pd.DataFrame({"agg_proba": [1]}, index=[0]),
+                "agg_observed": 0,
             }
         else:
             # Ensure the lengths of test features and outcomes are equal
@@ -334,7 +330,7 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
             else:
                 prediction_moment_weights = weights.loc[snapshots_to_include].values
 
-            # Compute the predicted and actual demand for the current snapshot date
+            # Compute the predicted and observed valuesfor the current snapshot date
             prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
                 X_test=X_test.loc[snapshots_to_include],
                 y_test=y_test.loc[snapshots_to_include],

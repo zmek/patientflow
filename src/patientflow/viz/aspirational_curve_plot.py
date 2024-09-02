@@ -2,7 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from predict.emergency_demand.admission_in_prediction_window_using_aspirational_curve import (
+from predict.admission_in_prediction_window import (
     create_curve,
 )
 
