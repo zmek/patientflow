@@ -34,6 +34,7 @@ import random
 from load import data_from_csv, load_saved_model, get_dict_cols
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from functools import reduce
 
 
 from typing import Dict, Any
