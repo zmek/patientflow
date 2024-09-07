@@ -13,6 +13,9 @@ from errors import ModelLoadError
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
 
+"""
+Functions for load config files
+"""
 
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
@@ -112,6 +115,44 @@ def load_config_file(
         print(f"Error: Invalid value found in the configuration file: {e}")
         return None
 
+"""
+Functions for loading data
+"""
+
+def set_file_locations(uclh, data_path, config_file_path=None):
+    if not uclh:
+        csv_filename = "ed_visits.csv"
+        yta_csv_filename = "arrivals.csv"
+
+        visits_csv_path = data_path / csv_filename
+        yta_csv_path = data_path / yta_csv_filename
+
+        return visits_csv_path, yta_csv_path
+
+    else:
+        start_date, end_date = load_config_file(
+            config_file_path, return_start_end_dates=True
+        )
+        data_filename = (
+            "uclh_visits_exc_beds_inc_minority_"
+            + str(start_date)
+            + "_"
+            + str(end_date)
+            + ".pickle"
+        )
+        csv_filename = "uclh_visits.csv"
+        yta_filename = (
+            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
+        )
+        yta_csv_filename = "uclh_arrivals.csv"
+
+        visits_path = data_path / data_filename
+        yta_path = data_path / yta_filename
+
+        visits_csv_path = data_path / csv_filename
+        yta_csv_path = data_path / yta_csv_filename
+
+    return visits_path, visits_csv_path, yta_path, yta_csv_path
 
 def safe_literal_eval(s):
     try:
@@ -170,7 +211,9 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     return df
 
-
+"""
+Functions for loading models
+"""
 def get_model_name(model_name, prediction_time_):
     """
     Create a model name based on the time of day.
@@ -208,43 +251,6 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     except Exception as e:
         # print(f"Error loading model: {e}")
         raise ModelLoadError(f"Error loading model called {model_name}: {e}")
-
-
-def set_file_locations(uclh, data_path, config_file_path=None):
-    if not uclh:
-        csv_filename = "ed_visits.csv"
-        yta_csv_filename = "arrivals.csv"
-
-        visits_csv_path = data_path / csv_filename
-        yta_csv_path = data_path / yta_csv_filename
-
-        return visits_csv_path, yta_csv_path
-
-    else:
-        start_date, end_date = load_config_file(
-            config_file_path, return_start_end_dates=True
-        )
-        data_filename = (
-            "uclh_visits_exc_beds_inc_minority_"
-            + str(start_date)
-            + "_"
-            + str(end_date)
-            + ".pickle"
-        )
-        csv_filename = "uclh_visits.csv"
-        yta_filename = (
-            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
-        )
-        yta_csv_filename = "uclh_arrivals.csv"
-
-        visits_path = data_path / data_filename
-        yta_path = data_path / yta_filename
-
-        visits_csv_path = data_path / csv_filename
-        yta_csv_path = data_path / yta_csv_filename
-
-    return visits_path, visits_csv_path, yta_path, yta_csv_path
-
 
 def get_dict_cols(df):
     not_used_in_training_vars = [

@@ -30,11 +30,249 @@ calculate_time_varying_arrival_rates(df, time_interval)
 
 import pandas as pd
 import numpy as np
-from load import data_from_csv, load_saved_model
+import random
+from load import data_from_csv, load_saved_model, get_dict_cols
 from datetime import datetime, timedelta
+from dateutil.parser import parse
+
 
 from typing import Dict, Any
 from errors import MissingKeysError
+
+
+
+def convert_set_to_dummies(df, column, prefix):
+    # Explode the set into rows
+    exploded_df = df[column].explode().dropna().to_frame()
+    
+    # Create dummy variables for each unique item with a specified prefix
+    dummies = pd.get_dummies(exploded_df[column], prefix=prefix)
+    
+    # # Sum the dummies back to the original DataFrame's index
+    dummies = dummies.groupby(dummies.index).sum()
+    
+    # Convert dummy variables to boolean
+    dummies = dummies.astype(bool)
+    
+    return dummies
+
+def convert_dict_to_values(df, column, prefix):
+    def extract_relevant_value(d):
+        if isinstance(d, dict):
+            if 'value_as_real' in d or 'value_as_text' in d:
+                return d.get('value_as_real') if d.get('value_as_real') is not None else d.get('value_as_text')
+            else:
+                return d  # Return the dictionary as is if it does not contain 'value_as_real' or 'value_as_text'
+        return d  # Return the value as is if it is not a dictionary
+
+    # Apply the extraction function to each entry in the dictionary column
+    extracted_values = df[column].apply(lambda x: {k: extract_relevant_value(v) for k, v in x.items()})
+
+    # Create a DataFrame from the processed dictionary column
+    dict_df = extracted_values.apply(pd.Series)
+
+    # Add a prefix to the column names
+    dict_df.columns = [f"{prefix}_{col}" for col in dict_df.columns]
+
+    return dict_df
+    
+
+# function that will assign each mrn to one of training, validation, making a random choice that is weighted by the proportion of visits occuring in each set
+def apply_set(row):
+    return random.choices(
+        ["train", "valid", "test"],
+        weights=[row.training_set, row.validation_set, row.test_set],
+    )[0]
+
+def assign_mrns(df, start_training_set, start_validation_set, start_test_set, end_test_set, col_name = 'arrival_datetime'):
+    # assign each mrn to only one of the three sets to ensure no visit appears in more than one set
+    mrns = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
+    mrns["training_set"] = mrns[col_name].dt.date < start_validation_set
+    mrns["validation_set"] = (mrns[col_name].dt.date >= start_validation_set) & (
+         mrns[col_name].dt.date < start_test_set
+    )
+    mrns["test_set"] = mrns[col_name].dt.date >= start_test_set
+    mrns = mrns.groupby("mrn")[["training_set", "validation_set", "test_set"]].sum()
+    mrns["training_validation_test"] = mrns.apply(apply_set, axis=1)
+    print("\n" + 
+        f"{mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} "
+        f"mrns are in both training and validation sets, of a total of "
+        f"{mrns[mrns.training_set + mrns.validation_set > 0].shape[0]} "
+        "mrns in one or other set"
+    )
+    print(
+        f"{mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} "
+        f"mrns are in both validation and test sets, of a total of "
+        f"{mrns[mrns.validation_set + mrns.test_set > 0].shape[0]} "
+        "mrns in one or other set"
+    )
+    print(
+        f"{mrns[mrns.training_set * mrns.test_set != 0].shape[0]} "
+        f"mrns are in both training and test sets, of a total of "
+        f"{mrns[mrns.training_set + mrns.test_set > 0].shape[0]} "
+        "mrns in one or other set"
+    )
+    print(
+        f"{mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} "
+        f"mrns are in all three sets, of a total of "
+        f"{mrns.shape[0]} mrns"
+    )
+    return mrns
+
+
+def assign_mrn_to_training_validation_test_set(df, start_training_set, start_validation_set, start_test_set, end_test_set, yta = None, col_name = 'arrival_datetime'):
+    
+    if not 'snapshot_date' in df.columns:
+        df['snapshot_date'] = df['snapshot_datetime'].dt.date
+
+    set_assignment = assign_mrns(df, start_training_set, start_validation_set, start_test_set, end_test_set, col_name).reset_index()
+
+    print("\nNumber of rows before assigning mrn to a single set - training, validation or test")
+    print(df.shape)
+
+    df.loc['training_validation_test'] = None
+    
+    # Define the criteria for each set
+    
+    training_mrns = set_assignment[set_assignment.training_validation_test == 'train']['mrn']
+    validation_mrns = set_assignment[set_assignment.training_validation_test == 'valid']['mrn']
+    test_mrns = set_assignment[set_assignment.training_validation_test == 'test']['mrn']
+    
+    # Assign relevant set
+    df.loc[(df[col_name].dt.date < start_validation_set) & (df.mrn.isin(training_mrns)), 'training_validation_test'] = 'train'
+    df.loc[(df[col_name].dt.date >= start_validation_set) & (df[col_name].dt.date < start_test_set) & (df.mrn.isin(validation_mrns)), 'training_validation_test'] = 'valid'
+    df.loc[(df[col_name].dt.date >= start_test_set) & (df[col_name].dt.date < end_test_set) & (df.mrn.isin(test_mrns)), 'training_validation_test'] = 'test'
+    
+    # Filter to include only the rows that were assigned to a set
+    df = df[df['training_validation_test'].notnull()]    
+    
+    # Remove any snapshots that fall outside the start and end dates for the relevant set
+    df = df[
+        ((df.training_validation_test == 'train') & (df.snapshot_date < start_validation_set)) |
+        ((df.training_validation_test == 'valid') & (df.snapshot_date >= start_validation_set) & (df.snapshot_date < start_test_set)) |
+        ((df.training_validation_test == 'test') & (df.snapshot_date >= start_test_set) & (df.snapshot_date < end_test_set))
+    ]
+
+    print("Number of rows after assigning mrn to a set")
+    print(df.shape)
+    
+    if yta is not None:
+
+        yta.loc[:, 'training_validation_test'] = None
+        # Assign relevant set to yta
+        yta.loc[(yta[col_name].dt.date < start_validation_set), 'training_validation_test'] = 'train'
+        yta.loc[(yta[col_name].dt.date >= start_validation_set) & (yta[col_name].dt.date < start_test_set) , 'training_validation_test'] = 'valid'
+        yta.loc[(yta[col_name].dt.date >= start_test_set) & (yta[col_name].dt.date < end_test_set), 'training_validation_test'] = 'test'
+
+        # Remove any snapshots that fall outside the start and end dates for the relevant set
+        yta = yta[
+            ((yta.training_validation_test == 'train') & (yta[col_name].dt.date < start_validation_set)) |
+            ((yta.training_validation_test == 'valid') & (yta[col_name].dt.date >= start_validation_set) & (yta[col_name].dt.date < start_test_set)) |
+            ((yta.training_validation_test == 'test') & (yta[col_name].dt.date >= start_test_set) & (yta[col_name].dt.date < end_test_set))
+        ]
+
+        return(df, yta)
+    
+    return df
+
+
+
+def prep_uclh_dataset_for_inference(df, uclh, remove_bed_requests=False, exclude_minority_categories=False, inference_time=True):
+    pd.set_option('future.no_silent_downcasting', True)
+
+    if exclude_minority_categories:
+        df = df[~df.sex.isin(["U", "I"])].copy()  # Ensure it's a copy
+
+    if remove_bed_requests:
+        df['has_bed_request'] = df['has_bed_request'].fillna(False)
+        df['has_bed_request'] = df['has_bed_request'].astype(bool)
+        df = df[~df.has_bed_request].copy()  # Ensure it's a copy
+
+    # Convert locations from set to dummy variables
+    visited = convert_set_to_dummies(df, 'visited_location_types', 'visited')
+
+    # Convert number of observations dictionary to values
+    num_obs = convert_dict_to_values(df, 'observation_counts', 'num_obs')
+
+    # Convert obs and set missing values
+    latest_obs = convert_dict_to_values(df, 'latest_observation_values', 'latest_obs')
+    latest_obs.loc[latest_obs.latest_obs_RESPIRATIONS == 0, 'latest_obs_RESPIRATIONS'] = pd.NA
+    latest_obs.loc[latest_obs.latest_obs_TEMPERATURE > 110, 'latest_obs_TEMPERATURE'] = pd.NA
+    latest_obs['latest_obs_R NEWS SCORE RESULT - DISPLAYED'] = latest_obs['latest_obs_R NEWS SCORE RESULT - DISPLAYED'].astype("float")
+    latest_obs.loc[latest_obs['latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE'].isin(['Severe\E\Very Severe', 'Severe\Very Severe']), 
+                   'latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE'] = 'Severe_Very Severe'
+
+    # Convert lab orders from set to dummies
+    lab_orders = convert_set_to_dummies(df, 'requested_lab_batteries', 'lab_orders') 
+
+    # Convert lab results from dict to values
+    lab_results = convert_dict_to_values(df, 'latest_lab_results', 'latest_lab_results')
+
+    # Create dummy variable for consultations (used in prob admission model, in which consultations data is otherwise not used)
+    df['has_consultation'] = df.consultations.map(len) > 0
+
+    if inference_time:
+        df['visit_number'] = df.index
+
+    dfs_to_join = [df[['snapshot_date', 'prediction_time', 'visit_number', 'elapsed_los', 'sex', 'age_on_arrival', 'arrival_method', 'current_location_type', 'total_locations_visited', 
+                      'num_obs', 'num_obs_events', 'num_obs_types', 'num_lab_batteries_ordered', 'has_consultation', 'has_bed_request', 'consultations']],
+                   visited, num_obs, latest_obs, lab_orders, lab_results] if uclh else [df[['snapshot_date', 'prediction_time', 'visit_number', 'elapsed_los', 'sex', 'age_group', 
+                      'arrival_method', 'current_location_type', 'total_locations_visited', 'num_obs', 'num_obs_events', 'num_obs_types', 'num_lab_batteries_ordered', 
+                      'has_consultation', 'has_bed_request', 'consultations']], visited, num_obs, latest_obs, lab_orders, lab_results]
+
+    if not inference_time:
+        dfs_to_join.append(df[['training_validation_test', 'all_consultations', 'specialty', 'destination']])
+
+    new = reduce(lambda left, right: left.join(right, how='left'), dfs_to_join)
+
+    for col in new.select_dtypes(include='object').columns:
+        if new[col].dropna().isin([True, False]).all():
+            new[col] = new[col].fillna(False)
+            new[col] = new[col].astype('bool')    
+
+    bool_cols = new.select_dtypes(include='bool').columns
+    new[bool_cols] = new[bool_cols].fillna(False)
+
+    if exclude_minority_categories:
+        new = new[~(new.current_location_type == 'taf')].copy()
+        new = new[~(new.visited_taf)].copy()
+        new.drop(columns="visited_taf", inplace=True)
+
+    float_cols = [col for col in new.select_dtypes(include='float').columns if col.startswith('num_obs')]
+    new[float_cols] = new[float_cols].fillna(0)
+
+    new.columns = new.columns.str.lower().str.replace(' - displayed', '').str.replace(' ', '_').str.replace('_r_', '_')
+    new = new.drop(columns='latest_lab_results_hco3', errors='ignore')
+
+    new = new.rename(columns={
+        'num_obs_uclh_ed_manchester_triage_subjective_pain_score': 'num_obs_subjective_pain_score',
+        'num_obs_uclh_ed_manchester_triage_objective_pain_score': 'num_obs_objective_pain_score',
+        'num_obs_uclh_ed_manchester_triage_calculated_acuity': 'num_obs_manchester_triage_acuity',
+        'latest_obs_uclh_ed_manchester_triage_objective_pain_score': 'latest_obs_objective_pain_score',
+        'latest_obs_uclh_ed_manchester_triage_calculated_acuity': 'latest_obs_manchester_triage_acuity',
+    })
+
+    if inference_time:
+        new = new.rename(columns={'consultations': 'consultation_sequence'})
+        new['consultation_sequence'] = new['consultation_sequence'].apply(lambda x: tuple(x) if x else ())
+
+    if not inference_time:
+        new['is_admitted'] = df.destination == 2
+        new.drop(columns='destination', inplace=True)
+        np.random.seed(seed=42)
+        new['random_number'] = np.random.randint(0, len(new), new.shape[0])
+
+    if remove_bed_requests:
+        new = new.drop(columns='has_bed_request')
+
+    new = new.reset_index(drop=True)
+    new.index.name = 'snapshot_id'
+
+    return new
+
+
+
+
 
 
 def create_special_category_objects(uclh):
@@ -325,3 +563,162 @@ def calculate_time_varying_arrival_rates(df, time_interval):
         _start_datetime = _start_datetime + timedelta(minutes=time_interval)
 
     return arrival_rates_dict
+
+
+
+
+    
+# Function to generate description based on column name
+def generate_description(col_name):
+
+    manual_descriptions = get_manual_descriptions()
+
+    # Check if manual description is provided
+    if col_name in manual_descriptions:
+        return manual_descriptions[col_name]
+    
+    if col_name.startswith('num') and not col_name.startswith('num_obs') and not col_name.startswith('num_orders'):
+        return 'Number of times ' + col_name[4:] + ' has been recorded'
+    if col_name.startswith('num_obs'):
+        return 'Number of observations of ' + col_name[8:]
+    if col_name.startswith('latest_obs'):
+        return 'Latest result for ' + col_name[11:]
+    if col_name.startswith('latest_lab'):
+        return 'Latest result for ' + col_name[19:]
+    if col_name.startswith('lab_orders'):
+        return 'Request for lab battery ' + col_name[11:] + ' has been placed'
+    if col_name.startswith('visited'):
+        return 'Patient visited ' + col_name[8:] + ' previously or is there now'
+    else:
+        return col_name
+    
+def additional_details(column, col_name):
+
+    def is_date(string):
+        try: 
+            parse(string)
+            return True
+        except ValueError:
+            return False
+        
+    # Convert to datetime if it's an object but formatted as a date
+    if column.dtype == 'object' and all(is_date(str(x)) for x in column.dropna().unique()):
+        column = pd.to_datetime(column)
+        return f"Date Range: {column.min().strftime('%Y-%m-%d')} - {column.max().strftime('%Y-%m-%d')}"
+
+    if column.dtype in ['object', 'category', 'bool']:
+        # Categorical data: Frequency of unique values
+        
+        if len(column.value_counts()) <= 12:
+            value_counts = column.value_counts(dropna=False).to_dict()
+            value_counts = dict(sorted(value_counts.items(), key=lambda x: str(x[0])))
+            value_counts_formatted = {k: f"{v:,}" for k, v in value_counts.items()}
+            return f"Frequencies: {value_counts_formatted}"
+        value_counts = column.value_counts(dropna=False)[0:12].to_dict()
+        value_counts = dict(sorted(value_counts.items(), key=lambda x: str(x[0])))
+        value_counts_formatted = {k: f"{v:,}" for k, v in value_counts.items()}
+        return f"Frequencies (highest 12): {value_counts_formatted}"
+        
+    if pd.api.types.is_float_dtype(column):
+        # Float data: Range with rounding
+        na_count = column.isna().sum()
+        column = column.dropna()
+        return f"Range: {column.min():.2f} - {column.max():.2f},  Mean: {column.mean():.2f}, Std Dev: {column.std():.2f}, NA: {na_count}"
+    if pd.api.types.is_integer_dtype(column):
+        # Float data: Range without rounding
+        na_count = column.isna().sum()
+        column = column.dropna()
+        return f"Range: {column.min()} - {column.max()}, Mean: {column.mean():.2f}, Std Dev: {column.std():.2f}, NA: {na_count}"
+    if pd.api.types.is_datetime64_any_dtype(column):
+        # Datetime data: Minimum and Maximum dates
+        return f"Date Range: {column.min().strftime('%Y-%m-%d %H:%M')} - {column.max().strftime('%Y-%m-%d %H:%M')}"
+    else:
+        return "N/A"
+    
+def find_group_for_colname(column, dict_col_groups):
+    for key, values_list in dict_col_groups.items():
+        if column in values_list:
+            return key
+    return None
+    
+def get_manual_descriptions():
+    manual_descriptions = {
+    'snapshot_id': 'Unique identifier for the visit snapshot (an internal reference field only)',
+    'snapshot_date': 'Date of visit, shifted by a random number of days',
+    'visit_number': 'Hospital visit number (replaced with fictional number, but consistent across visit snapshots is retained)',
+    'arrival_method': 'How the patient arrived at the ED',
+    'current_location_type': 'Location in ED currently',
+    'sex': 'Sex of patient',
+    'age_on_arrival': 'Age in years on arrival at ED',
+    'elapsed_los': 'Elapsed time since patient arrived in ED (seconds)',
+    'num_obs' : 'Number of observations recorded',
+    'num_obs_events': 'Number of unique events when one or more observations have been recorded', 
+    'num_obs_types': 'Number of types of observations recorded', 
+    'num_lab_batteries_ordered': 'Number of lab batteries ordered (each many contain multiple tests)',
+    'has_consult': 'One or more consult request has been made',
+    'total_locations_visited': 'Number of ED locations visited',
+    'is_admitted': 'Patient was admitted after ED',
+    'hour_of_day': 'Hour of day at which visit was sampled',
+    'consultation_sequence': 'Consultation sequence at time of snapshot',
+    'has_consultation': 'Consultation request made before time of snapshot',
+    'final_sequence': 'Consultation sequence at end of visit',
+    'observed_specialty': 'Specialty of admission at end of visit',
+    'random_number': 'A random number that will be used during model training to sample one visit snapshot per visit',
+    'prediction_time': 'The time of day at which the visit was observed',
+    'training_validation_test': 'Whether visit snapshot is assigned to training, validation or test set',
+    'observed_specialty' : 'Specialty of admission',
+    'age_group' : 'Age group',
+    'is_child' : 'Is under age of 18 on day of arrival',
+    'ed_visit_start_dttm' : 'Timestamp of visit start',
+    'random_number': 'A number added to enable sampling of one snapshot per visit'
+
+    
+       }
+    return(manual_descriptions)
+    
+def write_data_dict(df, dict_name, dict_path):
+
+    cols_to_exclude = ['snapshot_id', 'visit_number']
+
+    if 'visits' in dict_name :
+
+    
+        df_admitted = df[df.is_admitted]
+        df_not_admitted = df[df.is_admitted == False]
+    
+        dict_col_groups = get_dict_cols(df)
+    
+        data_dict = pd.DataFrame({
+            'Variable type': [find_group_for_colname(col, dict_col_groups) for col in df.columns],
+            'Column Name': df.columns,
+            'Data Type': df.dtypes,
+            'Description': [generate_description(col) for col in df.columns], 
+            'Whole dataset': [additional_details(df[col], col) if col not in cols_to_exclude else '' for col in df.columns],
+            'Admitted': [additional_details(df_admitted[col], col) if col not in cols_to_exclude else '' for col in df_admitted.columns],
+            'Not admitted': [additional_details(df_not_admitted[col], col) if col not in cols_to_exclude else '' for col in df_not_admitted.columns]
+    
+        })
+        data_dict["Whole dataset"] = data_dict["Whole dataset"].str.replace("'", "")
+        data_dict["Admitted"] = data_dict["Admitted"].str.replace("'", "")
+        data_dict["Not admitted"] = data_dict["Not admitted"].str.replace("'", "")
+
+
+    else:
+        
+        data_dict = pd.DataFrame({
+        'Column Name': df.columns,
+        'Data Type': df.dtypes,
+        'Description': [generate_description(col) for col in df.columns], 
+        'Additional Details': [additional_details(df[col], col) if col not in cols_to_exclude else '' for col in df.columns]
+
+    })
+        data_dict["Additional Details"] = data_dict["Additional Details"].str.replace("'", "")
+
+
+    # Export to Markdown and csv for data dictionary
+    data_dict.to_markdown(str(dict_path) + '/' + dict_name + '.md', index=False)
+    data_dict.to_csv(str(dict_path) + '/' + dict_name + '.csv', index=False)
+
+    
+    return(data_dict)
+
