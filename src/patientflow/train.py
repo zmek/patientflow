@@ -9,9 +9,12 @@ from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
 from joblib import dump
 import json
+from pathlib import Path
+import argparse
 
 from prepare import get_snapshots_at_prediction_time
-from load import get_model_name
+from load import get_model_name, load_config_file, set_file_locations, data_from_csv
+
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -254,3 +257,35 @@ def train_models(
 
     with open(full_path_results_dict, "w") as f:
         json.dump(best_model_results_dict, f)
+
+def main(data_path=None, uclh=None):
+
+    # parse arguments
+    parser = argparse.ArgumentParser(description="Train emergency demand models")
+    parser.add_argument('--data_path', type=str, default='data-raw', help='Location of data for training')
+    parser.add_argument('--uclh', type=bool, default=False, help='Train using UCLH data (True) or Public data (False)')
+    args = parser.parse_args()
+    data_path = data_path if data_path is not None else args.data_path
+    uclh = uclh if uclh is not None else args.uclh
+
+    # set file location
+    current_path = Path(__file__)
+    root = current_path.parents[2]
+    data_file_path = Path(root) / data_path
+    media_file_path = Path(root) / 'media'
+    media_file_path.mkdir(parents=False, exist_ok=True)
+    model_file_path = Path(root) / 'trained-models'
+    model_file_path.mkdir(parents=False, exist_ok=True)
+
+    # Load parameters
+    if uclh:
+        config_path = Path(root / 'config-uclh.yaml')
+    else:
+        config_path = Path(root / 'config.yaml')
+
+    params = load_config_file(config_path)
+
+    prediction_times = params[0]
+    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
+
+main()
