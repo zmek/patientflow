@@ -1,0 +1,6 @@
+Column Name,Data Type,Description,Additional Details
+training_validation_test,object,"Whether visit snapshot is assigned to training, validation or test set","Frequencies: {test: 7,710, train: 22,040, valid: 2,494}"
+arrival_datetime,"datetime64[ns, UTC]",arrival_datetime,Date Range: 2030-04-01 02:41 - 2032-04-30 23:14
+sex,object,Sex of patient,"Frequencies: {F: 16,317, I: 6, M: 15,906, U: 15}"
+specialty,object,specialty,"Frequencies: {haem/onc: 3,423, medical: 17,810, nan: 592, paediatric: 2,796, surgical: 7,623}"
+is_child,bool,Is under age of 18 on day of arrival,"Frequencies: {False: 28,799, True: 3,445}"
