@@ -848,7 +848,7 @@ def write_data_dict(df, dict_name, dict_path):
 
     if "visits" in dict_name:
         df_admitted = df[df.is_admitted]
-        df_not_admitted =  df[~df.is_admitted]
+        df_not_admitted = df[~df.is_admitted]
         dict_col_groups = get_dict_cols(df)
 
         data_dict = pd.DataFrame(

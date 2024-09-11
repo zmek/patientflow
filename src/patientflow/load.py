@@ -1,6 +1,25 @@
 """
-Contains functions for loading config files, data from csv and saved models
+This module provides functionality for loading configuration files, data from CSV files, and trained machine learning models.
+
+It includes the following features:
+
+- **Loading Configurations**: Parse YAML configuration files and extract necessary parameters for data processing and modeling.
+- **Data Handling**: Load and preprocess data from CSV files, including optional operations like setting an index, sorting, and applying literal evaluation on columns.
+- **Model Management**: Load saved machine learning models, customize model filenames based on time, and categorize DataFrame columns into predefined groups for analysis.
+
+The module handles common file and parsing errors, returning appropriate error messages or exceptions.
+
+Functions
+---------
+- `load_config_file`: Load a YAML configuration file and extract key parameters.
+- `set_file_locations`: Set file locations based on UCLH-specific or default data sources.
+- `safe_literal_eval`: Safely evaluate string literals into Python objects.
+- `data_from_csv`: Load and preprocess data from a CSV file.
+- `get_model_name`: Generate a model name based on the time of day.
+- `load_saved_model`: Load a machine learning model saved in a joblib file.
+- `get_dict_cols`: Categorize columns from a DataFrame into predefined groups for analysis.
 """
+
 
 import ast  # to convert tuples to strings
 import os
@@ -12,10 +31,6 @@ from errors import ModelLoadError
 
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
-
-"""
-Functions for load config files
-"""
 
 
 def load_config_file(
@@ -40,6 +55,23 @@ def load_config_file(
         ],
     ]
 ]:
+    """
+    Load configuration from a YAML file.
+
+    Parameters
+    ----------
+    config_file_path : str
+        The path to the configuration file.
+    return_start_end_dates : bool, optional
+        If True, return the start and end dates from the file (default is False).
+
+    Returns
+    -------
+    dict or tuple or None
+        If `return_start_end_dates` is True, returns a tuple of start and end dates (str).
+        Otherwise, returns a tuple containing prediction times, modelling dates, and other configuration values.
+        Returns None if an error occurs during file reading or parsing.
+    """
     try:
         with open(config_file_path, "r") as file:
             config = yaml.safe_load(file)
@@ -52,7 +84,6 @@ def load_config_file(
 
     try:
         if return_start_end_dates:
-            # load the dates used in saved data for uclh versions
             if "file_dates" in config and config["file_dates"]:
                 start_date, end_date = [str(item) for item in config["file_dates"]]
             else:
@@ -61,14 +92,12 @@ def load_config_file(
                 )
                 return None
 
-        # Convert list of times of day at which predictions will be made (currently stored as lists) to list of tuples
         if "prediction_times" in config:
             prediction_times = [tuple(item) for item in config["prediction_times"]]
         else:
             print("Error: 'prediction_times' key not found in the configuration file.")
             return None
 
-        # Load the dates defining the beginning and end of training, validation and test sets
         if "modelling_dates" in config and len(config["modelling_dates"]) == 4:
             start_training_set, start_validation_set, start_test_set, end_test_set = [
                 item for item in config["modelling_dates"]
@@ -85,11 +114,7 @@ def load_config_file(
         x2 = float(config.get("x2", 12))
         y2 = float(config.get("y2", 0.99))
         prediction_window = config.get("prediction_window", 480)
-
-        # desired error for Poisson distribution (1 - sum of each approximated Poisson)
         epsilon = config.get("epsilon", 10**-7)
-
-        # time interval for the calculation of aspiration yet-to-arrive in minutes
         yta_time_interval = config.get("yta_time_interval", 15)
 
         if return_start_end_dates:
@@ -117,12 +142,24 @@ def load_config_file(
         return None
 
 
-"""
-Functions for loading data
-"""
+def set_file_locations(uclh: bool, data_path: Path, config_file_path: Optional[str] = None):
+    """
+    Set file locations based on UCLH or default data source.
 
+    Parameters
+    ----------
+    uclh : bool
+        If True, use UCLH-specific file locations. If False, use default file locations.
+    data_path : Path
+        The base path to the data directory.
+    config_file_path : str, optional
+        The path to the configuration file, required if `uclh` is True.
 
-def set_file_locations(uclh, data_path, config_file_path=None):
+    Returns
+    -------
+    tuple
+        Paths to the required files (visits, arrivals) based on the configuration.
+    """
     if not uclh:
         csv_filename = "ed_visits.csv"
         yta_csv_filename = "arrivals.csv"
@@ -151,14 +188,26 @@ def set_file_locations(uclh, data_path, config_file_path=None):
 
         visits_path = data_path / data_filename
         yta_path = data_path / yta_filename
-
         visits_csv_path = data_path / csv_filename
         yta_csv_path = data_path / yta_csv_filename
 
     return visits_path, visits_csv_path, yta_path, yta_csv_path
 
 
-def safe_literal_eval(s):
+def safe_literal_eval(s: str) -> Optional[Any]:
+    """
+    Safely evaluate a string literal into a Python object.
+
+    Parameters
+    ----------
+    s : str
+        The string to evaluate.
+
+    Returns
+    -------
+    Any or None
+        The evaluated Python object if successful, otherwise None.
+    """
     try:
         if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
             return None
@@ -167,19 +216,27 @@ def safe_literal_eval(s):
         return None
 
 
-def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
+def data_from_csv(
+    csv_path: str, index_column: Optional[str] = None, sort_columns: Optional[List[str]] = None, eval_columns: Optional[List[str]] = None
+) -> Optional[pd.DataFrame]:
     """
-    Loads data from csv file
+    Load data from a CSV file and perform optional operations on it.
 
-    Args:
-    csv_path (str): The path to the ED data file
-    index_column (str): The column to set as index
-    sort_columns (list): The columns to sort the dataframe by
-    eval_columns (list): The columns to apply safe_literal_eval to
+    Parameters
+    ----------
+    csv_path : str
+        The path to the CSV data file.
+    index_column : str, optional
+        The column to set as the DataFrame index.
+    sort_columns : list of str, optional
+        Columns to sort the DataFrame by.
+    eval_columns : list of str, optional
+        Columns to apply `safe_literal_eval` to.
 
-    Returns:
-    pd.DataFrame: A dataframe with the ED visits. See data dictionary
-
+    Returns
+    -------
+    pd.DataFrame or None
+        The DataFrame containing the data, or None if the file couldn't be loaded.
     """
     path = os.path.join(Path().home(), csv_path)
 
@@ -216,21 +273,21 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     return df
 
 
-"""
-Functions for loading models
-"""
-
-
-def get_model_name(model_name, prediction_time_):
+def get_model_name(model_name: str, prediction_time_: Tuple[int, int]) -> str:
     """
     Create a model name based on the time of day.
 
     Parameters
-    prediction_time_ (tuple): A tuple representing the time of day (hour, minute).
+    ----------
+    model_name : str
+        The base name of the model.
+    prediction_time_ : tuple of int
+        A tuple representing the time of day (hour, minute).
 
     Returns
-    str: A string representing the model name based on the time of day.
-
+    -------
+    str
+        A string representing the model name based on the time of day.
     """
     hour_, min_ = prediction_time_
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
@@ -238,9 +295,30 @@ def get_model_name(model_name, prediction_time_):
     return model_name
 
 
-def load_saved_model(model_file_path, model_name, prediction_time=None):
+def load_saved_model(model_file_path: Path, model_name: str, prediction_time: Optional[Tuple[int, int]] = None) -> Any:
+    """
+    Load a saved model from a file.
+
+    Parameters
+    ----------
+    model_file_path : Path
+        The path to the directory where the model is saved.
+    model_name : str
+        The base name of the model.
+    prediction_time : tuple of int, optional
+        The time of day the model was trained for.
+
+    Returns
+    -------
+    Any
+        The loaded model.
+
+    Raises
+    ------
+    ModelLoadError
+        If the model file cannot be found or loaded.
+    """
     if prediction_time:
-        # retrieve model based on the time of day it is trained for
         model_name = get_model_name(model_name, prediction_time)
 
     full_path = model_file_path / model_name
@@ -250,16 +328,27 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         model = load(full_path)
         return model
     except FileNotFoundError:
-        # print(f"Model named {model_name} not found at path: {model_file_path}")
         raise ModelLoadError(
             f"Model named {model_name} not found at path: {model_file_path}"
         )
     except Exception as e:
-        # print(f"Error loading model: {e}")
         raise ModelLoadError(f"Error loading model called {model_name}: {e}")
 
 
-def get_dict_cols(df):
+def get_dict_cols(df: pd.DataFrame) -> Dict[str, List[str]]:
+    """
+    Categorize DataFrame columns into predefined groups.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to categorize.
+
+    Returns
+    -------
+    dict
+        A dictionary where keys are column group names and values are lists of column names in each group.
+    """
     not_used_in_training_vars = [
         "snapshot_id",
         "snapshot_date",
@@ -311,7 +400,6 @@ def get_dict_cols(df):
         else:
             print(f"Column '{col}' did not match any predefined group")
 
-    # Create a list of column groups
     col_group_names = [
         "not used in training",
         "arrival and demographic",
@@ -323,7 +411,6 @@ def get_dict_cols(df):
         "outcome",
     ]
 
-    # Create a list of the column names within those groups
     col_groups = [
         not_used_in_training_vars,
         arrival_and_demographic_vars,
@@ -335,7 +422,6 @@ def get_dict_cols(df):
         outcome_vars,
     ]
 
-    # Use dictionary to combine them
     dict_col_groups = {
         category: var_list for category, var_list in zip(col_group_names, col_groups)
     }
