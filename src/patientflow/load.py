@@ -31,11 +31,6 @@ from errors import ModelLoadError
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
 
-"""
-Functions for load config files
-"""
-
-
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
 ) -> Optional[
@@ -150,7 +145,6 @@ def load_config_file(
     except ValueError as e:
         print(f"Error: Invalid value found in the configuration file: {e}")
         return None
-
 
 
 def set_file_locations(uclh, data_path, config_file_path=None):
@@ -275,7 +269,6 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
                     print(f"Error applying safe_literal_eval to column '{column}': {e}")
 
     return df
-
 
 
 def get_model_name(model_name, prediction_time_):
