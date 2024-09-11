@@ -33,7 +33,6 @@ import numpy as np
 import random
 from load import data_from_csv, load_saved_model, get_dict_cols
 from datetime import datetime, timedelta
-from dateutil.parser import parse
 from functools import reduce
 
 
@@ -291,7 +290,7 @@ def prep_uclh_dataset_for_inference(
     ].astype("float")
     latest_obs.loc[
         latest_obs["latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE"].isin(
-            ["Severe\E\Very Severe", "Severe\Very Severe"]
+            [r"Severe\E\Very Severe", r"Severe\Very Severe"]
         ),
         "latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE",
     ] = "Severe_Very Severe"
@@ -760,9 +759,12 @@ def generate_description(col_name):
 def additional_details(column, col_name):
     def is_date(string):
         try:
-            parse(string)
+            # Try to parse the string using the strptime method
+            datetime.strptime(
+                string, "%Y-%m-%d"
+            )  # You can adjust the format to match your date format
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     # Convert to datetime if it's an object but formatted as a date
