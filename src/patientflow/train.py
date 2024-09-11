@@ -292,7 +292,7 @@ def main(data_path=None, uclh=None):
     else:
         config_path = Path(root / "config.yaml")
 
-    params = load_config_file(config_path)
+    # params = load_config_file(config_path)
 
     # prediction_times = params[0]
     # start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]

@@ -836,11 +836,9 @@ def get_manual_descriptions():
         "random_number": "A random number that will be used during model training to sample one visit snapshot per visit",
         "prediction_time": "The time of day at which the visit was observed",
         "training_validation_test": "Whether visit snapshot is assigned to training, validation or test set",
-        "observed_specialty": "Specialty of admission",
         "age_group": "Age group",
         "is_child": "Is under age of 18 on day of arrival",
         "ed_visit_start_dttm": "Timestamp of visit start",
-        "random_number": "A number added to enable sampling of one snapshot per visit",
     }
     return manual_descriptions
 
@@ -850,8 +848,7 @@ def write_data_dict(df, dict_name, dict_path):
 
     if "visits" in dict_name:
         df_admitted = df[df.is_admitted]
-        df_not_admitted = df[df.is_admitted == False]
-
+        df_not_admitted =  df[~df.is_admitted]
         dict_col_groups = get_dict_cols(df)
 
         data_dict = pd.DataFrame(
