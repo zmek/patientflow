@@ -71,6 +71,12 @@ def get_specialty_probs(
     2    {'neurology': 0.8, 'general': 0.2}
     dtype: object
     """
+
+    # Convert consultation_sequence to tuple if not already a tuple
+    if not isinstance(snapshots_df["consultation_sequence"].iloc[0], tuple):
+        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df["consultation_sequence"].apply(lambda x: tuple(x) if x else ())
+
+
     if special_category_func and not special_category_dict:
         raise ValueError(
             "special_category_dict must be provided if special_category_func is specified."
