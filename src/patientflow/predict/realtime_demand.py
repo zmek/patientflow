@@ -251,4 +251,3 @@ def create_predictions(
         ]
 
     return predictions
-

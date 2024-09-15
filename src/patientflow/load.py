@@ -34,6 +34,7 @@ import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
 import argparse
 
+
 def parse_args():
     """
     Parse command-line arguments for the training script.
@@ -173,13 +174,14 @@ def load_config_file(
         print(f"Error: Invalid value found in the configuration file: {e}")
         return None
 
-def set_file_paths(data_folder_name, uclh=False, from_notebook = False):
+
+def set_file_paths(data_folder_name, uclh=False, from_notebook=False):
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
 
     Args:
         data_folder_name (str): Name of the folder where data files are located.
-        uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths. 
+        uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths.
                      Default is False.
 
     Returns:
@@ -204,7 +206,7 @@ def set_file_paths(data_folder_name, uclh=False, from_notebook = False):
     else:
         media_file_path = Path(root) / "media"
     media_file_path.mkdir(parents=False, exist_ok=True)
-    
+
     model_file_path = Path(root) / "trained-models"
     model_file_path.mkdir(parents=False, exist_ok=True)
 
@@ -238,7 +240,6 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
     """
     if not isinstance(data_file_path, Path):
         data_file_path = Path(data_file_path)
-
 
     if not uclh:
         csv_filename = "ed_visits.csv"
@@ -317,10 +318,10 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
         df = pd.read_csv(path, parse_dates=True)
     except FileNotFoundError:
         print(f"Data file not found at path: {path}")
-        sys.exit(1) 
+        sys.exit(1)
     except Exception as e:
         print(f"Error loading data: {e}")
-        sys.exit(1) 
+        sys.exit(1)
 
     if index_column:
         try:
@@ -362,8 +363,6 @@ def get_model_name(model_name, prediction_time):
     str
         A string representing the model name based on the time of day.
     """
-
-
 
     hour_, min_ = prediction_time
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)

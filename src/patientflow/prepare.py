@@ -487,6 +487,25 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
     if missing_keys:
         raise MissingKeysError(missing_keys)
 
+def create_yta_filters(uclh):
+    # Get the special category parameters
+    special_params = create_special_category_objects(uclh)
+
+    # Extract necessary functions and data from the special_params
+    special_category_dict = special_params["special_category_dict"]
+
+    # Create the specialty_filters dictionary
+    specialty_filters = {}
+
+    for specialty, is_paediatric_flag in special_category_dict.items():
+        if is_paediatric_flag == 1.0:
+            # For the paediatric specialty, set `is_child` to True
+            specialty_filters[specialty] = {"is_child": True}
+        else:
+            # For other specialties, set `is_child` to False
+            specialty_filters[specialty] = {"specialty": specialty, "is_child": False}
+
+    return specialty_filters
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
     # Generate random numbers if not present

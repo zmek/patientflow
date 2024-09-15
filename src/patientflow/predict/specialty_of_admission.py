@@ -74,8 +74,9 @@ def get_specialty_probs(
 
     # Convert consultation_sequence to tuple if not already a tuple
     if not isinstance(snapshots_df["consultation_sequence"].iloc[0], tuple):
-        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df["consultation_sequence"].apply(lambda x: tuple(x) if x else ())
-
+        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df[
+            "consultation_sequence"
+        ].apply(lambda x: tuple(x) if x else ())
 
     if special_category_func and not special_category_dict:
         raise ValueError(
