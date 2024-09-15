@@ -18,7 +18,7 @@ from prepare import (
     get_snapshots_at_prediction_time,
     select_one_snapshot_per_visit,
     create_special_category_objects,
-    create_yta_filters
+    create_yta_filters,
 )
 from load import (
     load_config_file,
@@ -414,15 +414,12 @@ def train_specialty_model(visits, model_name, model_file_path, uclh):
     dump(spec_model, full_path)
 
 
-
-
-
 def train_yet_to_arrive_model(
     yta,
     prediction_window,
     time_interval,
     prediction_times,
-    epsilon, 
+    epsilon,
     model_name,
     model_file_path,
     uclh,
@@ -438,11 +435,13 @@ def train_yet_to_arrive_model(
     train_yta.set_index("arrival_datetime", inplace=True)
 
     yta_model = PoissonBinomialPredictor(filters=specialty_filters)
-    yta_model.fit(train_df = train_yta, 
-                  prediction_window = prediction_window, 
-                  time_interval = time_interval, 
-                  prediction_times = prediction_times,
-                  epsilon = epsilon)
+    yta_model.fit(
+        train_df=train_yta,
+        prediction_window=prediction_window,
+        time_interval=time_interval,
+        prediction_times=prediction_times,
+        epsilon=epsilon,
+    )
 
     model_name = model_name + str(int(prediction_window / 60)) + "_hours"
     full_path = model_file_path / model_name
@@ -557,39 +556,40 @@ def main(data_folder_name=None, uclh=None):
     }
 
     # Train admission model
-    model_name = 'ed_admissions'
-    train_admissions_models(visits,
-                grid,
-                exclude_from_training_data,
-                ordinal_mappings,
-                prediction_times,
-                model_name,
-                model_file_path,
-                'best_minimal_model_results_dict.json')
+    model_name = "ed_admissions"
+    train_admissions_models(
+        visits,
+        grid,
+        exclude_from_training_data,
+        ordinal_mappings,
+        prediction_times,
+        model_name,
+        model_file_path,
+        "best_minimal_model_results_dict.json",
+    )
 
     # Train specialty model
-    model_name = 'ed_specialty'
+    model_name = "ed_specialty"
     train_specialty_model(visits, model_name, model_file_path, uclh)
 
     # Train yet-to-arrive model
-    model_name = 'ed_yet_to_arrive_by_spec_'
-    train_yet_to_arrive_model(yta = yta, 
-                              prediction_window = prediction_window, 
-                              time_interval = time_interval, 
-                              prediction_times = prediction_times, 
-                              epsilon = epsilon, 
-                              model_name = model_name, 
-                              model_file_path = model_file_path, 
-                              uclh = uclh)
+    model_name = "ed_yet_to_arrive_by_spec_"
+    train_yet_to_arrive_model(
+        yta=yta,
+        prediction_window=prediction_window,
+        time_interval=time_interval,
+        prediction_times=prediction_times,
+        epsilon=epsilon,
+        model_name=model_name,
+        model_file_path=model_file_path,
+        uclh=uclh,
+    )
 
     # Test creation of real-time predictions
     # Randomly pick a prediction moment to do inference on
     random_row = visits[visits.training_validation_test == "test"].sample(n=1)
     prediction_time = random_row.prediction_time.values[0]
     prediction_date = random_row.snapshot_date.values[0]
-    prediction_moment = datetime.combine(prediction_date, datetime.min.time()).replace(
-        hour=prediction_time[0], minute=prediction_time[1]
-    )
 
     prediction_snapshots = visits[
         (visits.prediction_time == prediction_time)
@@ -612,9 +612,7 @@ def main(data_folder_name=None, uclh=None):
             special_params=special_params,
         )
         print("Real-time inference ran correctly")
-    except:
-        print("Real-time inference failed")
-        sys.exit(1)
-
+    except Exception as e:
+        print(f"Real-time inference failed due to this error: {str(e)}")
 
 main()
