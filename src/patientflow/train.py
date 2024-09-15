@@ -13,13 +13,13 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
 
-from prepare import (
+from .prepare import (
     get_snapshots_at_prediction_time,
     select_one_snapshot_per_visit,
     create_special_category_objects,
     create_yta_filters,
 )
-from load import (
+from .load import (
     load_config_file,
     get_model_name,
     set_file_paths,
@@ -27,9 +27,9 @@ from load import (
     data_from_csv,
     parse_args,
 )
-from predictors.sequence_predictor import SequencePredictor
-from predictors.poisson_binomial_predictor import PoissonBinomialPredictor
-from predict.realtime_demand import create_predictions
+from .predictors.sequence_predictor import SequencePredictor
+from .predictors.poisson_binomial_predictor import PoissonBinomialPredictor
+from .predict.realtime_demand import create_predictions
 
 
 def split_and_check_sets(
@@ -460,7 +460,10 @@ def main(data_folder_name=None, uclh=None):
 
     # Now `data_folder_name` and `uclh` contain the appropriate values
     print(f"Loading data from folder: {data_folder_name}")
-    print(f"UCLH parameter set to: {uclh}")
+    if uclh:
+        print(f"Training models using UCLH dataset")
+    else:
+        print(f"Training models using public dataset")
 
     # set file location
     data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
@@ -474,7 +477,7 @@ def main(data_folder_name=None, uclh=None):
     start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
     x1, y1, x2, y2 = params[5:9]
     prediction_window = params[9]
-    epsilon = params[10]
+    epsilon = float(params[10])
     time_interval = params[11]
 
     # Load data
@@ -502,9 +505,12 @@ def main(data_folder_name=None, uclh=None):
     print(len(visits[~visits.prediction_time.isin(prediction_times)]))
 
     # Check that input data aligns with specified params in config.yaml ie training, validation and test set dates
+    print("Checking dates for ed_visits dataset (used for patients in ED)")
     split_and_check_sets(
         visits, start_training_set, start_validation_set, start_test_set, end_test_set
     )
+    print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
+
     split_and_check_sets(
         yta,
         start_training_set,
@@ -555,7 +561,7 @@ def main(data_folder_name=None, uclh=None):
     }
 
     # Train admission model
-    model_name = "ed_admissions"
+    model_name = "ed_admission"
     train_admissions_models(
         visits,
         grid,
@@ -564,7 +570,7 @@ def main(data_folder_name=None, uclh=None):
         prediction_times,
         model_name,
         model_file_path,
-        "best_minimal_model_results_dict.json",
+        "best_model_results_dict.json",
     )
 
     # Train specialty model
@@ -615,4 +621,5 @@ def main(data_folder_name=None, uclh=None):
         print(f"Real-time inference failed due to this error: {str(e)}")
 
 
-main()
+if __name__ == "__main__":
+    main()

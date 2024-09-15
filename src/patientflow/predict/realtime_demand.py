@@ -2,15 +2,15 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from prepare import prepare_for_inference, validate_special_category_objects
+from ..prepare import prepare_for_inference, validate_special_category_objects
 
-from predict.admission_in_prediction_window import (
+from ..predict.admission_in_prediction_window import (
     calculate_probability,
 )
 
-from predict.specialty_of_admission import get_specialty_probs
+from ..predict.specialty_of_admission import get_specialty_probs
 
-from aggregate import (
+from ..aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )
@@ -230,10 +230,10 @@ def create_predictions(
         filtered_weights = (
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
-
         agg_predicted_in_ed = pred_proba_to_agg_predicted(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
+
         prediction_context = {specialty: {"prediction_time": prediction_time}}
         agg_predicted_yta = yet_to_arrive_model.predict(
             prediction_context, x1, y1, x2, y2
@@ -251,3 +251,20 @@ def create_predictions(
         ]
 
     return predictions
+
+
+def main(data_folder_name=None, uclh=None):
+    # set file location
+    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+        data_folder_name, uclh
+    )
+
+    # load parameters
+    params = load_config_file(config_path)
+
+    prediction_times = params[0]
+    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
+    x1, y1, x2, y2 = params[5:9]
+    prediction_window = params[9]
+    epsilon = float(params[10])
+    time_interval = params[11]    

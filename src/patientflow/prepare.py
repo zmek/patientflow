@@ -31,13 +31,13 @@ calculate_time_varying_arrival_rates(df, time_interval)
 import pandas as pd
 import numpy as np
 import random
-from load import data_from_csv, load_saved_model, get_dict_cols
+from .load import data_from_csv, load_saved_model, get_dict_cols
 from datetime import datetime, timedelta
 from functools import reduce
 
 
 from typing import Dict, Any
-from errors import MissingKeysError
+from .errors import MissingKeysError
 
 
 def convert_set_to_dummies(df, column, prefix):

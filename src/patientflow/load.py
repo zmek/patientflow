@@ -28,7 +28,7 @@ import sys
 
 import pandas as pd
 from joblib import load
-from errors import ModelLoadError
+from .errors import ModelLoadError
 
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional

@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from prepare import (
+from .prepare import (
     prep_uclh_dataset_for_inference,
     assign_mrn_to_training_validation_test_set,
 )

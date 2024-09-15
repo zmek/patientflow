@@ -14,7 +14,7 @@ modelling_dates:
   - 2032-01-01 # end test set
 
 # desired error for Poisson distribution (1 - sum of each approximated Poisson)
-epsilon: 10**-7
+epsilon: 1e-7
 
 # enter desired time interval for the calculation of aspiration yet-to-arrive in minutes
 yta_time_interval: 15
