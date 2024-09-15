@@ -461,9 +461,9 @@ def main(data_folder_name=None, uclh=None):
     # Now `data_folder_name` and `uclh` contain the appropriate values
     print(f"Loading data from folder: {data_folder_name}")
     if uclh:
-        print(f"Training models using UCLH dataset")
+        print("Training models using UCLH dataset")
     else:
-        print(f"Training models using public dataset")
+        print("Training models using public dataset")
 
     # set file location
     data_file_path, media_file_path, model_file_path, config_path = set_file_paths(

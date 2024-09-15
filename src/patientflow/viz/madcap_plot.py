@@ -59,7 +59,9 @@ def plot_madcap(predict_proba, label, dataset, media_path=None, plot_difference=
         # Plot difference
         ax_difference.plot(x, model - observed)
         ax_difference.legend(loc="upper left")
-        ax_difference.set_xlabel("Test set visits ordered by increasing predicted probability")
+        ax_difference.set_xlabel(
+            "Test set visits ordered by increasing predicted probability"
+        )
         ax_difference.set_ylabel("Expected number of admissions - observed")
         ax_difference.set_title("Difference between expected and observed")
 
@@ -77,7 +79,13 @@ def plot_madcap(predict_proba, label, dataset, media_path=None, plot_difference=
 
 
 def plot_madcap_by_group(
-    predict_proba, label, group, dataset, group_name, media_path=None, plot_difference=True
+    predict_proba,
+    label,
+    group,
+    dataset,
+    group_name,
+    media_path=None,
+    plot_difference=True,
 ):
     """
     Save MADCAP plots subdivided by a specified grouping variable.
@@ -98,7 +106,7 @@ def plot_madcap_by_group(
     group = np.array(group)
 
     unique_groups = np.unique(group)
-    
+
     # Create subplots based on whether we're plotting the difference
     if plot_difference:
         fig, ax = plt.subplots(2, len(unique_groups), figsize=(12, 8))

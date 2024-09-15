@@ -51,11 +51,12 @@ def parse_args():
     )
     parser.add_argument(
         "--uclh",
-        type=bool,
+        type=lambda x: x.lower() in ["true", "1", "yes", "y"],
         default=False,
         help="Train using UCLH data (True) or Public data (False)",
     )
     args = parser.parse_args()
+    print(args)
     return args
 
 

@@ -251,20 +251,3 @@ def create_predictions(
         ]
 
     return predictions
-
-
-def main(data_folder_name=None, uclh=None):
-    # set file location
-    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        data_folder_name, uclh
-    )
-
-    # load parameters
-    params = load_config_file(config_path)
-
-    prediction_times = params[0]
-    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
-    x1, y1, x2, y2 = params[5:9]
-    prediction_window = params[9]
-    epsilon = float(params[10])
-    time_interval = params[11]    
