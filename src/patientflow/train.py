@@ -5,7 +5,6 @@ from joblib import dump
 import json
 
 # import argparse
-from datetime import datetime
 
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import log_loss, roc_auc_score
@@ -614,5 +613,6 @@ def main(data_folder_name=None, uclh=None):
         print("Real-time inference ran correctly")
     except Exception as e:
         print(f"Real-time inference failed due to this error: {str(e)}")
+
 
 main()
