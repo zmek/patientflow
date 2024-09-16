@@ -35,7 +35,7 @@ from typing import Any, Dict, Tuple, Union, List, Optional
 import argparse
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments for the training script.
 
