@@ -1,1 +1,223 @@
-{"ed_admission_minimal_0600": {"train_valid_test_set_no": {"train_set_no": 14584, "valid_set_no": 1192, "test_set_no": 4361}, "best_params": "{'n_estimators': 30}", "train_valid_set_results": {"{'n_estimators': 30}": {"train_auc": 0.7512991687465613, "valid_auc": 0.6210171092997878, "train_logloss": 0.4385317356540309, "valid_logloss": 0.4670179325187448}}, "test_set_results": {"test_auc": 0.6345721326665218, "test_logloss": 0.4754119243173538}, "best_model_features": {"feature_names": ["elapsed_los", "sex_F", "sex_I", "sex_M", "sex_U", "arrival_method_Amb no medic", "arrival_method_Ambulance", "arrival_method_Custodial se", "arrival_method_Med Flight", "arrival_method_Non-emergenc", "arrival_method_Police", "arrival_method_Public Trans", "arrival_method_Walk-in", "arrival_method_nan"], "feature_importances": [0.060262780636548996, 0.03234892338514328, 0.0, 0.051728256046772, 0.11873748898506165, 0.18836846947669983, 0.3790050148963928, 0.0, 0.0, 0.004201078787446022, 0.055768467485904694, 0.043471548706293106, 0.030987245962023735, 0.035120684653520584]}}, "ed_admission_minimal_0930": {"train_valid_test_set_no": {"train_set_no": 20352, "valid_set_no": 1755, "test_set_no": 6205}, "best_params": "{'n_estimators': 30}", "train_valid_set_results": {"{'n_estimators': 30}": {"train_auc": 0.7851009523693466, "valid_auc": 0.6813815942501422, "train_logloss": 0.3409913486663993, "valid_logloss": 0.38153762114255063}}, "test_set_results": {"test_auc": 0.6984653619136378, "test_logloss": 0.36894645727923364}, "best_model_features": {"feature_names": ["elapsed_los", "sex_F", "sex_I", "sex_M", "sex_U", "arrival_method_Amb no medic", "arrival_method_Ambulance", "arrival_method_Custodial se", "arrival_method_Med Flight", "arrival_method_Non-emergenc", "arrival_method_Police", "arrival_method_Public Trans", "arrival_method_Walk-in", "arrival_method_nan"], "feature_importances": [0.051604099571704865, 0.023742569610476494, 0.0, 0.02732139453291893, 0.03285301849246025, 0.23187321424484253, 0.4738907814025879, 0.0, 0.0, 0.02090577408671379, 0.06185663118958473, 0.02939905971288681, 0.019917478784918785, 0.026635972782969475]}}, "ed_admission_minimal_1200": {"train_valid_test_set_no": {"train_set_no": 33409, "valid_set_no": 2838, "test_set_no": 10923}, "best_params": "{'n_estimators': 30}", "train_valid_set_results": {"{'n_estimators': 30}": {"train_auc": 0.7618562844725119, "valid_auc": 0.6696961433714275, "train_logloss": 0.3444421725813911, "valid_logloss": 0.3729829710730748}}, "test_set_results": {"test_auc": 0.6789946106535234, "test_logloss": 0.3466274224454475}, "best_model_features": {"feature_names": ["elapsed_los", "sex_F", "sex_I", "sex_M", "sex_U", "arrival_method_Amb no medic", "arrival_method_Ambulance", "arrival_method_Custodial se", "arrival_method_Med Flight", "arrival_method_Non-emergenc", "arrival_method_Police", "arrival_method_Public Trans", "arrival_method_Walk-in", "arrival_method_nan"], "feature_importances": [0.02851187065243721, 0.012588844634592533, 0.0, 0.016269970685243607, 0.01030197087675333, 0.29813987016677856, 0.5202959179878235, 0.0, 0.0, 0.03218482434749603, 0.012923241592943668, 0.01264267135411501, 0.012753610499203205, 0.04338719695806503]}}, "ed_admission_minimal_1530": {"train_valid_test_set_no": {"train_set_no": 41073, "valid_set_no": 3121, "test_set_no": 13188}, "best_params": "{'n_estimators': 30}", "train_valid_set_results": {"{'n_estimators': 30}": {"train_auc": 0.742291296967983, "valid_auc": 0.6765342784247383, "train_logloss": 0.38202671836484414, "valid_logloss": 0.41698929138785407}}, "test_set_results": {"test_auc": 0.6781864568578446, "test_logloss": 0.39019781234143947}, "best_model_features": {"feature_names": ["elapsed_los", "sex_F", "sex_I", "sex_M", "sex_U", "arrival_method_Amb no medic", "arrival_method_Ambulance", "arrival_method_Custodial se", "arrival_method_Med Flight", "arrival_method_Non-emergenc", "arrival_method_Police", "arrival_method_Public Trans", "arrival_method_Walk-in", "arrival_method_nan"], "feature_importances": [0.0269902553409338, 0.00812574289739132, 0.006735761649906635, 0.015202355571091175, 0.005456258542835712, 0.3437962830066681, 0.5165557861328125, 0.0, 0.0, 0.014336689375340939, 0.015377714298665524, 0.01108227763324976, 0.008415339514613152, 0.027925679460167885]}}, "ed_admission_minimal_2200": {"train_valid_test_set_no": {"train_set_no": 34855, "valid_set_no": 2745, "test_set_no": 10127}, "best_params": "{'n_estimators': 30}", "train_valid_set_results": {"{'n_estimators': 30}": {"train_auc": 0.7495539384077402, "valid_auc": 0.6775978388433981, "train_logloss": 0.39071203115373704, "valid_logloss": 0.42078823166730006}}, "test_set_results": {"test_auc": 0.6900588425864478, "test_logloss": 0.4422778516015613}, "best_model_features": {"feature_names": ["elapsed_los", "sex_F", "sex_I", "sex_M", "sex_U", "arrival_method_Amb no medic", "arrival_method_Ambulance", "arrival_method_Custodial se", "arrival_method_Med Flight", "arrival_method_Non-emergenc", "arrival_method_Police", "arrival_method_Public Trans", "arrival_method_Walk-in", "arrival_method_nan"], "feature_importances": [0.05030185356736183, 0.013716602697968483, 0.003903621807694435, 0.017473487183451653, 0.02784522995352745, 0.25003907084465027, 0.5201218128204346, 0.0, 0.0, 0.0204007551074028, 0.03284837678074837, 0.013815297745168209, 0.011426554061472416, 0.03810729458928108]}}}
+{
+  "ed_admission_minimal_0600": {
+    "train_valid_test_set_no": {
+      "train_set_no": 14584,
+      "valid_set_no": 1192,
+      "test_set_no": 4361
+    },
+    "best_params": "{'n_estimators': 30}",
+    "train_valid_set_results": {
+      "{'n_estimators': 30}": {
+        "train_auc": 0.7512991687465613,
+        "valid_auc": 0.6210171092997878,
+        "train_logloss": 0.4385317356540309,
+        "valid_logloss": 0.4670179325187448
+      }
+    },
+    "test_set_results": {
+      "test_auc": 0.6345721326665218,
+      "test_logloss": 0.4754119243173538
+    },
+    "best_model_features": {
+      "feature_names": [
+        "elapsed_los",
+        "sex_F",
+        "sex_I",
+        "sex_M",
+        "sex_U",
+        "arrival_method_Amb no medic",
+        "arrival_method_Ambulance",
+        "arrival_method_Custodial se",
+        "arrival_method_Med Flight",
+        "arrival_method_Non-emergenc",
+        "arrival_method_Police",
+        "arrival_method_Public Trans",
+        "arrival_method_Walk-in",
+        "arrival_method_nan"
+      ],
+      "feature_importances": [
+        0.060262780636548996, 0.03234892338514328, 0.0, 0.051728256046772,
+        0.11873748898506165, 0.18836846947669983, 0.3790050148963928, 0.0, 0.0,
+        0.004201078787446022, 0.055768467485904694, 0.043471548706293106,
+        0.030987245962023735, 0.035120684653520584
+      ]
+    }
+  },
+  "ed_admission_minimal_0930": {
+    "train_valid_test_set_no": {
+      "train_set_no": 20352,
+      "valid_set_no": 1755,
+      "test_set_no": 6205
+    },
+    "best_params": "{'n_estimators': 30}",
+    "train_valid_set_results": {
+      "{'n_estimators': 30}": {
+        "train_auc": 0.7851009523693466,
+        "valid_auc": 0.6813815942501422,
+        "train_logloss": 0.3409913486663993,
+        "valid_logloss": 0.38153762114255063
+      }
+    },
+    "test_set_results": {
+      "test_auc": 0.6984653619136378,
+      "test_logloss": 0.36894645727923364
+    },
+    "best_model_features": {
+      "feature_names": [
+        "elapsed_los",
+        "sex_F",
+        "sex_I",
+        "sex_M",
+        "sex_U",
+        "arrival_method_Amb no medic",
+        "arrival_method_Ambulance",
+        "arrival_method_Custodial se",
+        "arrival_method_Med Flight",
+        "arrival_method_Non-emergenc",
+        "arrival_method_Police",
+        "arrival_method_Public Trans",
+        "arrival_method_Walk-in",
+        "arrival_method_nan"
+      ],
+      "feature_importances": [
+        0.051604099571704865, 0.023742569610476494, 0.0, 0.02732139453291893,
+        0.03285301849246025, 0.23187321424484253, 0.4738907814025879, 0.0, 0.0,
+        0.02090577408671379, 0.06185663118958473, 0.02939905971288681,
+        0.019917478784918785, 0.026635972782969475
+      ]
+    }
+  },
+  "ed_admission_minimal_1200": {
+    "train_valid_test_set_no": {
+      "train_set_no": 33409,
+      "valid_set_no": 2838,
+      "test_set_no": 10923
+    },
+    "best_params": "{'n_estimators': 30}",
+    "train_valid_set_results": {
+      "{'n_estimators': 30}": {
+        "train_auc": 0.7618562844725119,
+        "valid_auc": 0.6696961433714275,
+        "train_logloss": 0.3444421725813911,
+        "valid_logloss": 0.3729829710730748
+      }
+    },
+    "test_set_results": {
+      "test_auc": 0.6789946106535234,
+      "test_logloss": 0.3466274224454475
+    },
+    "best_model_features": {
+      "feature_names": [
+        "elapsed_los",
+        "sex_F",
+        "sex_I",
+        "sex_M",
+        "sex_U",
+        "arrival_method_Amb no medic",
+        "arrival_method_Ambulance",
+        "arrival_method_Custodial se",
+        "arrival_method_Med Flight",
+        "arrival_method_Non-emergenc",
+        "arrival_method_Police",
+        "arrival_method_Public Trans",
+        "arrival_method_Walk-in",
+        "arrival_method_nan"
+      ],
+      "feature_importances": [
+        0.02851187065243721, 0.012588844634592533, 0.0, 0.016269970685243607,
+        0.01030197087675333, 0.29813987016677856, 0.5202959179878235, 0.0, 0.0,
+        0.03218482434749603, 0.012923241592943668, 0.01264267135411501,
+        0.012753610499203205, 0.04338719695806503
+      ]
+    }
+  },
+  "ed_admission_minimal_1530": {
+    "train_valid_test_set_no": {
+      "train_set_no": 41073,
+      "valid_set_no": 3121,
+      "test_set_no": 13188
+    },
+    "best_params": "{'n_estimators': 30}",
+    "train_valid_set_results": {
+      "{'n_estimators': 30}": {
+        "train_auc": 0.742291296967983,
+        "valid_auc": 0.6765342784247383,
+        "train_logloss": 0.38202671836484414,
+        "valid_logloss": 0.41698929138785407
+      }
+    },
+    "test_set_results": {
+      "test_auc": 0.6781864568578446,
+      "test_logloss": 0.39019781234143947
+    },
+    "best_model_features": {
+      "feature_names": [
+        "elapsed_los",
+        "sex_F",
+        "sex_I",
+        "sex_M",
+        "sex_U",
+        "arrival_method_Amb no medic",
+        "arrival_method_Ambulance",
+        "arrival_method_Custodial se",
+        "arrival_method_Med Flight",
+        "arrival_method_Non-emergenc",
+        "arrival_method_Police",
+        "arrival_method_Public Trans",
+        "arrival_method_Walk-in",
+        "arrival_method_nan"
+      ],
+      "feature_importances": [
+        0.0269902553409338, 0.00812574289739132, 0.006735761649906635,
+        0.015202355571091175, 0.005456258542835712, 0.3437962830066681,
+        0.5165557861328125, 0.0, 0.0, 0.014336689375340939,
+        0.015377714298665524, 0.01108227763324976, 0.008415339514613152,
+        0.027925679460167885
+      ]
+    }
+  },
+  "ed_admission_minimal_2200": {
+    "train_valid_test_set_no": {
+      "train_set_no": 34855,
+      "valid_set_no": 2745,
+      "test_set_no": 10127
+    },
+    "best_params": "{'n_estimators': 30}",
+    "train_valid_set_results": {
+      "{'n_estimators': 30}": {
+        "train_auc": 0.7495539384077402,
+        "valid_auc": 0.6775978388433981,
+        "train_logloss": 0.39071203115373704,
+        "valid_logloss": 0.42078823166730006
+      }
+    },
+    "test_set_results": {
+      "test_auc": 0.6900588425864478,
+      "test_logloss": 0.4422778516015613
+    },
+    "best_model_features": {
+      "feature_names": [
+        "elapsed_los",
+        "sex_F",
+        "sex_I",
+        "sex_M",
+        "sex_U",
+        "arrival_method_Amb no medic",
+        "arrival_method_Ambulance",
+        "arrival_method_Custodial se",
+        "arrival_method_Med Flight",
+        "arrival_method_Non-emergenc",
+        "arrival_method_Police",
+        "arrival_method_Public Trans",
+        "arrival_method_Walk-in",
+        "arrival_method_nan"
+      ],
+      "feature_importances": [
+        0.05030185356736183, 0.013716602697968483, 0.003903621807694435,
+        0.017473487183451653, 0.02784522995352745, 0.25003907084465027,
+        0.5201218128204346, 0.0, 0.0, 0.0204007551074028, 0.03284837678074837,
+        0.013815297745168209, 0.011426554061472416, 0.03810729458928108
+      ]
+    }
+  }
+}
