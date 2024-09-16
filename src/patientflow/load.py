@@ -175,7 +175,9 @@ def load_config_file(
         return None
 
 
-def set_file_paths(data_folder_name: str, uclh: bool = False, from_notebook: bool = False) -> Tuple[Path, Path, Path, Path]:
+def set_file_paths(
+    data_folder_name: str, uclh: bool = False, from_notebook: bool = False
+) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
 
