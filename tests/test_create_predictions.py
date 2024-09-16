@@ -1,7 +1,6 @@
 import unittest
 import pandas as pd
 import numpy as np
-import sys
 import os
 from scipy.stats import poisson
 
@@ -9,30 +8,29 @@ from scipy.stats import poisson
 from pathlib import Path
 import joblib
 
-# PROJECT_ROOT = Path().home()
-# USER_ROOT = Path().home() / 'work'
+# # PROJECT_ROOT = Path().home()
+# # USER_ROOT = Path().home() / 'work'
 
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../functions"))
-)
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/patientflow"))
-)
+# sys.path.append(
+#     os.path.abspath(os.path.join(os.path.dirname(__file__), "../functions"))
+# )
+# sys.path.append(
+#     os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/patientflow"))
+# )
 
-# sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
-# sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
+# # sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
+# # sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
 
-from predict.realtime_demand import create_predictions
-from load import get_model_name
-from prepare import create_special_category_objects
+from patientflow.predict.realtime_demand import create_predictions
+from patientflow.load import get_model_name
+from patientflow.prepare import create_special_category_objects
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
-import os
 
-from errors import ModelLoadError, MissingKeysError
+from patientflow.errors import ModelLoadError, MissingKeysError
 
 
 # Example usage:

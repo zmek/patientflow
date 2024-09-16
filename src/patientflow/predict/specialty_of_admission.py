@@ -12,7 +12,7 @@ get_specialty_probs(model_file_path, snapshots_df, special_category_func=None, s
     Calculate specialty probability distributions for patient visits based on their data.
 """
 
-from prepare import prepare_for_inference
+from patientflow.prepare import prepare_for_inference
 
 
 def get_specialty_probs(
@@ -71,6 +71,15 @@ def get_specialty_probs(
     2    {'neurology': 0.8, 'general': 0.2}
     dtype: object
     """
+
+    # Convert consultation_sequence to tuple if not already a tuple
+    if len(snapshots_df["consultation_sequence"]) > 0 and not isinstance(
+        snapshots_df["consultation_sequence"].iloc[0], tuple
+    ):
+        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df[
+            "consultation_sequence"
+        ].apply(lambda x: tuple(x) if x else ())
+
     if special_category_func and not special_category_dict:
         raise ValueError(
             "special_category_dict must be provided if special_category_func is specified."

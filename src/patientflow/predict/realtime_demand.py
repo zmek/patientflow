@@ -2,15 +2,15 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from prepare import prepare_for_inference, validate_special_category_objects
+from patientflow.prepare import prepare_for_inference, validate_special_category_objects
 
-from predict.admission_in_prediction_window import (
+from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
 )
 
-from predict.specialty_of_admission import get_specialty_probs
+from patientflow.predict.specialty_of_admission import get_specialty_probs
 
-from aggregate import (
+from patientflow.aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )
@@ -230,10 +230,10 @@ def create_predictions(
         filtered_weights = (
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
-
         agg_predicted_in_ed = pred_proba_to_agg_predicted(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
+
         prediction_context = {specialty: {"prediction_time": prediction_time}}
         agg_predicted_yta = yet_to_arrive_model.predict(
             prediction_context, x1, y1, x2, y2

@@ -1,17 +1,62 @@
 """
-Contains functions for loading config files, data from csv and saved models
+This module provides functionality for loading configuration files, data from CSV files, and trained machine learning models.
+
+It includes the following features:
+
+- **Loading Configurations**: Parse YAML configuration files and extract necessary parameters for data processing and modeling.
+- **Data Handling**: Load and preprocess data from CSV files, including optional operations like setting an index, sorting, and applying literal evaluation on columns.
+- **Model Management**: Load saved machine learning models, customize model filenames based on time, and categorize DataFrame columns into predefined groups for analysis.
+
+The module handles common file and parsing errors, returning appropriate error messages or exceptions.
+
+Functions
+---------
+- `parse_args`: Parses command-line arguments for training models.
+- `load_config_file`: Load a YAML configuration file and extract key parameters.
+- `set_data_file_names`: Set file locations based on UCLH-specific or default data sources.
+- `safe_literal_eval`: Safely evaluate string literals into Python objects.
+- `data_from_csv`: Load and preprocess data from a CSV file.
+- `get_model_name`: Generate a model name based on the time of day.
+- `load_saved_model`: Load a machine learning model saved in a joblib file.
+- `get_dict_cols`: Categorize columns from a DataFrame into predefined groups for analysis.
 """
 
 import ast  # to convert tuples to strings
 import os
 from pathlib import Path
+import sys
 
 import pandas as pd
 from joblib import load
-from errors import ModelLoadError
+from .errors import ModelLoadError
 
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
+import argparse
+
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the training script.
+
+    Returns:
+        argparse.Namespace: The parsed arguments containing 'data_folder_name' and 'uclh' keys.
+    """
+    parser = argparse.ArgumentParser(description="Train emergency demand models")
+    parser.add_argument(
+        "--data_folder_name",
+        type=str,
+        default="data-raw",
+        help="Location of data for training",
+    )
+    parser.add_argument(
+        "--uclh",
+        type=lambda x: x.lower() in ["true", "1", "yes", "y"],
+        default=False,
+        help="Train using UCLH data (True) or Public data (False)",
+    )
+    args = parser.parse_args()
+    return args
 
 
 def load_config_file(
@@ -36,6 +81,23 @@ def load_config_file(
         ],
     ]
 ]:
+    """
+    Load configuration from a YAML file.
+
+    Parameters
+    ----------
+    config_file_path : str
+        The path to the configuration file.
+    return_start_end_dates : bool, optional
+        If True, return the start and end dates from the file (default is False).
+
+    Returns
+    -------
+    dict or tuple or None
+        If `return_start_end_dates` is True, returns a tuple of start and end dates (str).
+        Otherwise, returns a tuple containing prediction times, modelling dates, and other configuration values.
+        Returns None if an error occurs during file reading or parsing.
+    """
     try:
         with open(config_file_path, "r") as file:
             config = yaml.safe_load(file)
@@ -113,7 +175,123 @@ def load_config_file(
         return None
 
 
+def set_file_paths(
+    data_folder_name: str, uclh: bool = False, from_notebook: bool = False
+) -> Tuple[Path, Path, Path, Path]:
+    """
+    Sets up the file paths and loads configuration parameters from a YAML file.
+
+    Args:
+        data_folder_name (str): Name of the folder where data files are located.
+        uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths.
+                     Default is False.
+
+    Returns:
+        tuple: A tuple containing the following elements:
+            - data_file_path (Path): Path to the data folder.
+            - media_file_path (Path): Path to the media folder (created if not already existing).
+            - model_file_path (Path): Path to the trained models folder (created if not already existing).
+            - config_path (Path): Path to the configuration file used.
+            - params (list): Configuration parameters loaded from the config file.
+    """
+    # Get the current path and root
+    if from_notebook:
+        root = Path().resolve().parent
+    else:
+        current_path = Path(__file__)
+        root = current_path.parents[2]
+
+    # Set data and media file paths
+    data_file_path = Path(root) / data_folder_name
+    if from_notebook:
+        media_file_path = Path(root) / "notebooks" / "img"
+    else:
+        media_file_path = Path(root) / "media"
+    media_file_path.mkdir(parents=False, exist_ok=True)
+
+    model_file_path = Path(root) / "trained-models"
+    model_file_path.mkdir(parents=False, exist_ok=True)
+
+    # Load the config file based on the `uclh` flag
+    if uclh:
+        config_path = Path(root) / "config-uclh.yaml"
+    else:
+        config_path = Path(root) / "config.yaml"
+
+    # Return paths and parameters
+    return data_file_path, media_file_path, model_file_path, config_path
+
+
+def set_data_file_names(uclh, data_file_path, config_file_path=None):
+    """
+    Set file locations based on UCLH or default data source.
+
+    Parameters
+    ----------
+    uclh : bool
+        If True, use UCLH-specific file locations. If False, use default file locations.
+    data_file_path : Path
+        The base path to the data directory.
+    config_file_path : str, optional
+        The path to the configuration file, required if `uclh` is True.
+
+    Returns
+    -------
+    tuple
+        Paths to the required files (visits, arrivals) based on the configuration.
+    """
+    if not isinstance(data_file_path, Path):
+        data_file_path = Path(data_file_path)
+
+    if not uclh:
+        csv_filename = "ed_visits.csv"
+        yta_csv_filename = "arrivals.csv"
+
+        visits_csv_path = data_file_path / csv_filename
+        yta_csv_path = data_file_path / yta_csv_filename
+
+        return visits_csv_path, yta_csv_path
+
+    else:
+        start_date, end_date = load_config_file(
+            config_file_path, return_start_end_dates=True
+        )
+        data_filename = (
+            "uclh_visits_exc_beds_inc_minority_"
+            + str(start_date)
+            + "_"
+            + str(end_date)
+            + ".pickle"
+        )
+        csv_filename = "uclh_visits.csv"
+        yta_filename = (
+            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
+        )
+        yta_csv_filename = "uclh_arrivals.csv"
+
+        visits_path = data_file_path / data_filename
+        yta_path = data_file_path / yta_filename
+
+        visits_csv_path = data_file_path / csv_filename
+        yta_csv_path = data_file_path / yta_csv_filename
+
+    return visits_path, visits_csv_path, yta_path, yta_csv_path
+
+
 def safe_literal_eval(s):
+    """
+    Safely evaluate a string literal into a Python object.
+
+    Parameters
+    ----------
+    s : str
+        The string to evaluate.
+
+    Returns
+    -------
+    Any or None
+        The evaluated Python object if successful, otherwise None.
+    """
     try:
         if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
             return None
@@ -141,11 +319,11 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     try:
         df = pd.read_csv(path, parse_dates=True)
     except FileNotFoundError:
-        print(f"Data file not found at path: {csv_path}")
-        return None
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error loading data: {e}")
-        return None
+        sys.exit(1)
 
     if index_column:
         try:
@@ -171,25 +349,52 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     return df
 
 
-def get_model_name(model_name, prediction_time_):
+def get_model_name(model_name, prediction_time):
     """
     Create a model name based on the time of day.
 
     Parameters
-    prediction_time_ (tuple): A tuple representing the time of day (hour, minute).
+    ----------
+    model_name : str
+        The base name of the model.
+    prediction_time_ : tuple of int
+        A tuple representing the time of day (hour, minute).
 
     Returns
-    str: A string representing the model name based on the time of day.
-
+    -------
+    str
+        A string representing the model name based on the time of day.
     """
-    hour_, min_ = prediction_time_
+
+    hour_, min_ = prediction_time
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
     model_name = model_name + "_" + f"{hour_:02}" + min_
     return model_name
 
 
 def load_saved_model(model_file_path, model_name, prediction_time=None):
-    print(model_name)
+    """
+    Load a saved model from a file.
+
+    Parameters
+    ----------
+    model_file_path : Path
+        The path to the directory where the model is saved.
+    model_name : str
+        The base name of the model.
+    prediction_time : tuple of int, optional
+        The time of day the model was trained for.
+
+    Returns
+    -------
+    Any
+        The loaded model.
+
+    Raises
+    ------
+    ModelLoadError
+        If the model file cannot be found or loaded.
+    """
     if prediction_time:
         # retrieve model based on the time of day it is trained for
         model_name = get_model_name(model_name, prediction_time)
@@ -210,43 +415,20 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         raise ModelLoadError(f"Error loading model called {model_name}: {e}")
 
 
-def set_file_locations(uclh, data_path, config_file_path=None):
-    if not uclh:
-        csv_filename = "ed_visits.csv"
-        yta_csv_filename = "arrivals.csv"
-
-        visits_csv_path = data_path / csv_filename
-        yta_csv_path = data_path / yta_csv_filename
-
-        return visits_csv_path, yta_csv_path
-
-    else:
-        start_date, end_date = load_config_file(
-            config_file_path, return_start_end_dates=True
-        )
-        data_filename = (
-            "uclh_visits_exc_beds_inc_minority_"
-            + str(start_date)
-            + "_"
-            + str(end_date)
-            + ".pickle"
-        )
-        csv_filename = "uclh_visits.csv"
-        yta_filename = (
-            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
-        )
-        yta_csv_filename = "uclh_arrivals.csv"
-
-        visits_path = data_path / data_filename
-        yta_path = data_path / yta_filename
-
-        visits_csv_path = data_path / csv_filename
-        yta_csv_path = data_path / yta_csv_filename
-
-    return visits_path, visits_csv_path, yta_path, yta_csv_path
-
-
 def get_dict_cols(df):
+    """
+    Categorize DataFrame columns into predefined groups.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to categorize.
+
+    Returns
+    -------
+    dict
+        A dictionary where keys are column group names and values are lists of column names in each group.
+    """
     not_used_in_training_vars = [
         "snapshot_id",
         "snapshot_date",

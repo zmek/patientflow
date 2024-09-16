@@ -1,17 +1,114 @@
 import numpy as np
 import xgboost as xgb
+import pandas as pd
+from joblib import dump
+import json
+
+# import argparse
+
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import log_loss, roc_auc_score
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
-
 from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
-from joblib import dump
-import json
 
-from prepare import get_snapshots_at_prediction_time
-from load import get_model_name
+from patientflow.prepare import (
+    get_snapshots_at_prediction_time,
+    select_one_snapshot_per_visit,
+    create_special_category_objects,
+    create_yta_filters,
+)
+from patientflow.load import (
+    load_config_file,
+    get_model_name,
+    set_file_paths,
+    set_data_file_names,
+    data_from_csv,
+    parse_args,
+)
+from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.poisson_binomial_predictor import PoissonBinomialPredictor
+from patientflow.predict.realtime_demand import create_predictions
+
+
+def split_and_check_sets(
+    df,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    date_column="snapshot_date",
+    print_dates=True,
+):
+    df[date_column] = pd.to_datetime(df[date_column]).dt.date
+
+    if print_dates:
+        # Separate into training, validation and test sets and print summary for each set
+        for value in df.training_validation_test.unique():
+            subset = df[df.training_validation_test == value]
+            counts = subset.training_validation_test.value_counts().values[0]
+            min_date = subset[date_column].min()
+            max_date = subset[date_column].max()
+            print(
+                f"Set: {value}\nNumber of rows: {counts}\nMin Date: {min_date}\nMax Date: {max_date}\n"
+            )
+
+    # Split df into training, validation, and test sets
+    train_df = df[df.training_validation_test == "train"].drop(
+        columns="training_validation_test"
+    )
+    valid_df = df[df.training_validation_test == "valid"].drop(
+        columns="training_validation_test"
+    )
+    test_df = df[df.training_validation_test == "test"].drop(
+        columns="training_validation_test"
+    )
+
+    # Assertions with try-except for better error handling
+    try:
+        assert train_df[date_column].min() == start_training_set
+    except AssertionError:
+        print(
+            f"Assertion failed: train_df min date {train_df[date_column].min()} != {start_training_set}"
+        )
+
+    try:
+        assert train_df[date_column].max() < start_validation_set
+    except AssertionError:
+        print(
+            f"Assertion failed: train_df max date {train_df[date_column].max()} >= {start_validation_set}"
+        )
+
+    try:
+        assert valid_df[date_column].min() == start_validation_set
+    except AssertionError:
+        print(
+            f"Assertion failed: valid_df min date {valid_df[date_column].min()} != {start_validation_set}"
+        )
+
+    try:
+        assert valid_df[date_column].max() < start_test_set
+    except AssertionError:
+        print(
+            f"Assertion failed: valid_df max date {valid_df[date_column].max()} >= {start_test_set}"
+        )
+
+    try:
+        assert test_df[date_column].min() == start_test_set
+    except AssertionError:
+        print(
+            f"Assertion failed: test_df min date {test_df[date_column].min()} != {start_test_set}"
+        )
+
+    try:
+        assert test_df[date_column].max() <= end_test_set
+    except AssertionError:
+        print(
+            f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
+        )
+
+    return
 
 
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
@@ -76,7 +173,7 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
 
 # Initialise the model with given hyperparameters
 def initialise_xgb(params):
-    model = xgb.XGBClassifier(n_jobs=-1, use_label_encoder=False, eval_metric="logloss")
+    model = xgb.XGBClassifier(n_jobs=-1, eval_metric="logloss")
     model.set_params(**params)
     return model
 
@@ -121,7 +218,7 @@ def create_column_transformer(df, ordinal_mappings=None):
     return ColumnTransformer(transformers)
 
 
-def train_models(
+def train_admissions_models(
     visits,
     grid,
     exclude_from_training_data,
@@ -254,3 +351,275 @@ def train_models(
 
     with open(full_path_results_dict, "w") as f:
         json.dump(best_model_results_dict, f)
+
+
+def get_default_visits(admitted, uclh):
+    # Get the special category objects based on the uclh flag
+    special_params = create_special_category_objects(uclh)
+
+    # Extract the function from special_params that will be used to identify the visits falling into the default category
+    # ie visits that do not require special functionality (in our case, the non-paediatric patients
+    opposite_special_category_func = special_params["special_func_map"]["default"]
+
+    # Get the special handling category (e.g., "paediatric") from the dictionary
+    special_category_key = next(
+        key
+        for key, value in special_params["special_category_dict"].items()
+        if value == 1.0
+    )
+
+    # Apply the function to filter out rows where the default handling (non-paediatric) applies
+    # Also, filter out rows where the 'specialty' matches the special handling category
+    filtered_admitted = admitted[
+        admitted.apply(opposite_special_category_func, axis=1)
+        & (admitted["specialty"] != special_category_key)
+    ]
+
+    return filtered_admitted
+
+
+def train_specialty_model(visits, model_name, model_file_path, uclh):
+    # Select one snapshot per visit
+    visits_single = select_one_snapshot_per_visit(visits, visit_col="visit_number")
+
+    # Prepare dataset of admitted visits only for training specialty model
+    admitted = visits_single[
+        (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
+    ]
+    filtered_admitted = get_default_visits(admitted, uclh=uclh)
+
+    # convert consults data format from list to tuple (required input for SequencePredictor)
+    filtered_admitted.loc[:, "consultation_sequence"] = filtered_admitted[
+        "consultation_sequence"
+    ].apply(lambda x: tuple(x) if x else ())
+    filtered_admitted.loc[:, "final_sequence"] = filtered_admitted[
+        "final_sequence"
+    ].apply(lambda x: tuple(x) if x else ())
+
+    # Train model
+    train_visits = filtered_admitted[
+        filtered_admitted.training_validation_test == "train"
+    ]
+    spec_model = SequencePredictor(
+        input_var="consultation_sequence",
+        grouping_var="final_sequence",
+        outcome_var="specialty",
+    )
+    spec_model.fit(train_visits)
+
+    # Save the model
+    full_path = model_file_path / model_name
+    full_path = full_path.with_suffix(".joblib")
+    dump(spec_model, full_path)
+
+
+def train_yet_to_arrive_model(
+    yta,
+    prediction_window,
+    time_interval,
+    prediction_times,
+    epsilon,
+    model_name,
+    model_file_path,
+    uclh,
+):
+    specialty_filters = create_yta_filters(uclh)
+
+    train_yta = yta[
+        yta.training_validation_test == "train"
+    ]  # .drop(columns='training_validation_test'
+    train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
+        train_yta["arrival_datetime"], utc=True
+    )
+    train_yta.set_index("arrival_datetime", inplace=True)
+
+    yta_model = PoissonBinomialPredictor(filters=specialty_filters)
+    yta_model.fit(
+        train_df=train_yta,
+        prediction_window=prediction_window,
+        time_interval=time_interval,
+        prediction_times=prediction_times,
+        epsilon=epsilon,
+    )
+
+    model_name = model_name + str(int(prediction_window / 60)) + "_hours"
+    full_path = model_file_path / model_name
+    full_path = full_path.with_suffix(".joblib")
+
+    dump(yta_model, full_path)
+
+
+def main(data_folder_name=None, uclh=None):
+    # parse arguments
+    if data_folder_name is None or uclh is None:
+        args = parse_args()
+        data_folder_name = (
+            data_folder_name if data_folder_name is not None else args.data_folder_name
+        )
+        uclh = uclh if uclh is not None else args.uclh
+
+    # Now `data_folder_name` and `uclh` contain the appropriate values
+    print(f"Loading data from folder: {data_folder_name}")
+    if uclh:
+        print("Training models using UCLH dataset")
+    else:
+        print("Training models using public dataset")
+
+    # set file location
+    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+        data_folder_name, uclh
+    )
+
+    # load parameters
+    params = load_config_file(config_path)
+
+    prediction_times = params[0]
+    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
+    x1, y1, x2, y2 = params[5:9]
+    prediction_window = params[9]
+    epsilon = float(params[10])
+    time_interval = params[11]
+
+    # Load data
+    if uclh:
+        visits_path, visits_csv_path, yta_path, yta_csv_path = set_data_file_names(
+            uclh, data_file_path, config_path
+        )
+    else:
+        visits_csv_path, yta_csv_path = set_data_file_names(uclh, data_file_path)
+
+    visits = data_from_csv(
+        visits_csv_path,
+        index_column="snapshot_id",
+        sort_columns=["visit_number", "snapshot_date", "prediction_time"],
+        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
+    )
+    yta = pd.read_csv(yta_csv_path)
+
+    # Create snapshot date
+    visits["snapshot_date"] = pd.to_datetime(visits["snapshot_date"]).dt.date
+
+    print("\nTimes of day at which predictions will be made")
+    print(prediction_times)
+    print("\nNumber of rows in dataset that are not in these times of day")
+    print(len(visits[~visits.prediction_time.isin(prediction_times)]))
+
+    # Check that input data aligns with specified params in config.yaml ie training, validation and test set dates
+    print("Checking dates for ed_visits dataset (used for patients in ED)")
+    split_and_check_sets(
+        visits, start_training_set, start_validation_set, start_test_set, end_test_set
+    )
+    print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
+
+    split_and_check_sets(
+        yta,
+        start_training_set,
+        start_validation_set,
+        start_test_set,
+        end_test_set,
+        date_column="arrival_datetime",
+    )
+
+    # Train admissions model
+
+    # Initialize a dict to save information about the best models for each time of day
+    grid = {
+        "n_estimators": [30],  # , 40, 50],
+        "subsample": [0.7],  # , 0.8,0.9],
+        "colsample_bytree": [0.7],  # , 0.8, 0.9]
+    }
+
+    # certain columns are not used in training
+    exclude_from_training_data = [
+        "visit_number",
+        "snapshot_date",
+        "prediction_time",
+        "specialty",
+        "consultation_sequence",
+        "final_sequence",
+    ]
+
+    ordinal_mappings = {
+        "age_group": [
+            "0-17",
+            "18-24",
+            "25-34",
+            "35-44",
+            "45-54",
+            "55-64",
+            "65-74",
+            "75-102",
+        ],
+        "latest_acvpu": ["A", "C", "V", "P", "U"],
+        "latest_manch_triage": ["Blue", "Green", "Yellow", "Orange", "Red"],
+        "latest_pain_objective": [
+            r"Nil",
+            r"Mild",
+            r"Moderate",
+            r"Severe\E\Very Severe",
+        ],
+    }
+
+    # Train admission model
+    model_name = "ed_admission"
+    train_admissions_models(
+        visits,
+        grid,
+        exclude_from_training_data,
+        ordinal_mappings,
+        prediction_times,
+        model_name,
+        model_file_path,
+        "best_model_results_dict.json",
+    )
+
+    # Train specialty model
+    model_name = "ed_specialty"
+    train_specialty_model(visits, model_name, model_file_path, uclh)
+
+    # Train yet-to-arrive model
+    model_name = "ed_yet_to_arrive_by_spec_"
+    train_yet_to_arrive_model(
+        yta=yta,
+        prediction_window=prediction_window,
+        time_interval=time_interval,
+        prediction_times=prediction_times,
+        epsilon=epsilon,
+        model_name=model_name,
+        model_file_path=model_file_path,
+        uclh=uclh,
+    )
+
+    # Test creation of real-time predictions
+    # Randomly pick a prediction moment to do inference on
+    random_row = visits[visits.training_validation_test == "test"].sample(n=1)
+    prediction_time = random_row.prediction_time.values[0]
+    prediction_date = random_row.snapshot_date.values[0]
+
+    prediction_snapshots = visits[
+        (visits.prediction_time == prediction_time)
+        & (visits.snapshot_date == prediction_date)
+    ]
+    special_params = create_special_category_objects(uclh)
+
+    try:
+        create_predictions(
+            model_file_path=model_file_path,
+            prediction_time=prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=["surgical", "haem/onc", "medical", "paediatric"],
+            prediction_window_hrs=prediction_window / 60,
+            cdf_cut_points=[0.9, 0.7],
+            x1=x1,
+            y1=y1,
+            x2=x2,
+            y2=y2,
+            special_params=special_params,
+        )
+        print("Real-time inference ran correctly")
+    except Exception as e:
+        print(f"Real-time inference failed due to this error: {str(e)}")
+
+
+if __name__ == "__main__":
+    main()
