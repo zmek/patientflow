@@ -175,7 +175,7 @@ def load_config_file(
         return None
 
 
-def set_file_paths(data_folder_name, uclh=False, from_notebook=False):
+def set_file_paths(data_folder_name: str, uclh: bool = False, from_notebook: bool = False) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
 
@@ -220,7 +220,7 @@ def set_file_paths(data_folder_name, uclh=False, from_notebook=False):
     return data_file_path, media_file_path, model_file_path, config_path
 
 
-def set_data_file_names(uclh, data_file_path, config_file_path=None):
+def set_data_file_names(uclh: bool, data_file_path: Path, config_file_path: Optional[str] = None) -> Union[Tuple[Path, Path], Tuple[Path, Path, Path, Path]]:
     """
     Set file locations based on UCLH or default data source.
 
@@ -276,7 +276,7 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
     return visits_path, visits_csv_path, yta_path, yta_csv_path
 
 
-def safe_literal_eval(s):
+def safe_literal_eval(s: Any) -> Optional[Any]:
     """
     Safely evaluate a string literal into a Python object.
 
@@ -298,7 +298,7 @@ def safe_literal_eval(s):
         return None
 
 
-def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
+def data_from_csv(csv_path: str, index_column: Optional[str] = None, sort_columns: Optional[List[str]] = None, eval_columns: Optional[List[str]] = None) -> pd.DataFrame:
     """
     Loads data from csv file
 
@@ -347,7 +347,7 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     return df
 
 
-def get_model_name(model_name, prediction_time):
+def get_model_name(model_name: str, prediction_time: Tuple[int, int]) -> str:
     """
     Create a model name based on the time of day.
 
@@ -370,7 +370,7 @@ def get_model_name(model_name, prediction_time):
     return model_name
 
 
-def load_saved_model(model_file_path, model_name, prediction_time=None):
+def load_saved_model(model_file_path: Path, model_name: str, prediction_time: Optional[Tuple[int, int]] = None) -> Any:
     """
     Load a saved model from a file.
 
@@ -413,7 +413,7 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
         raise ModelLoadError(f"Error loading model called {model_name}: {e}")
 
 
-def get_dict_cols(df):
+def get_dict_cols(df: pd.DataFrame) -> Dict[str, List[str]]:
     """
     Categorize DataFrame columns into predefined groups.
 
