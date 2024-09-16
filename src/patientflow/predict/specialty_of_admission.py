@@ -12,7 +12,7 @@ get_specialty_probs(model_file_path, snapshots_df, special_category_func=None, s
     Calculate specialty probability distributions for patient visits based on their data.
 """
 
-from ..prepare import prepare_for_inference
+from patientflow.prepare import prepare_for_inference
 
 
 def get_specialty_probs(

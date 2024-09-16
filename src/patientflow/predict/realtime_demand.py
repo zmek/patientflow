@@ -2,15 +2,15 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from ..prepare import prepare_for_inference, validate_special_category_objects
+from patientflow.prepare import prepare_for_inference, validate_special_category_objects
 
-from ..predict.admission_in_prediction_window import (
+from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
 )
 
-from ..predict.specialty_of_admission import get_specialty_probs
+from patientflow.predict.specialty_of_admission import get_specialty_probs
 
-from ..aggregate import (
+from patientflow.aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )

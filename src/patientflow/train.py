@@ -13,13 +13,13 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
 
-from .prepare import (
+from patientflow.prepare import (
     get_snapshots_at_prediction_time,
     select_one_snapshot_per_visit,
     create_special_category_objects,
     create_yta_filters,
 )
-from .load import (
+from patientflow.load import (
     load_config_file,
     get_model_name,
     set_file_paths,
@@ -27,9 +27,9 @@ from .load import (
     data_from_csv,
     parse_args,
 )
-from .predictors.sequence_predictor import SequencePredictor
-from .predictors.poisson_binomial_predictor import PoissonBinomialPredictor
-from .predict.realtime_demand import create_predictions
+from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.poisson_binomial_predictor import PoissonBinomialPredictor
+from patientflow.predict.realtime_demand import create_predictions
 
 
 def split_and_check_sets(
