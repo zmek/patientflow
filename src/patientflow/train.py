@@ -3,9 +3,6 @@ import xgboost as xgb
 import pandas as pd
 from joblib import dump
 import json
-from datetime import datetime, date
-from collections import Counter
-
 
 # import argparse
 
@@ -519,17 +516,12 @@ def main(data_folder_name=None, uclh=None):
     # load parameters
     params = load_config_file(config_path)
 
-    prediction_times = params["prediction_times"]
-    start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
-    x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
-    prediction_window = params["prediction_window"]
-    epsilon = float(params["epsilon"])
-    yta_time_interval = params["yta_time_interval"]
-
-    # convert params dates in format that can be saved to json later
-    for key in ['start_training_set', 'start_validation_set', 'start_test_set', 'end_test_set']:
-        if key in params and isinstance(params[key], date):
-            params[key] = params[key].isoformat()
+    prediction_times = params[0]
+    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
+    x1, y1, x2, y2 = params[5:9]
+    prediction_window = params[9]
+    epsilon = float(params[10])
+    time_interval = params[11]
 
     # Load data
     if uclh:
@@ -571,19 +563,11 @@ def main(data_folder_name=None, uclh=None):
         date_column="arrival_datetime",
     )
 
-
-    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm, 
-                      'config': params
-                      }
-    filename_results_dict_name = "model_metadata.json"
-
-
-
     # Train admissions model
 
     # Initialize a dict to save information about the best models for each time of day
     grid = {
-        "n_estimators": [30],# , 40], #, 50],
+        "n_estimators": [30],  # , 40, 50],
         "subsample": [0.7],  # , 0.8,0.9],
         "colsample_bytree": [0.7],  # , 0.8, 0.9]
     }
