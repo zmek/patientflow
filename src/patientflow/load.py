@@ -61,26 +61,7 @@ def parse_args() -> argparse.Namespace:
 
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
-) -> Optional[
-    Union[
-        Dict[str, Any],
-        Tuple[str, str],
-        Tuple[
-            List[Tuple[int, int]],
-            str,
-            str,
-            str,
-            str,
-            float,
-            float,
-            float,
-            float,
-            int,
-            float,
-            float,
-        ],
-    ]
-]:
+) -> Optional[Union[Dict[str, Any], Tuple[str, str]]]:
     """
     Load configuration from a YAML file.
 
@@ -89,13 +70,13 @@ def load_config_file(
     config_file_path : str
         The path to the configuration file.
     return_start_end_dates : bool, optional
-        If True, return the start and end dates from the file (default is False).
+        If True, return only the start and end dates from the file (default is False).
 
     Returns
     -------
     dict or tuple or None
         If `return_start_end_dates` is True, returns a tuple of start and end dates (str).
-        Otherwise, returns a tuple containing prediction times, modelling dates, and other configuration values.
+        Otherwise, returns a dictionary containing the configuration parameters.
         Returns None if an error occurs during file reading or parsing.
     """
     try:
@@ -113,60 +94,37 @@ def load_config_file(
             # load the dates used in saved data for uclh versions
             if "file_dates" in config and config["file_dates"]:
                 start_date, end_date = [str(item) for item in config["file_dates"]]
+                return (start_date, end_date)
             else:
-                print(
-                    "Error: 'file_dates' key not found or empty in the configuration file."
-                )
+                print("Error: 'file_dates' key not found or empty in the configuration file.")
                 return None
 
-        # Convert list of times of day at which predictions will be made (currently stored as lists) to list of tuples
+        params = {}
+
         if "prediction_times" in config:
-            prediction_times = [tuple(item) for item in config["prediction_times"]]
+            params['prediction_times'] = [tuple(item) for item in config["prediction_times"]]
         else:
             print("Error: 'prediction_times' key not found in the configuration file.")
-            return None
+            sys.exit(1)
 
-        # Load the dates defining the beginning and end of training, validation and test sets
         if "modelling_dates" in config and len(config["modelling_dates"]) == 4:
-            start_training_set, start_validation_set, start_test_set, end_test_set = [
+            params['start_training_set'], params['start_validation_set'], params['start_test_set'], params['end_test_set'] = [
                 item for item in config["modelling_dates"]
             ]
         else:
-            print(
-                "Error: expecting 4 modelling dates and only got "
-                + str(len(config["modelling_dates"]))
-            )
+            print(f"Error: expecting 4 modelling dates and only got {len(config.get('modelling_dates', []))}")
             return None
 
-        x1 = float(config.get("x1", 4))
-        y1 = float(config.get("y1", 0.76))
-        x2 = float(config.get("x2", 12))
-        y2 = float(config.get("y2", 0.99))
-        prediction_window = config.get("prediction_window", 480)
+        params['x1'] = float(config.get("x1", 4))
+        params['y1'] = float(config.get("y1", 0.76))
+        params['x2'] = float(config.get("x2", 12))
+        params['y2'] = float(config.get("y2", 0.99))
+        params['prediction_window'] = config.get("prediction_window", 480)
+        params['epsilon'] = config.get("epsilon", 10**-7)
+        params['yta_time_interval'] = config.get("yta_time_interval", 15)
 
-        # desired error for Poisson distribution (1 - sum of each approximated Poisson)
-        epsilon = config.get("epsilon", 10**-7)
+        return params
 
-        # time interval for the calculation of aspiration yet-to-arrive in minutes
-        yta_time_interval = config.get("yta_time_interval", 15)
-
-        if return_start_end_dates:
-            return (start_date, end_date)
-        else:
-            return (
-                prediction_times,
-                start_training_set,
-                start_validation_set,
-                start_test_set,
-                end_test_set,
-                x1,
-                y1,
-                x2,
-                y2,
-                prediction_window,
-                epsilon,
-                yta_time_interval,
-            )
     except KeyError as e:
         print(f"Error: Missing key in the configuration file: {e}")
         return None
@@ -194,7 +152,6 @@ def set_file_paths(
             - media_file_path (Path): Path to the media folder (created if not already existing).
             - model_file_path (Path): Path to the trained models folder (created if not already existing).
             - config_path (Path): Path to the configuration file used.
-            - params (list): Configuration parameters loaded from the config file.
     """
     # Get the current path and root
     if from_notebook:
