@@ -40,7 +40,7 @@ from patientflow.predict.admission_in_prediction_window import (
 )
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
-from ..prepare import (
+from patientflow.prepare import (
     calculate_time_varying_arrival_rates,
 )
 

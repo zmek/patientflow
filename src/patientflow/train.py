@@ -3,7 +3,7 @@ import xgboost as xgb
 import pandas as pd
 from joblib import dump
 import json
-from datetime import datetime
+from datetime import datetime, date
 from collections import Counter
 
 
@@ -526,6 +526,11 @@ def main(data_folder_name=None, uclh=None):
     epsilon = float(params["epsilon"])
     yta_time_interval = params["yta_time_interval"]
 
+    # convert params dates in format that can be saved to json later
+    for key in ['start_training_set', 'start_validation_set', 'start_test_set', 'end_test_set']:
+        if key in params and isinstance(params[key], date):
+            params[key] = params[key].isoformat()
+
     # Load data
     if uclh:
         visits_path, visits_csv_path, yta_path, yta_csv_path = set_data_file_names(
@@ -566,8 +571,10 @@ def main(data_folder_name=None, uclh=None):
         date_column="arrival_datetime",
     )
 
-    
-    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm, 'config': params}
+
+    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm, 
+                      'config': params
+                      }
     filename_results_dict_name = "model_metadata.json"
 
 
@@ -576,7 +583,7 @@ def main(data_folder_name=None, uclh=None):
 
     # Initialize a dict to save information about the best models for each time of day
     grid = {
-        "n_estimators": [30 , 40], #, 50],
+        "n_estimators": [30],# , 40], #, 50],
         "subsample": [0.7],  # , 0.8,0.9],
         "colsample_bytree": [0.7],  # , 0.8, 0.9]
     }

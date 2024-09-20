@@ -37,7 +37,7 @@ from functools import reduce
 
 
 from typing import Dict, Any
-from .errors import MissingKeysError
+from patientflow.errors import MissingKeysError
 
 
 def convert_set_to_dummies(df, column, prefix):

@@ -32,10 +32,10 @@ def plot_distributions(
 
     """
     # Set the aesthetic style of the plots
-    sns.set(style="whitegrid")
+    sns.set_theme(style="whitegrid")
 
     # Create a FacetGrid for side-by-side plots
-    g = sns.FacetGrid(df, col=grouping_var, height=5, aspect=1)
+    g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)  
 
     # Determine the number of bins if discrete
     if is_discrete:
@@ -54,7 +54,7 @@ def plot_distributions(
         raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
 
     g.set_axis_labels(
-        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
+        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=9
     )
 
     if rotate_x_labels:
@@ -71,13 +71,9 @@ def plot_distributions(
     # Set the overall title
     plt.subplots_adjust(top=0.85)
     if title:
-        g.fig.suptitle(title, fontsize=16)
+        g.figure.suptitle(title, fontsize=12)
     else:
-        g.fig.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=16)
-
-    # # Remove grid lines for each axis in the FacetGrid
-    # for ax in g.axes.flatten():
-    #     ax.grid(False)
+        g.figure.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=12)
 
     # Show the plot
     plt.show()

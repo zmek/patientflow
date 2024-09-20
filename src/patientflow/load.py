@@ -28,7 +28,7 @@ import sys
 
 import pandas as pd
 from joblib import load
-from .errors import ModelLoadError
+from patientflow.errors import ModelLoadError
 
 import yaml
 from typing import Any, Dict, Tuple, Union, List, Optional
@@ -165,11 +165,18 @@ def set_file_paths(
 
     # Create model ID from current date, data_folder_name 
     if uclh:
-        model_id = prefix + '_uclh_' + data_folder_name + '_' + train_dttm
+        model_id = prefix + '_uclh_' + data_folder_name 
     else:
-        model_id = prefix + '_' + data_folder_name + '_' + train_dttm
+        model_id = prefix + '_' + data_folder_name 
 
-    model_file_path = Path(root) / "trained-models" / model_id
+    if train_dttm:
+        model_id = model_id + '_' + train_dttm
+
+    if from_notebook:
+        model_file_path = Path(root) / "trained-models" 
+    else:
+        model_file_path = Path(root) / "trained-models" / model_id
+
     model_file_path.mkdir(parents=True, exist_ok=True)
 
     filename_results_dict_path = model_file_path / 'model-output'
@@ -181,7 +188,7 @@ def set_file_paths(
         media_file_path = model_file_path / "media"
     media_file_path.mkdir(parents=True, exist_ok=True)
 
-    # Load the config file based on the `uclh` flag
+    # Set config file based on the `uclh` flag
     if uclh:
         config_path = Path(root) / "config-uclh.yaml"
     else:
