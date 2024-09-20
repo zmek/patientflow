@@ -24,7 +24,7 @@ get_snapshots_at_prediction_time(df, prediction_time_, exclude_columns, single_s
 prepare_snapshots_dict(df, start_dt=None, end_dt=None)
     Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
 
-calculate_time_varying_arrival_rates(df, time_interval)
+calculate_time_varying_arrival_rates(df, yta_time_interval)
     Calculates the time-varying arrival rates for a dataset indexed by datetime.
 """
 
@@ -688,7 +688,7 @@ def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
     return snapshots_dict
 
 
-def calculate_time_varying_arrival_rates(df, time_interval):
+def calculate_time_varying_arrival_rates(df, yta_time_interval):
     """
     Calculate the time-varying arrival rates for a dataset indexed by datetime.
 
@@ -696,7 +696,7 @@ def calculate_time_varying_arrival_rates(df, time_interval):
 
     Parameters
     df (pandas.DataFrame): A DataFrame indexed by datetime, representing the data for which arrival rates are to be calculated. The index of the DataFrame should be of datetime type.
-    time_interval (int): The time interval, in minutes, for which the arrival rates are to be calculated. For example, if `time_interval=60`, the function will calculate hourly arrival rates.
+    yta_time_interval (int): The time interval, in minutes, for which the arrival rates are to be calculated. For example, if `yta_time_interval=60`, the function will calculate hourly arrival rates.
 
     Returns
     dict: A dictionary where the keys are the start times of each interval (as `datetime.time` objects), and the values are the corresponding arrival rates (as floats).
@@ -735,7 +735,7 @@ def calculate_time_varying_arrival_rates(df, time_interval):
     # Iterate over each interval in a single day to calculate the arrival rate
     while _start_datetime != _stop_datetime:
         _start_time = _start_datetime.time()
-        _end_time = (_start_datetime + timedelta(minutes=time_interval)).time()
+        _end_time = (_start_datetime + timedelta(minutes=yta_time_interval)).time()
 
         # Filter the dataframe for entries within the current time interval
         _df = df.between_time(_start_time, _end_time, inclusive="left")
@@ -744,7 +744,7 @@ def calculate_time_varying_arrival_rates(df, time_interval):
         arrival_rates_dict[_start_time] = _df.shape[0] / num_days
 
         # Move to the next interval
-        _start_datetime = _start_datetime + timedelta(minutes=time_interval)
+        _start_datetime = _start_datetime + timedelta(minutes=yta_time_interval)
 
     return arrival_rates_dict
 

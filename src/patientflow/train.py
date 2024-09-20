@@ -449,7 +449,7 @@ def train_specialty_model(visits, model_name, model_metadata, model_file_path, u
 def train_yet_to_arrive_model(
     yta,
     prediction_window,
-    time_interval,
+    yta_time_interval,
     prediction_times,
     epsilon,
     model_name,
@@ -471,7 +471,7 @@ def train_yet_to_arrive_model(
     yta_model.fit(
         train_df=train_yta,
         prediction_window=prediction_window,
-        time_interval=time_interval,
+        yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
     )
@@ -519,12 +519,12 @@ def main(data_folder_name=None, uclh=None):
     # load parameters
     params = load_config_file(config_path)
 
-    prediction_times = params[0]
-    start_training_set, start_validation_set, start_test_set, end_test_set = params[1:5]
-    x1, y1, x2, y2 = params[5:9]
-    prediction_window = params[9]
-    epsilon = float(params[10])
-    time_interval = params[11]
+    prediction_times = params["prediction_times"]
+    start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
+    x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
+    prediction_window = params["prediction_window"]
+    epsilon = float(params["epsilon"])
+    yta_time_interval = params["yta_time_interval"]
 
     # Load data
     if uclh:
@@ -567,7 +567,7 @@ def main(data_folder_name=None, uclh=None):
     )
 
     
-    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm}
+    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm, 'config': params}
     filename_results_dict_name = "model_metadata.json"
 
 
@@ -640,7 +640,7 @@ def main(data_folder_name=None, uclh=None):
     model_metadata = train_yet_to_arrive_model(
         yta=yta,
         prediction_window=prediction_window,
-        time_interval=time_interval,
+        yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
         model_name=model_name,
@@ -682,9 +682,6 @@ def main(data_folder_name=None, uclh=None):
     # save the results dictionary
     filename_results_dict_path = model_file_path / 'model-output'
     full_path_results_dict = filename_results_dict_path / filename_results_dict_name
-
-    print(full_path_results_dict)
-    print(model_metadata.keys())
 
     with open(full_path_results_dict, "w") as f:
         json.dump(model_metadata, f)
