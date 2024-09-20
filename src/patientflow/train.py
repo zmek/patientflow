@@ -3,6 +3,9 @@ import xgboost as xgb
 import pandas as pd
 from joblib import dump
 import json
+from datetime import datetime
+from collections import Counter
+
 
 # import argparse
 
@@ -217,6 +220,11 @@ def create_column_transformer(df, ordinal_mappings=None):
 
     return ColumnTransformer(transformers)
 
+def calculate_class_balance(y):
+    counter = Counter(y)
+    total = len(y)
+    return {cls: count / total for cls, count in counter.items()}
+
 
 def train_admissions_models(
     visits,
@@ -226,9 +234,9 @@ def train_admissions_models(
     prediction_times,
     model_name,
     model_file_path,
+    model_metadata,
     filename_results_dict_name,
 ):
-    best_model_results_dict = {}
 
     # separate into training, validation and test sets
 
@@ -242,6 +250,7 @@ def train_admissions_models(
         columns="training_validation_test"
     )
 
+
     # Process each time of day
     for _prediction_time in prediction_times:
         print("\nProcessing :" + str(_prediction_time))
@@ -254,7 +263,7 @@ def train_admissions_models(
         full_path = full_path.with_suffix(".joblib")
 
         # initialise data used for saving attributes of the model
-        best_model_results_dict[MODEL__ED_ADMISSIONS__NAME] = {}
+        model_metadata[MODEL__ED_ADMISSIONS__NAME] = {}
         best_valid_logloss = float("inf")
         results_dict = {}
 
@@ -269,13 +278,26 @@ def train_admissions_models(
             test_visits, _prediction_time, exclude_from_training_data
         )
 
+        y_train_class_balance = calculate_class_balance(y_train)
+        y_valid_class_balance = calculate_class_balance(y_valid)
+        y_test_class_balance = calculate_class_balance(y_test)
+
         # save size of each set
-        best_model_results_dict[MODEL__ED_ADMISSIONS__NAME][
+        model_metadata[MODEL__ED_ADMISSIONS__NAME][
             "train_valid_test_set_no"
         ] = {
             "train_set_no": len(X_train),
             "valid_set_no": len(X_valid),
             "test_set_no": len(X_test),
+        }
+
+        # save class balance of each set
+        model_metadata[MODEL__ED_ADMISSIONS__NAME][
+            "train_valid_test_class_balance"
+        ] = {
+            'y_train_class_balance': y_train_class_balance,
+            'y_valid_class_balance': y_valid_class_balance,
+            'y_test_class_balance': y_test_class_balance
         }
 
         # iterate through the grid of hyperparameters
@@ -309,12 +331,12 @@ def train_admissions_models(
                 best_valid_logloss = cv_results["valid_logloss"]
 
                 # save the best model params
-                best_model_results_dict[MODEL__ED_ADMISSIONS__NAME]["best_params"] = (
+                model_metadata[MODEL__ED_ADMISSIONS__NAME]["best_params"] = (
                     str(g)
                 )
 
                 # save the model metrics on training and validation set
-                best_model_results_dict[MODEL__ED_ADMISSIONS__NAME][
+                model_metadata[MODEL__ED_ADMISSIONS__NAME][
                     "train_valid_set_results"
                 ] = results_dict
 
@@ -323,7 +345,7 @@ def train_admissions_models(
                 test_auc = roc_auc_score(y_test, y_test_pred_proba)
                 test_logloss = log_loss(y_test, y_test_pred_proba)
 
-                best_model_results_dict[MODEL__ED_ADMISSIONS__NAME][
+                model_metadata[MODEL__ED_ADMISSIONS__NAME][
                     "test_set_results"
                 ] = {"test_auc": test_auc, "test_logloss": test_logloss}
 
@@ -333,7 +355,7 @@ def train_admissions_models(
                     "feature_transformer"
                 ].get_feature_names_out()
                 transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-                best_model_results_dict[MODEL__ED_ADMISSIONS__NAME][
+                model_metadata[MODEL__ED_ADMISSIONS__NAME][
                     "best_model_features"
                 ] = {
                     "feature_names": transformed_cols,
@@ -346,11 +368,13 @@ def train_admissions_models(
                 dump(pipeline, full_path)
 
     # save the results dictionary
-    filename_results_dict = filename_results_dict_name
-    full_path_results_dict = model_file_path / filename_results_dict
+    filename_results_dict_path = model_file_path / 'model-output'
+    full_path_results_dict = filename_results_dict_path / filename_results_dict_name
 
     with open(full_path_results_dict, "w") as f:
-        json.dump(best_model_results_dict, f)
+        json.dump(model_metadata, f)
+
+    return model_metadata
 
 
 def get_default_visits(admitted, uclh):
@@ -378,7 +402,7 @@ def get_default_visits(admitted, uclh):
     return filtered_admitted
 
 
-def train_specialty_model(visits, model_name, model_file_path, uclh):
+def train_specialty_model(visits, model_name, model_metadata, model_file_path, uclh):
     # Select one snapshot per visit
     visits_single = select_one_snapshot_per_visit(visits, visit_col="visit_number")
 
@@ -407,10 +431,19 @@ def train_specialty_model(visits, model_name, model_file_path, uclh):
     )
     spec_model.fit(train_visits)
 
+    model_metadata[model_name] = {}
+    model_metadata[model_name][
+            "train_set_no"
+        ] = {
+            "train_set_no": len(train_visits),
+        }
+
     # Save the model
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")
     dump(spec_model, full_path)
+
+    return(model_metadata)
 
 
 def train_yet_to_arrive_model(
@@ -421,6 +454,7 @@ def train_yet_to_arrive_model(
     epsilon,
     model_name,
     model_file_path,
+    model_metadata,
     uclh,
 ):
     specialty_filters = create_yta_filters(uclh)
@@ -443,10 +477,20 @@ def train_yet_to_arrive_model(
     )
 
     model_name = model_name + str(int(prediction_window / 60)) + "_hours"
+
+    model_metadata[model_name] = {}
+    model_metadata[model_name][
+            "train_set_no"
+        ] = {
+            "train_set_no": len(train_yta),
+        }
+    
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")
 
     dump(yta_model, full_path)
+
+    return model_metadata
 
 
 def main(data_folder_name=None, uclh=None):
@@ -465,9 +509,11 @@ def main(data_folder_name=None, uclh=None):
     else:
         print("Training models using public dataset")
 
+    train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
+
     # set file location
     data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        data_folder_name, uclh
+        train_dttm, data_folder_name, uclh
     )
 
     # load parameters
@@ -520,11 +566,17 @@ def main(data_folder_name=None, uclh=None):
         date_column="arrival_datetime",
     )
 
+    
+    model_metadata = {'data_folder_name': data_folder_name, 'uclh': uclh, 'train_dttm': train_dttm}
+    filename_results_dict_name = "model_metadata.json"
+
+
+
     # Train admissions model
 
     # Initialize a dict to save information about the best models for each time of day
     grid = {
-        "n_estimators": [30],  # , 40, 50],
+        "n_estimators": [30 , 40], #, 50],
         "subsample": [0.7],  # , 0.8,0.9],
         "colsample_bytree": [0.7],  # , 0.8, 0.9]
     }
@@ -562,7 +614,7 @@ def main(data_folder_name=None, uclh=None):
 
     # Train admission model
     model_name = "ed_admission"
-    train_admissions_models(
+    model_metadata = train_admissions_models(
         visits,
         grid,
         exclude_from_training_data,
@@ -570,22 +622,29 @@ def main(data_folder_name=None, uclh=None):
         prediction_times,
         model_name,
         model_file_path,
-        "best_model_results_dict.json",
+        model_metadata,
+        filename_results_dict_name ,
     )
 
     # Train specialty model
     model_name = "ed_specialty"
-    train_specialty_model(visits, model_name, model_file_path, uclh)
+    model_metadata = train_specialty_model(
+        visits=visits, 
+        model_name=model_name, 
+        model_metadata=model_metadata, 
+        model_file_path=model_file_path, 
+        uclh=uclh)
 
     # Train yet-to-arrive model
     model_name = "ed_yet_to_arrive_by_spec_"
-    train_yet_to_arrive_model(
+    model_metadata = train_yet_to_arrive_model(
         yta=yta,
         prediction_window=prediction_window,
         time_interval=time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
         model_name=model_name,
+        model_metadata = model_metadata,
         model_file_path=model_file_path,
         uclh=uclh,
     )
@@ -603,7 +662,7 @@ def main(data_folder_name=None, uclh=None):
     special_params = create_special_category_objects(uclh)
 
     try:
-        create_predictions(
+        reaL_time_predictions = create_predictions(
             model_file_path=model_file_path,
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
@@ -619,6 +678,16 @@ def main(data_folder_name=None, uclh=None):
         print("Real-time inference ran correctly")
     except Exception as e:
         print(f"Real-time inference failed due to this error: {str(e)}")
+
+    # save the results dictionary
+    filename_results_dict_path = model_file_path / 'model-output'
+    full_path_results_dict = filename_results_dict_path / filename_results_dict_name
+
+    print(full_path_results_dict)
+    print(model_metadata.keys())
+
+    with open(full_path_results_dict, "w") as f:
+        json.dump(model_metadata, f)
 
 
 if __name__ == "__main__":
