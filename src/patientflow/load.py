@@ -176,15 +176,17 @@ def load_config_file(
 
 
 def set_file_paths(
-    data_folder_name: str, uclh: bool = False, from_notebook: bool = False
+    train_dttm: str, data_folder_name: str, uclh: bool = False, from_notebook: bool = False, prefix = 'admissions'
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
 
     Args:
+        train_dttm (str): A string representation of the datetime at which training commenced
         data_folder_name (str): Name of the folder where data files are located.
         uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths.
                      Default is False.
+        prefix: A string to include at the beginning of the folder name in which the models will be saved
 
     Returns:
         tuple: A tuple containing the following elements:
@@ -203,14 +205,24 @@ def set_file_paths(
 
     # Set data and media file paths
     data_file_path = Path(root) / data_folder_name
+
+    # Create model ID from current date, data_folder_name 
+    if uclh:
+        model_id = prefix + '_uclh_' + data_folder_name + '_' + train_dttm
+    else:
+        model_id = prefix + '_' + data_folder_name + '_' + train_dttm
+
+    model_file_path = Path(root) / "trained-models" / model_id
+    model_file_path.mkdir(parents=True, exist_ok=True)
+
+    filename_results_dict_path = model_file_path / 'model-output'
+    filename_results_dict_path.mkdir(parents=False, exist_ok=True)
+
     if from_notebook:
         media_file_path = Path(root) / "notebooks" / "img"
     else:
-        media_file_path = Path(root) / "media"
-    media_file_path.mkdir(parents=False, exist_ok=True)
-
-    model_file_path = Path(root) / "trained-models"
-    model_file_path.mkdir(parents=False, exist_ok=True)
+        media_file_path = model_file_path / "media"
+    media_file_path.mkdir(parents=True, exist_ok=True)
 
     # Load the config file based on the `uclh` flag
     if uclh:
