@@ -607,7 +607,13 @@ def main(data_folder_name=None, uclh=None):
             "75-102",
         ],
         "latest_acvpu": ["A", "C", "V", "P", "U"],
-        "latest_obs_manchester_triage_acuity": ["Blue", "Green", "Yellow", "Orange", "Red"],
+        "latest_obs_manchester_triage_acuity": [
+            "Blue",
+            "Green",
+            "Yellow",
+            "Orange",
+            "Red",
+        ],
         "latest_obs_objective_pain_score": [
             r"Nil",
             r"Mild",
