@@ -35,7 +35,7 @@ def plot_distributions(
     sns.set_theme(style="whitegrid")
 
     # Create a FacetGrid for side-by-side plots
-    g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)  
+    g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)
 
     # Determine the number of bins if discrete
     if is_discrete:

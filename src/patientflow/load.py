@@ -31,7 +31,7 @@ from joblib import load
 from patientflow.errors import ModelLoadError
 
 import yaml
-from typing import Any, Dict, Tuple, Union, List, Optional
+from typing import Any, Dict, Tuple, Union, Optional
 import argparse
 
 
@@ -96,32 +96,43 @@ def load_config_file(
                 start_date, end_date = [str(item) for item in config["file_dates"]]
                 return (start_date, end_date)
             else:
-                print("Error: 'file_dates' key not found or empty in the configuration file.")
+                print(
+                    "Error: 'file_dates' key not found or empty in the configuration file."
+                )
                 return None
 
         params = {}
 
         if "prediction_times" in config:
-            params['prediction_times'] = [tuple(item) for item in config["prediction_times"]]
+            params["prediction_times"] = [
+                tuple(item) for item in config["prediction_times"]
+            ]
         else:
             print("Error: 'prediction_times' key not found in the configuration file.")
             sys.exit(1)
 
         if "modelling_dates" in config and len(config["modelling_dates"]) == 4:
-            params['start_training_set'], params['start_validation_set'], params['start_test_set'], params['end_test_set'] = [
-                item for item in config["modelling_dates"]
-            ]
+            (
+                params["start_training_set"],
+                params["start_validation_set"],
+                params["start_test_set"],
+                params["end_test_set"],
+            ) = [item for item in config["modelling_dates"]]
         else:
-            print(f"Error: expecting 4 modelling dates and only got {len(config.get('modelling_dates', []))}")
+            print(
+                f"Error: expecting 4 modelling dates and only got {len(config.get('modelling_dates', []))}"
+            )
             return None
 
-        params['x1'] = float(config.get("x1", 4))
-        params['y1'] = float(config.get("y1", 0.76))
-        params['x2'] = float(config.get("x2", 12))
-        params['y2'] = float(config.get("y2", 0.99))
-        params['prediction_window'] = config.get("prediction_window", 480)
-        params['epsilon'] = config.get("epsilon", 10**-7)
-        params['yta_time_interval'] = config.get("yta_time_interval", 15)
+        print(float(config.get("x1", 4)))
+
+        params["x1"] = float(config.get("x1", 4))
+        params["y1"] = float(config.get("y1", 0.76))
+        params["x2"] = float(config.get("x2", 12))
+        params["y2"] = float(config.get("y2", 0.99))
+        params["prediction_window"] = config.get("prediction_window", 480)
+        params["epsilon"] = config.get("epsilon", 10**-7)
+        params["yta_time_interval"] = config.get("yta_time_interval", 15)
 
         return params
 
@@ -134,7 +145,11 @@ def load_config_file(
 
 
 def set_file_paths(
-    train_dttm: str, data_folder_name: str, uclh: bool = False, from_notebook: bool = False, prefix = 'admissions'
+    train_dttm: str,
+    data_folder_name: str,
+    uclh: bool = False,
+    from_notebook: bool = False,
+    prefix="admissions",
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
@@ -163,23 +178,23 @@ def set_file_paths(
     # Set data and media file paths
     data_file_path = Path(root) / data_folder_name
 
-    # Create model ID from current date, data_folder_name 
+    # Create model ID from current date, data_folder_name
     if uclh:
-        model_id = prefix + '_uclh_' + data_folder_name 
+        model_id = prefix + "_uclh_" + data_folder_name
     else:
-        model_id = prefix + '_' + data_folder_name 
+        model_id = prefix + "_" + data_folder_name
 
     if train_dttm:
-        model_id = model_id + '_' + train_dttm
+        model_id = model_id + "_" + train_dttm
 
     if from_notebook:
-        model_file_path = Path(root) / "trained-models" 
+        model_file_path = Path(root) / "trained-models"
     else:
         model_file_path = Path(root) / "trained-models" / model_id
 
     model_file_path.mkdir(parents=True, exist_ok=True)
 
-    filename_results_dict_path = model_file_path / 'model-output'
+    filename_results_dict_path = model_file_path / "model-output"
     filename_results_dict_path.mkdir(parents=False, exist_ok=True)
 
     if from_notebook:
