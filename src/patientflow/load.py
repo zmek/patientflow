@@ -101,7 +101,7 @@ def load_config_file(
                 )
                 return None
 
-        params = {}
+        params: Dict[str, Any] = {}
 
         if "prediction_times" in config:
             params["prediction_times"] = [
@@ -123,8 +123,6 @@ def load_config_file(
                 f"Error: expecting 4 modelling dates and only got {len(config.get('modelling_dates', []))}"
             )
             return None
-
-        print(float(config.get("x1", 4)))
 
         params["x1"] = float(config.get("x1", 4))
         params["y1"] = float(config.get("y1", 0.76))

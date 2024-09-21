@@ -607,8 +607,8 @@ def main(data_folder_name=None, uclh=None):
             "75-102",
         ],
         "latest_acvpu": ["A", "C", "V", "P", "U"],
-        "latest_manch_triage": ["Blue", "Green", "Yellow", "Orange", "Red"],
-        "latest_pain_objective": [
+        "latest_obs_manchester_triage_acuity": ["Blue", "Green", "Yellow", "Orange", "Red"],
+        "latest_obs_objective_pain_score": [
             r"Nil",
             r"Mild",
             r"Moderate",
@@ -667,7 +667,7 @@ def main(data_folder_name=None, uclh=None):
     special_params = create_special_category_objects(uclh)
 
     try:
-        reaL_time_predictions = create_predictions(
+        create_predictions(
             model_file_path=model_file_path,
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
