@@ -66,7 +66,10 @@ College London.
 
 ### Project Team
 
-Zella King ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+Dr Zella King, Clinical Operational Research Unit (CORU), UCL ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+Jon Gillham, Institute of Health Informatics, UCL
+Professor Sonya Crowe, CORU
+Professor Martin Utley, CORU
 
 ### Research Software Engineering Contact
 
@@ -81,70 +84,34 @@ Centre for Advanced Research Computing, University College London
 
 ### Installation
 
-<!-- How to build or install the application. -->
-
-We recommend installing in a project specific virtual environment created using
-a environment management tool such as
-[Conda](https://docs.conda.io/projects/conda/en/stable/). To install the latest
-development version of `patientflow` using `pip` in the currently active
-environment run
+patientflow is not yet available on PyPI. To install the latest development version, run:
 
 ```sh
 pip install git+https://github.com/zmek/patientflow.git
 ```
 
-Alternatively create a local clone of the repository with
+To date, this has only been tested on a Linux machine. Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. (Note this command will only work from the root repository.)
 
 ```sh
-git clone https://github.com/zmek/patientflow.git
+cd patientflow
+pytest
 ```
 
-and then install in editable mode by running
+### Training models with data provided
+
+The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options (a) step throught the notebooks provided in the `notebooks` folder (b) run a Python script as following
 
 ```sh
-pip install -e .
+cd src
+python -m patientflow.train --data_folder_name=data-synthetic --uclh=False
 ```
 
-### Running Locally
+There are two arguments
+- data_folder_name - specifies where to find the data. This should be in a folder named data-xxx
+- uclh - tells the package whether the data is the original UCLH data (in which case certain additional features available, including the patient's age in years) or not
 
-How to run the application on your local system.
 
-### Running Tests
 
-<!-- How to run tests on your local system. -->
-
-Tests can be run across all compatible Python versions in isolated environments
-using [`tox`](https://tox.wiki/en/latest/) by running
-
-```sh
-tox
-```
-
-To run tests manually in a Python environment with `pytest` installed run
-
-```sh
-pytest tests
-```
-
-again from the root of the repository.
-
-### Building Documentation
-
-The MkDocs HTML documentation can be built locally by running
-
-```sh
-tox -e docs
-```
-
-from the root of the repository. The built documentation will be written to
-`site`.
-
-Alternatively to build and preview the documentation locally, in a Python
-environment with the optional `docs` dependencies installed, run
-
-```sh
-mkdocs serve
-```
 
 ## Roadmap
 

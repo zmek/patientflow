@@ -143,16 +143,19 @@ def load_config_file(
 
 
 def set_file_paths(
+    inference_time: bool,
     train_dttm: str,
     data_folder_name: str,
     uclh: bool = False,
     from_notebook: bool = False,
     prefix: str = "admissions",
+    
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
 
     Args:
+        inference_time (bool): A flag indicating whether it is inference time or not
         train_dttm (str): A string representation of the datetime at which training commenced
         data_folder_name (str): Name of the folder where data files are located.
         uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths.
@@ -179,24 +182,49 @@ def set_file_paths(
     # Create model ID from current date, data_folder_name
     model_id = prefix + "_" + data_folder_name.lstrip("data-")
 
-    if train_dttm:
-        model_id = model_id + "_" + train_dttm
+    if inference_time:
+        if uclh:
+        # at inference time, if uclh, require a train_dttm in order to identify the correct model
+            if train_dttm:
+                model_id = model_id + "_" + train_dttm
+                model_file_path = Path(root) / "trained-models" / model_id
+            else:
+                raise ModelLoadError(
+                    f"Please specify train_dttm of required model so that it can be loaded"
+                )
+        else:
+        # use a train_dttm if provided; if not use any model
+            if train_dttm:
+                model_id = model_id + "_" + train_dttm
+            if from_notebook:
+                model_file_path = Path(root) / "trained-models"
+            else:
+                model_file_path = Path(root) / "trained-models" / model_id
+        if from_notebook:
+            media_file_path = Path(root) / "notebooks" / "img"
+        else:
+            media_file_path = model_file_path / "media"
+                
+    else: # not inference time
+        if train_dttm:
+            model_id = model_id + "_" + train_dttm
+            
+        if from_notebook:
+            model_file_path = Path(root) / "trained-models"
+        else:
+            model_file_path = Path(root) / "trained-models" / model_id
 
-    if from_notebook:
-        model_file_path = Path(root) / "trained-models"
-    else:
-        model_file_path = Path(root) / "trained-models" / model_id
+        print(f'Trained models will be saved to: {model_file_path}')
+        model_file_path.mkdir(parents=False, exist_ok=True)
+            
+        filename_results_dict_path = model_file_path / "model-output"
+        filename_results_dict_path.mkdir(parents=False, exist_ok=True)
 
-    model_file_path.mkdir(parents=True, exist_ok=True)
-
-    filename_results_dict_path = model_file_path / "model-output"
-    filename_results_dict_path.mkdir(parents=False, exist_ok=True)
-
-    if from_notebook:
-        media_file_path = Path(root) / "notebooks" / "img"
-    else:
-        media_file_path = model_file_path / "media"
-    media_file_path.mkdir(parents=True, exist_ok=True)
+        if from_notebook:
+            media_file_path = Path(root) / "notebooks" / "img"
+        else:
+            media_file_path = model_file_path / "media"
+        media_file_path.mkdir(parents=False, exist_ok=True)
 
     # Set config file based on the `uclh` flag
     if uclh:
@@ -231,7 +259,7 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
 
     if not uclh:
         csv_filename = "ed_visits.csv"
-        yta_csv_filename = "arrivals.csv"
+        yta_csv_filename = "inpatient_arrivals.csv"
 
         visits_csv_path = data_file_path / csv_filename
         yta_csv_path = data_file_path / yta_csv_filename
@@ -249,11 +277,11 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
             + str(end_date)
             + ".pickle"
         )
-        csv_filename = "uclh_visits.csv"
+        csv_filename = "uclh_ed_visits.csv"
         yta_filename = (
             "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
         )
-        yta_csv_filename = "uclh_arrivals.csv"
+        yta_csv_filename = "uclh_inpatient_arrivals.csv"
 
         visits_path = data_file_path / data_filename
         yta_path = data_file_path / yta_filename

@@ -501,7 +501,10 @@ def main(data_folder_name=None, uclh=None):
 
     # set file location
     data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        train_dttm, data_folder_name, uclh
+        inference_time=False,
+        train_dttm=train_dttm, 
+        data_folder_name=data_folder_name,
+        uclh=uclh
     )
 
     # load parameters
