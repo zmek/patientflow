@@ -13,16 +13,12 @@ classifiers = [
     "Operating System :: POSIX",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
-description = "Code and training materials for predicting short-term hospital bed capacity using real-time data"
+description = "Code and explanatory notebooks for predicting short-term hospital bed capacity using real-time data"
 dynamic = [
     "dependencies",
     "version",
@@ -48,7 +44,7 @@ optional-dependencies = {dev = [
     "pyyaml",
 ]}
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 license.file = "LICENSE.md"
 urls.homepage = "https://github.com/zmek/patientflow"
 
