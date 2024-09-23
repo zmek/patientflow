@@ -177,7 +177,7 @@ def set_file_paths(
     data_file_path = Path(root) / data_folder_name
 
     # Create model ID from current date, data_folder_name
-    model_id = prefix + "_" + data_folder_name.lstrip('data-')
+    model_id = prefix + "_" + data_folder_name.lstrip("data-")
 
     if train_dttm:
         model_id = model_id + "_" + train_dttm

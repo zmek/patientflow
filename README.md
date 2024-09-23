@@ -1,4 +1,4 @@
-# PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data
+# PatientFlow: Code and explantory notebooks for predicting short-term hospital bed capacity using real-time data
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Tests status][tests-badge]][tests-link]

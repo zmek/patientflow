@@ -672,8 +672,12 @@ def main(data_folder_name=None, uclh=None):
     ]
     special_params = create_special_category_objects(uclh)
 
+    realtime_preds_dict = {'prediction_time': str(prediction_time),
+                            'prediction_date':str(prediction_date)
+    }
+
     try:
-        create_predictions(
+        realtime_preds_dict['realtime_preds'] = create_predictions(
             model_file_path=model_file_path,
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
@@ -689,8 +693,12 @@ def main(data_folder_name=None, uclh=None):
         print("Real-time inference ran correctly")
     except Exception as e:
         print(f"Real-time inference failed due to this error: {str(e)}")
+        print(realtime_preds_dict)
+        sys.exit(1)
 
     # save the results dictionary
+    model_metadata['realtime_preds'] = realtime_preds_dict
+
     filename_results_dict_path = model_file_path / "model-output"
     full_path_results_dict = filename_results_dict_path / filename_results_dict_name
 

@@ -1,6 +1,9 @@
 *data-dictionaries/uclh*
 *results_dict*
 *data-raw*
+*data-uclh*
+*data-public*
+*trained-models*
 *.joblib
 
 *.vscode*
