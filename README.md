@@ -107,11 +107,9 @@ python -m patientflow.train --data_folder_name=data-synthetic --uclh=False
 ```
 
 There are two arguments
+
 - data_folder_name - specifies where to find the data. This should be in a folder named data-xxx
 - uclh - tells the package whether the data is the original UCLH data (in which case certain additional features available, including the patient's age in years) or not
-
-
-
 
 ## Roadmap
 

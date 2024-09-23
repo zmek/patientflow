@@ -149,7 +149,6 @@ def set_file_paths(
     uclh: bool = False,
     from_notebook: bool = False,
     prefix: str = "admissions",
-    
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
@@ -184,16 +183,16 @@ def set_file_paths(
 
     if inference_time:
         if uclh:
-        # at inference time, if uclh, require a train_dttm in order to identify the correct model
+            # at inference time, if uclh, require a train_dttm in order to identify the correct model
             if train_dttm:
                 model_id = model_id + "_" + train_dttm
                 model_file_path = Path(root) / "trained-models" / model_id
             else:
                 raise ModelLoadError(
-                    f"Please specify train_dttm of required model so that it can be loaded"
+                    "Please specify train_dttm of required model so that it can be loaded"
                 )
         else:
-        # use a train_dttm if provided; if not use any model
+            # use a train_dttm if provided; if not use any model
             if train_dttm:
                 model_id = model_id + "_" + train_dttm
             if from_notebook:
@@ -204,19 +203,19 @@ def set_file_paths(
             media_file_path = Path(root) / "notebooks" / "img"
         else:
             media_file_path = model_file_path / "media"
-                
-    else: # not inference time
+
+    else:  # not inference time
         if train_dttm:
             model_id = model_id + "_" + train_dttm
-            
+
         if from_notebook:
             model_file_path = Path(root) / "trained-models"
         else:
             model_file_path = Path(root) / "trained-models" / model_id
 
-        print(f'Trained models will be saved to: {model_file_path}')
+        print(f"Trained models will be saved to: {model_file_path}")
         model_file_path.mkdir(parents=False, exist_ok=True)
-            
+
         filename_results_dict_path = model_file_path / "model-output"
         filename_results_dict_path.mkdir(parents=False, exist_ok=True)
 
