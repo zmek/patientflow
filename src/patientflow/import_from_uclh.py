@@ -36,14 +36,6 @@ def prepare_age_and_dates(df):  # conversions necessary for each datetime column
         df["elapsed_los"] = df["snapshot_datetime"] - df["arrival_datetime"]
         df["elapsed_los"] = df["elapsed_los"].dt.total_seconds()
 
-        # remove rows with los < 0
-        print(
-            "Removing "
-            + str(len(df[df.elapsed_los < 0]))
-            + " rows with negative elapsed_los"
-        )
-        df = df[df.elapsed_los >= 0]
-
     return df
 
 
@@ -127,7 +119,8 @@ def reformat_uclh_data_for_modelling(
     df = df[df.elapsed_los >= 0]
 
     # shift dates into future to anonymise the data
-    df, yta = shift_dates_into_future(df, yta, seed_path)
+    if not uclh:
+        df, yta = shift_dates_into_future(df, yta, seed_path)
 
     # remove dates outside range of training, validation and test sets
     df = df[
