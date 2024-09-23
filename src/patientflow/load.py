@@ -147,7 +147,7 @@ def set_file_paths(
     data_folder_name: str,
     uclh: bool = False,
     from_notebook: bool = False,
-    prefix="admissions",
+    prefix: str = "admissions",
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths and loads configuration parameters from a YAML file.
@@ -177,10 +177,7 @@ def set_file_paths(
     data_file_path = Path(root) / data_folder_name
 
     # Create model ID from current date, data_folder_name
-    if uclh:
-        model_id = prefix + "_uclh_" + data_folder_name
-    else:
-        model_id = prefix + "_" + data_folder_name
+    model_id = prefix + "_" + data_folder_name.lstrip('data-')
 
     if train_dttm:
         model_id = model_id + "_" + train_dttm
