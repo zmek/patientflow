@@ -393,27 +393,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#running-locally" class="md-nav__link">
+  <a href="#training-models-with-data-provided" class="md-nav__link">
     <span class="md-ellipsis">
-      Running Locally
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running Tests
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#building-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Building Documentation
+      Training models with data provided
     </span>
   </a>
   
@@ -725,27 +707,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#running-locally" class="md-nav__link">
+  <a href="#training-models-with-data-provided" class="md-nav__link">
     <span class="md-ellipsis">
-      Running Locally
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running Tests
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#building-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Building Documentation
+      Training models with data provided
     </span>
   </a>
   
@@ -847,7 +811,10 @@
 <a href="https://ucl.ac.uk/arc">Centre for Advanced Research Computing</a>, University
 College London.</p>
 <h3 id="project-team">Project Team</h3>
-<p>Zella King (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)</p>
+<p>Dr Zella King, Clinical Operational Research Unit (CORU), UCL (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)
+Jon Gillham, Institute of Health Informatics, UCL
+Professor Sonya Crowe, CORU
+Professor Martin Utley, CORU</p>
 <h3 id="research-software-engineering-contact">Research Software Engineering Contact</h3>
 <p>Centre for Advanced Research Computing, University College London
 (<a href="mailto:arc.collaborations@ucl.ac.uk">arc.collaborations@ucl.ac.uk</a>)</p>
@@ -856,44 +823,23 @@ College London.</p>
 
 <p><code>patientflow</code> requires Python 3.6.</p>
 <h3 id="installation">Installation</h3>
-<!-- How to build or install the application. -->
-
-<p>We recommend installing in a project specific virtual environment created using
-a environment management tool such as
-<a href="https://docs.conda.io/projects/conda/en/stable/">Conda</a>. To install the latest
-development version of <code>patientflow</code> using <code>pip</code> in the currently active
-environment run</p>
+<p>patientflow is not yet available on PyPI. To install the latest development version, run:</p>
 <pre><code class="language-sh">pip install git+https://github.com/zmek/patientflow.git
 </code></pre>
-<p>Alternatively create a local clone of the repository with</p>
-<pre><code class="language-sh">git clone https://github.com/zmek/patientflow.git
+<p>To date, this has only been tested on a Linux machine. Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. (Note this command will only work from the root repository.)</p>
+<pre><code class="language-sh">cd patientflow
+pytest
 </code></pre>
-<p>and then install in editable mode by running</p>
-<pre><code class="language-sh">pip install -e .
+<h3 id="training-models-with-data-provided">Training models with data provided</h3>
+<p>The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options (a) step throught the notebooks provided in the <code>notebooks</code> folder (b) run a Python script as following</p>
+<pre><code class="language-sh">cd src
+python -m patientflow.train --data_folder_name=data-synthetic --uclh=False
 </code></pre>
-<h3 id="running-locally">Running Locally</h3>
-<p>How to run the application on your local system.</p>
-<h3 id="running-tests">Running Tests</h3>
-<!-- How to run tests on your local system. -->
-
-<p>Tests can be run across all compatible Python versions in isolated environments
-using <a href="https://tox.wiki/en/latest/"><code>tox</code></a> by running</p>
-<pre><code class="language-sh">tox
-</code></pre>
-<p>To run tests manually in a Python environment with <code>pytest</code> installed run</p>
-<pre><code class="language-sh">pytest tests
-</code></pre>
-<p>again from the root of the repository.</p>
-<h3 id="building-documentation">Building Documentation</h3>
-<p>The MkDocs HTML documentation can be built locally by running</p>
-<pre><code class="language-sh">tox -e docs
-</code></pre>
-<p>from the root of the repository. The built documentation will be written to
-<code>site</code>.</p>
-<p>Alternatively to build and preview the documentation locally, in a Python
-environment with the optional <code>docs</code> dependencies installed, run</p>
-<pre><code class="language-sh">mkdocs serve
-</code></pre>
+<p>There are two arguments</p>
+<ul>
+<li>data_folder_name - specifies where to find the data. This should be in a folder named data-xxx</li>
+<li>uclh - tells the package whether the data is the original UCLH data (in which case certain additional features available, including the patient's age in years) or not</li>
+</ul>
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
