@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.36">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.39">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.06209087.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.8c3ca2c6.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -557,25 +557,23 @@
 
 <!-- BEGIN INCLUDE ../../notebooks/README.md -->
 <h1 id="about-the-notebooks">About the notebooks</h1>
-<p>This folder contains a series of notebooks that demonstrate the process of modeling emergency demand in healthcare through a structured approach. Notebooks are an effective tool for merging explanatory narratives with practical code and the results produced by that code. Here’s how different audiences can benefit from these notebooks:</p>
+<p>This folder contains a series of notebooks that demonstrate the process of modeling emergency demand in healthcare through a structured approach. Notebooks combine commentary with code and the results produced by that code. Here’s how different audiences can benefit from these notebooks:</p>
 <ul>
-<li><strong>For non-programmers seeking to understand the approach:</strong> If you're not familiar with programming, you can read the narrative sections of the notebooks like a blog post to understand the strategies employed and skip the code snippets.</li>
+<li><strong>For non-programmers seeking to understand the approach:</strong> If you're not familiar with programming, you can read the narrative sections of the notebooks as if it were a blog post to understand the strategies employed and skip the code snippets.</li>
 <li><strong>For those new to Python or looking to learn:</strong> If you have some coding experience but are new to Python, the code snippets, combined with the narrative, provide insights into how Python is applied in modeling emergency bed demand. This includes tasks such as data exploration, model fitting, and result evaluation. Observing the output will help you see the practical outcomes of the modeling.</li>
-<li><strong>For users who prefer not to set up their own coding environment:</strong> Each notebook is designed to run using a provided dataset, aiming to replicate our results. The dataset will hopefully be based on real data from University College London Hospital.</li>
-<li><strong>For those interested in using the 'patientflow' package:</strong> These notebooks serve as a guide on how to use the 'patientflow' package. Through detailed walkthroughs of the functions and their applications, you can learn how to integrate this package into your own projects.</li>
+<li><strong>For those interested in using the 'patientflow' package:</strong> These notebooks serve as a guide on how to use the 'patientflow' package. Through walkthroughs of the functions and their applications, you can learn how to integrate this package into your own projects.</li>
 </ul>
 <h2 id="outline-of-the-notebooks">Outline of the notebooks</h2>
-<p>The intention is to create the following notebooks:</p>
 <ul>
-<li><strong>1_Introduce_our_users:</strong> Talk about the users of emergency demand predictions in acute hospitals.</li>
-<li><strong>2_Modelling_requirements:</strong> Explain design choices that were made to develop a practical model, and show an example of the output that is sent at UCLH.</li>
-<li><strong>3_Introduce_the_datasets:</strong> Introduce the two datasets created to accompany this repository</li>
-<li><strong>4a_Predict_probability_of_admission_from_ED:</strong> Show how to train a machine learning model to forecast admission likelihood based on patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, evaluating and interpreting these predictions, and saving the models for future use.</li>
-<li><strong>4b_Predict_demand_from_patients_in_ED</strong> Illustrate how to convert individual admission probabilities into an overall bed demand forecast. Demonstrate the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window</li>
-<li><strong>4c_Predict_probablity_of_admission_to_specialty:</strong> Show that a rooted directed tree can be used to represent a sequence of consultation requests, which in turn can be mapped to a probability of being admitted to one of three specialties: medical, surgical, haematology/oncology</li>
-<li><strong>4d_Predict_demand_from_patients_yet_to_arrive:</strong> Show the use of a time-varying Poisson distribution to predict a number of patients yet to arrive with a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrate the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window</li>
-<li><strong>5_Model_evaluation</strong>: Discuss the importance of evaluating predictions and talk about what it means to evaluate a model of aspirational predictions</li>
-<li><strong>6 Bring it all together:</strong> Show an example of doing live inference using these models</li>
+<li><strong>1_Introduce_our_users:</strong> Talks about the users of emergency demand predictions in acute hospitals.</li>
+<li><strong>2_Modelling_requirements:</strong> Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.</li>
+<li><strong>3_Introduce_the_datasets:</strong> Introduces the two datasets created to accompany this repository</li>
+<li><strong>4a_Predict_probability_of_admission_from_ED:</strong> Shows how to train a machine learning model to forecast admission likelihood based on patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.</li>
+<li><strong>4b_Predict_demand_from_patients_in_ED</strong> Illustrates how to convert individual admission probabilities into an overall bed demand forecast</li>
+<li><strong>4c_Predict_probablity_of_admission_to_specialty:</strong> Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, haematology/oncology, with paediatric patients (under 18) handled differently</li>
+<li><strong>4d_Predict_demand_from_patients_yet_to_arrive:</strong> Show the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive with a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrates the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window</li>
+<li><strong>5_Model_evaluation</strong>: Discusses how to evaluate the models' predictions</li>
+<li><strong>6 Bring it all together:</strong> Shows an example of doing live inference using the models trained in the previous steps</li>
 </ul>
 <!-- END INCLUDE -->
 
@@ -646,7 +644,7 @@
     <script id="__config" type="application/json">{"base": "..", "features": ["content.action.edit"], "search": "../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.56dfad97.min.js"></script>
+      <script src="../assets/javascripts/bundle.525ec568.min.js"></script>
       
     
   </body>
