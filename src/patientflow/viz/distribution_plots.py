@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
+
 def plot_distributions(
     df,
     col_name,
@@ -10,7 +11,7 @@ def plot_distributions(
     title=None,
     rotate_x_labels=False,
     is_discrete=False,
-    ordinal_order=None
+    ordinal_order=None,
 ):
     """
     Creates side-by-side plots comparing the distributions of a variable
@@ -34,7 +35,9 @@ def plot_distributions(
 
     # If ordinal_order is provided, convert the column to ordered categorical
     if ordinal_order is not None:
-        df[col_name] = pd.Categorical(df[col_name], categories=ordinal_order, ordered=True)
+        df[col_name] = pd.Categorical(
+            df[col_name], categories=ordinal_order, ordered=True
+        )
 
     # Create a FacetGrid for side-by-side plots
     g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)

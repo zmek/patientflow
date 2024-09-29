@@ -15,5 +15,5 @@ This folder contains a series of notebooks that demonstrate the process of model
 - **4b_Predict_demand_from_patients_in_ED** Illustrates how to convert individual admission probabilities into an overall bed demand forecast
 - **4c_Predict_probablity_of_admission_to_specialty:** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, haematology/oncology, with paediatric patients (under 18) handled differently
 - **4d_Predict_demand_from_patients_yet_to_arrive:** Show the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive with a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrates the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window
-- **5_Model_evaluation**: Discusses how to evaluate the models' predictions 
+- **5_Model_evaluation**: Discusses how to evaluate the models' predictions
 - **6 Bring it all together:** Shows an example of doing live inference using the models trained in the previous steps

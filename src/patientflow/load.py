@@ -234,7 +234,6 @@ def set_file_paths(
         media_file_path.mkdir(parents=False, exist_ok=True)
         print(f"Images will be saved to: {media_file_path}")
 
-
     # Return paths and parameters
     return data_file_path, media_file_path, model_file_path, config_path
 
@@ -313,24 +312,25 @@ def safe_literal_eval(s):
     """
     if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
         return None
-    
+
     if isinstance(s, str):
         s = s.strip()
-        if s.startswith('[') and s.endswith(']'):
+        if s.startswith("[") and s.endswith("]"):
             try:
                 # Remove square brackets and split by comma
-                items = s[1:-1].split(',')
+                items = s[1:-1].split(",")
                 # Strip whitespace from each item and remove empty strings
                 return [item.strip() for item in items if item.strip()]
             except Exception:
                 # If the above fails, fall back to ast.literal_eval
                 pass
-    
+
     try:
         return ast.literal_eval(s)
     except (ValueError, SyntaxError):
         # If ast.literal_eval fails, return the original string
         return s
+
 
 def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
     """
@@ -350,7 +350,7 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     if not os.path.exists(path):
         print(f"Data file not found at path: {path}")
-        sys.exit(1)   
+        sys.exit(1)
 
     try:
         df = pd.read_csv(path, parse_dates=True)
@@ -360,7 +360,6 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     except Exception as e:
         print(f"Error loading data: {e}")
         sys.exit(1)
-
 
     if index_column:
         try:

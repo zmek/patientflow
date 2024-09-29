@@ -47,8 +47,8 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 - **Reproducible** - We follow the principles of Reproducible Analytical Pipelines, with the aim that the code can be easily adopted in other settings
 - **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. The narrative in the notebooks is intended to be accessible to someone without any knowledge of programming; it should still be possible to follow the approach. We intend that anyone with some knowledge of Python could understand and adapt the code for their use.
-- **Practical:** A synthetic dataset, derived from real patient data, is included within this repo in the `data-synthetic` folder. This can be used to step through the modelling process if you want to run the notebooks yourself. So even if your hospital is not set up to do real-time prediction yet, you can still follow the same steps we took. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.) UCLH have agreed we can release an anomymised version of real patient data, but not within the repo. To gain access to this, please contact Dr Zella King, contact details below. 
-- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment within which to run Jupyter notebooks, you will be able to interact with the code and see it running. 
+- **Practical:** A synthetic dataset, derived from real patient data, is included within this repo in the `data-synthetic` folder. This can be used to step through the modelling process if you want to run the notebooks yourself. So even if your hospital is not set up to do real-time prediction yet, you can still follow the same steps we took. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.) UCLH have agreed we can release an anomymised version of real patient data, but not within the repo. To gain access to this, please contact Dr Zella King, contact details below.
+- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment within which to run Jupyter notebooks, you will be able to interact with the code and see it running.
 
 ## Getting started
 
@@ -80,7 +80,7 @@ Centre for Advanced Research Computing, University College London
 
 ### Installation
 
-patientflow is not yet available on PyPI. To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it. 
+patientflow is not yet available on PyPI. To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it.
 
 ```sh
 git clone https://github.com/zmek/patientflow.git
@@ -99,10 +99,10 @@ If you get errors running the pytest command, there may be other installations n
 
 ### Training models with data provided
 
-The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options 
+The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options
 
-* step through the notebooks (for this to work you'll either need copy the two csv files from `data-synthetic`into your `data-public` folder or contact us for real patient data)
-* run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the `data_folder_name` parameter if you have the real data in `data-public`)
+- step through the notebooks (for this to work you'll either need copy the two csv files from `data-synthetic`into your `data-public` folder or contact us for real patient data)
+- run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the `data_folder_name` parameter if you have the real data in `data-public`)
 
 ```sh
 cd src
@@ -123,4 +123,4 @@ There are two arguments
 
 ## Acknowledgements
 
-This work was funded by a grant from the UCL Impact Funding. We are grateful to the Information Governance team and the Caldicott Guardian at UCLH for agreeing that we can release real patient data. 
+This work was funded by a grant from the UCL Impact Funding. We are grateful to the Information Governance team and the Caldicott Guardian at UCLH for agreeing that we can release real patient data.

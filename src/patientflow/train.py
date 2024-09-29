@@ -226,10 +226,11 @@ def calculate_class_balance(y):
     total = len(y)
     return {cls: count / total for cls, count in counter.items()}
 
+
 def create_json_safe_params(params):
     # Create a shallow copy of the original params
     new_params = params.copy()
-    
+
     # List of keys to check for date objects
     date_keys = [
         "start_training_set",
@@ -237,13 +238,14 @@ def create_json_safe_params(params):
         "start_test_set",
         "end_test_set",
     ]
-    
+
     # Convert dates to ISO format for the specified keys
     for key in date_keys:
         if key in new_params and isinstance(new_params[key], date):
             new_params[key] = new_params[key].isoformat()
-    
+
     return new_params
+
 
 def train_admissions_models(
     visits,
@@ -636,12 +638,12 @@ def main(data_folder_name=None, uclh=None):
             r"Severe\E\Very Severe",
         ],
         "latest_obs_level_of_consciousness": [
-        "A", #alert
-        "C", #confused
-        "V", #voice - responds to voice stimulus
-        "P", #pain - responds to pain stimulus
-        "U" #unconscious - no response to pain or voice stimulus
-    ]
+            "A",  # alert
+            "C",  # confused
+            "V",  # voice - responds to voice stimulus
+            "P",  # pain - responds to pain stimulus
+            "U",  # unconscious - no response to pain or voice stimulus
+        ],
     }
 
     # Train admission model
