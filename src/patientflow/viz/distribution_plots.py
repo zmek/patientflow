@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
-
-# Define a consistent color palette
-# color_palette = {0: 'blue', 1: 'orange'}  # Assuming is_admitted can only be 0 or 1
 import seaborn as sns
+import pandas as pd
 
 
 def plot_distributions(
@@ -13,6 +11,7 @@ def plot_distributions(
     title=None,
     rotate_x_labels=False,
     is_discrete=False,
+    ordinal_order=None,
 ):
     """
     Creates side-by-side plots comparing the distributions of a variable
@@ -29,10 +28,16 @@ def plot_distributions(
     title (str): The overall title for the plot.
     rotate_x_labels (bool): Whether to rotate x-axis labels.
     is_discrete (bool): Whether the variable is discrete. If True, sets number of bins to max value.
-
+    ordinal_order (list): The order of categories for ordinal data. If None, the original order is maintained.
     """
     # Set the aesthetic style of the plots
     sns.set_theme(style="whitegrid")
+
+    # If ordinal_order is provided, convert the column to ordered categorical
+    if ordinal_order is not None:
+        df[col_name] = pd.Categorical(
+            df[col_name], categories=ordinal_order, ordered=True
+        )
 
     # Create a FacetGrid for side-by-side plots
     g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)

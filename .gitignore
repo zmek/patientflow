@@ -2,8 +2,13 @@
 *results_dict*
 *data-raw*
 *data-uclh*
-*data-public*
-*trained-models*
+data-public/*
+!data-public/.gitkeep
+
+
+trained-models/*
+!trained-models/.gitkeep
+
 *.joblib
 
 *.vscode*
@@ -11,6 +16,8 @@
 
 # config local to uclh
 config-uclh.yaml
+
+_version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

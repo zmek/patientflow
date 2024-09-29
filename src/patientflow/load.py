@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data_folder_name",
         type=str,
-        default="data-raw",
+        default="data-synthetic",
         help="Location of data for training",
     )
     parser.add_argument(
@@ -175,8 +175,16 @@ def set_file_paths(
         current_path = Path(__file__)
         root = current_path.parents[2]
 
+    # Set config file based on the `uclh` flag
+    if uclh:
+        config_path = Path(root) / "config-uclh.yaml"
+    else:
+        config_path = Path(root) / "config.yaml"
+    print(f"Configuration will be loaded from: {config_path}")
+
     # Set data and media file paths
     data_file_path = Path(root) / data_folder_name
+    print(f"Data files will be loaded from: {data_file_path}")
 
     # Create model ID from current date, data_folder_name
     model_id = prefix + "_" + data_folder_name.lstrip("data-")
@@ -214,7 +222,7 @@ def set_file_paths(
             model_file_path = Path(root) / "trained-models" / model_id
 
         print(f"Trained models will be saved to: {model_file_path}")
-        model_file_path.mkdir(parents=False, exist_ok=True)
+        model_file_path.mkdir(parents=True, exist_ok=True)
 
         filename_results_dict_path = model_file_path / "model-output"
         filename_results_dict_path.mkdir(parents=False, exist_ok=True)
@@ -224,12 +232,7 @@ def set_file_paths(
         else:
             media_file_path = model_file_path / "media"
         media_file_path.mkdir(parents=False, exist_ok=True)
-
-    # Set config file based on the `uclh` flag
-    if uclh:
-        config_path = Path(root) / "config-uclh.yaml"
-    else:
-        config_path = Path(root) / "config.yaml"
+        print(f"Images will be saved to: {media_file_path}")
 
     # Return paths and parameters
     return data_file_path, media_file_path, model_file_path, config_path
@@ -294,6 +297,7 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
 def safe_literal_eval(s):
     """
     Safely evaluate a string literal into a Python object.
+    Handles list-like strings by converting them to lists.
 
     Parameters
     ----------
@@ -302,15 +306,30 @@ def safe_literal_eval(s):
 
     Returns
     -------
-    Any or None
-        The evaluated Python object if successful, otherwise None.
+    Any, list, or None
+        The evaluated Python object if successful, a list if the input is list-like,
+        or None for empty/null values.
     """
+    if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
+        return None
+
+    if isinstance(s, str):
+        s = s.strip()
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                # Remove square brackets and split by comma
+                items = s[1:-1].split(",")
+                # Strip whitespace from each item and remove empty strings
+                return [item.strip() for item in items if item.strip()]
+            except Exception:
+                # If the above fails, fall back to ast.literal_eval
+                pass
+
     try:
-        if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
-            return None
         return ast.literal_eval(s)
     except (ValueError, SyntaxError):
-        return None
+        # If ast.literal_eval fails, return the original string
+        return s
 
 
 def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
@@ -328,6 +347,10 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     """
     path = os.path.join(Path().home(), csv_path)
+
+    if not os.path.exists(path):
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)
 
     try:
         df = pd.read_csv(path, parse_dates=True)

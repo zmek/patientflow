@@ -31,7 +31,7 @@ from patientflow.load import (
     parse_args,
 )
 from patientflow.predictors.sequence_predictor import SequencePredictor
-from patientflow.predictors.poisson_binomial_predictor import PoissonBinomialPredictor
+from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.predict.realtime_demand import create_predictions
 
 
@@ -225,6 +225,26 @@ def calculate_class_balance(y):
     counter = Counter(y)
     total = len(y)
     return {cls: count / total for cls, count in counter.items()}
+
+
+def create_json_safe_params(params):
+    # Create a shallow copy of the original params
+    new_params = params.copy()
+
+    # List of keys to check for date objects
+    date_keys = [
+        "start_training_set",
+        "start_validation_set",
+        "start_test_set",
+        "end_test_set",
+    ]
+
+    # Convert dates to ISO format for the specified keys
+    for key in date_keys:
+        if key in new_params and isinstance(new_params[key], date):
+            new_params[key] = new_params[key].isoformat()
+
+    return new_params
 
 
 def train_admissions_models(
@@ -457,7 +477,7 @@ def train_yet_to_arrive_model(
     )
     train_yta.set_index("arrival_datetime", inplace=True)
 
-    yta_model = PoissonBinomialPredictor(filters=specialty_filters)
+    yta_model = WeightedPoissonPredictor(filters=specialty_filters)
     yta_model.fit(
         train_df=train_yta,
         prediction_window=prediction_window,
@@ -523,14 +543,7 @@ def main(data_folder_name=None, uclh=None):
     yta_time_interval = params["yta_time_interval"]
 
     # convert params dates in format that can be saved to json later
-    for key in [
-        "start_training_set",
-        "start_validation_set",
-        "start_test_set",
-        "end_test_set",
-    ]:
-        if key in params and isinstance(params[key], date):
-            params[key] = params[key].isoformat()
+    json_safe_params = create_json_safe_params(params)
 
     # Load data
     if uclh:
@@ -576,7 +589,7 @@ def main(data_folder_name=None, uclh=None):
         "data_folder_name": data_folder_name,
         "uclh": uclh,
         "train_dttm": train_dttm,
-        "config": params,
+        "config": json_safe_params,
     }
     filename_results_dict_name = "model_metadata.json"
 
@@ -623,6 +636,13 @@ def main(data_folder_name=None, uclh=None):
             r"Mild",
             r"Moderate",
             r"Severe\E\Very Severe",
+        ],
+        "latest_obs_level_of_consciousness": [
+            "A",  # alert
+            "C",  # confused
+            "V",  # voice - responds to voice stimulus
+            "P",  # pain - responds to pain stimulus
+            "U",  # unconscious - no response to pain or voice stimulus
         ],
     }
 

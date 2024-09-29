@@ -138,7 +138,7 @@ class TestCreatePredictions(unittest.TestCase):
         y = df[target_column]
 
         # Define the model
-        model = XGBClassifier(use_label_encoder=False, eval_metric="logloss")
+        model = XGBClassifier(eval_metric="logloss")
         # column_transformer = create_column_transformer(X)
         column_transformer = ColumnTransformer(
             [

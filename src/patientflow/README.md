@@ -1,6 +1,6 @@
 # PatientFlow: A forthcoming Python package
 
-Our intention is to release this folder, and its subfolders, as a Python package that can be installed using common methods like `pip install`
+Our intention is to release this repository as a Python package that can be installed using common methods like `pip install`
 
 The package will support predictions of bed demand and discharges by providing functions that
 
@@ -16,9 +16,9 @@ The package is intended to serve as a wrapper of the functions typically used fo
 - `load`: A module for loading configuration files, saved data and trained models
 - `prepare`: A module for preparing saved data prior to input into model training
 - `train`: A module and submodules for training predictive models
-- `predictors`: A module and submodules containing customer predictors used in the `patientflow` package
+- `predictors`: A module and submodules containing custom predictors developed for the `patientflow` package
 - `predict`: A module using trained models for predicting various aspects of bed demand and discharges
-- `aggregate`: A module that turns patient-level probabilities into aggregate distributions
+- `aggregate`: A module that turns patient-level probabilities into aggregate distributions of bed numbers
 - `viz`: A module containing convenient plotting functions to examine the outputs from the above functions
 
 Other modules may follow in future
