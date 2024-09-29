@@ -298,6 +298,7 @@ def set_data_file_names(uclh, data_file_path, config_file_path=None):
 def safe_literal_eval(s):
     """
     Safely evaluate a string literal into a Python object.
+    Handles list-like strings by converting them to lists.
 
     Parameters
     ----------
@@ -306,16 +307,30 @@ def safe_literal_eval(s):
 
     Returns
     -------
-    Any or None
-        The evaluated Python object if successful, otherwise None.
+    Any, list, or None
+        The evaluated Python object if successful, a list if the input is list-like,
+        or None for empty/null values.
     """
+    if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
+        return None
+    
+    if isinstance(s, str):
+        s = s.strip()
+        if s.startswith('[') and s.endswith(']'):
+            try:
+                # Remove square brackets and split by comma
+                items = s[1:-1].split(',')
+                # Strip whitespace from each item and remove empty strings
+                return [item.strip() for item in items if item.strip()]
+            except Exception:
+                # If the above fails, fall back to ast.literal_eval
+                pass
+    
     try:
-        if pd.isna(s) or str(s).strip().lower() in ["nan", "none", ""]:
-            return None
         return ast.literal_eval(s)
     except (ValueError, SyntaxError):
-        return None
-
+        # If ast.literal_eval fails, return the original string
+        return s
 
 def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
     """
@@ -345,6 +360,7 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
     except Exception as e:
         print(f"Error loading data: {e}")
         sys.exit(1)
+
 
     if index_column:
         try:
