@@ -3,6 +3,8 @@
 *data-raw*
 *data-uclh*
 *data-public/*
+!data-public/.gitkeep
+
 
 *trained-models*
 *.joblib
