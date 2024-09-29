@@ -2,7 +2,8 @@
 *results_dict*
 *data-raw*
 *data-uclh*
-*data-public*
+*data-public/*
+
 *trained-models*
 *.joblib
 
