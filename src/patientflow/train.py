@@ -31,7 +31,7 @@ from patientflow.load import (
     parse_args,
 )
 from patientflow.predictors.sequence_predictor import SequencePredictor
-from patientflow.predictors.poisson_binomial_predictor import PoissonBinomialPredictor
+from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.predict.realtime_demand import create_predictions
 
 
@@ -475,7 +475,7 @@ def train_yet_to_arrive_model(
     )
     train_yta.set_index("arrival_datetime", inplace=True)
 
-    yta_model = PoissonBinomialPredictor(filters=specialty_filters)
+    yta_model = WeightedPoissonPredictor(filters=specialty_filters)
     yta_model.fit(
         train_df=train_yta,
         prediction_window=prediction_window,

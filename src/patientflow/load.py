@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data_folder_name",
         type=str,
-        default="data-raw",
+        default="data-synthetic",
         help="Location of data for training",
     )
     parser.add_argument(

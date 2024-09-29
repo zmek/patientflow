@@ -1,5 +1,5 @@
 """
-Poisson-Binomial Admission Predictor
+Weighted Poisson Predictor
 
 This module implements a custom predictor to estimate the number of hospital admissions within a specified prediction window using historical admission data. It applies Poisson and binomial distributions to forecast future admissions, excluding already arrived patients. The predictor accommodates different data filters for tailored predictions across various hospital settings.
 
@@ -8,21 +8,19 @@ Dependencies:
     - datetime: For manipulating date and time objects, crucial for time-based predictions.
     - sklearn: Utilizes BaseEstimator and TransformerMixin from scikit-learn for creating custom, interoperable predictors.
     - Custom modules:
-        - predict.emergency_demand.yet_to_arrive: Includes the Poisson-binomial generating function for prediction calculations.
-        - predict.emergency_demand.admission_in_prediction_window: Calculates the probability of admission within a specified prediction window.
-        - time_varying_arrival_rates: Computes time-varying arrival rates, a core component of the prediction algorithm.
+        - prepare.calculate_time_varying_arrival_rates: Computes time-varying arrival rates, for each specified interval within the prediction window.
+        - predict.admission_in_prediction_window: Calculates the probability of admission within a specified prediction window.
 
 Classes:
-    PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
+    WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         Predicts the number of admissions within a given prediction window based on historical data and Poisson-binomial distribution.
 
-    Methods within PoissonBinomialPredictor:
+    Methods within WeightedPoissonPredictor:
         - __init__(self, filters=None): Initializes the predictor with optional data filters.
         - filter_dataframe(self, df, filters): Applies filters to the dataset for targeted predictions.
         - fit(self, train_df, prediction_window, yta_time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
         - predict(self, prediction_context): Predicts the number of admissions using the trained model.
 
-This module is designed for flexibility and customization to suit different prediction needs in hospital environments.
 
 """
 
@@ -217,7 +215,7 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
     return closest_prediction_time
 
 
-class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
+class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     """
     A class to predict an aspirational number of admissions within a specified prediction window.
     This prediction does not include patients who have already arrived and is based on historical data.
@@ -237,7 +235,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
 
     def __init__(self, filters=None):
         """
-        Initialize the PoissonBinomialPredictor with optional filters.
+        Initialize the WeightedPoissonPredictor with optional filters.
 
         Args:
             filters (dict, optional): A dictionary defining filters for different categories or specialties.
@@ -315,7 +313,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
         prediction_times: List[float],
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-    ) -> "PoissonBinomialPredictor":
+    ) -> "WeightedPoissonPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
 
@@ -334,7 +332,7 @@ class PoissonBinomialPredictor(BaseEstimator, TransformerMixin):
                 Ignored, present for compatibility with scikit-learn's fit method.
 
         Returns:
-            PoissonBinomialPredictor: The instance itself, fitted with the training data.
+            WeightedPoissonPredictor: The instance itself, fitted with the training data.
 
         """
         # Store prediction_window, yta_time_interval, and any other parameters as instance variables
