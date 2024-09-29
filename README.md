@@ -41,7 +41,7 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 - **User led:** This work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), over four years. What is modelled directly reflects how they work and what is most useful to them.
 - **Focused on short-term predictions:** We demonstrate the creation and evaluation of predictive models. The output from these models is a prediction of how many beds with be needed by patients within a short time horizon of (say) 8 hours. (Later we plan to add modules that also predict supply and net bed position over the same period.)
-- **Assumes real-time data is available:** Our focus is on how hospitals can make use of real-time data to make informed decisions on the ground. All the modelling here assumes that a hospital has some capacity to run models using real-time (or near to real-time) data in its electronic health record, even if this data is minimal (see next point).
+- **Assumes real-time data is available:** Our focus is on how hospitals can make use of real-time data to make informed decisions on the ground. All the modelling here assumes that a hospital has some capacity to run models using real-time (or near to real-time) data in its electronic health record, even if this data is minimal.
 
 ## Main Features of this repository
 
@@ -53,8 +53,8 @@ Please note that you are looking at this repo prior to its first release. It is 
 ## Getting started
 
 - Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the notebooks, and read the [patientflow README](src/patientflow/README.md) to understand our intentions for the Python package
-- [Coming later] Installation: Follow the instructions in setup.py to set up the environment and install necessary dependencies
-- [Coming later] Configuration: Utilise environment.yml and requirements.txt to configure your environment to run these models
+- Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
+- Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
 
 ## About
 
