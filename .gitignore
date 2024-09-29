@@ -5,7 +5,10 @@
 data-public/*
 !data-public/.gitkeep
 
-*trained-models*
+
+trained-models/*
+!trained-models/.gitkeep
+
 *.joblib
 
 *.vscode*
