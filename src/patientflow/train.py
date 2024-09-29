@@ -635,6 +635,13 @@ def main(data_folder_name=None, uclh=None):
             r"Moderate",
             r"Severe\E\Very Severe",
         ],
+        "latest_obs_level_of_consciousness": [
+        "A", #alert
+        "C", #confused
+        "V", #voice - responds to voice stimulus
+        "P", #pain - responds to pain stimulus
+        "U" #unconscious - no response to pain or voice stimulus
+    ]
     }
 
     # Train admission model
