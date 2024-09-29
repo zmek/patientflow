@@ -175,8 +175,16 @@ def set_file_paths(
         current_path = Path(__file__)
         root = current_path.parents[2]
 
+    # Set config file based on the `uclh` flag
+    if uclh:
+        config_path = Path(root) / "config-uclh.yaml"
+    else:
+        config_path = Path(root) / "config.yaml"
+    print(f"Configuration will be loaded from: {config_path}")
+
     # Set data and media file paths
     data_file_path = Path(root) / data_folder_name
+    print(f"Data files will be loaded from: {data_file_path}")
 
     # Create model ID from current date, data_folder_name
     model_id = prefix + "_" + data_folder_name.lstrip("data-")
@@ -214,7 +222,7 @@ def set_file_paths(
             model_file_path = Path(root) / "trained-models" / model_id
 
         print(f"Trained models will be saved to: {model_file_path}")
-        model_file_path.mkdir(parents=False, exist_ok=True)
+        model_file_path.mkdir(parents=True, exist_ok=True)
 
         filename_results_dict_path = model_file_path / "model-output"
         filename_results_dict_path.mkdir(parents=False, exist_ok=True)
@@ -224,12 +232,8 @@ def set_file_paths(
         else:
             media_file_path = model_file_path / "media"
         media_file_path.mkdir(parents=False, exist_ok=True)
+        print(f"Images will be saved to: {media_file_path}")
 
-    # Set config file based on the `uclh` flag
-    if uclh:
-        config_path = Path(root) / "config-uclh.yaml"
-    else:
-        config_path = Path(root) / "config.yaml"
 
     # Return paths and parameters
     return data_file_path, media_file_path, model_file_path, config_path
@@ -328,6 +332,10 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     """
     path = os.path.join(Path().home(), csv_path)
+
+    if not os.path.exists(path):
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)   
 
     try:
         df = pd.read_csv(path, parse_dates=True)
