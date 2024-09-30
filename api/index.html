@@ -5713,11 +5713,7 @@ predictions = create_predictions(
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/predict/realtime_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 77</span>
 <span class="normal"> 78</span>
 <span class="normal"> 79</span>
 <span class="normal"> 80</span>
@@ -5893,7 +5889,13 @@ predictions = create_predictions(
 <span class="normal">250</span>
 <span class="normal">251</span>
 <span class="normal">252</span>
-<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_predictions</span><span class="p">(</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_predictions</span><span class="p">(</span>
     <span class="n">model_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">,</span>
     <span class="n">prediction_snapshots</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
@@ -5990,7 +5992,7 @@ predictions = create_predictions(
     <span class="c1"># Load models</span>
     <span class="n">admissions_model</span> <span class="o">=</span> <span class="n">prepare_for_inference</span><span class="p">(</span>
         <span class="n">model_file_path</span><span class="o">=</span><span class="n">model_file_path</span><span class="p">,</span>
-        <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;ed_admission&quot;</span><span class="p">,</span>
+        <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;admissions&quot;</span><span class="p">,</span>
         <span class="n">prediction_time</span><span class="o">=</span><span class="n">prediction_time</span><span class="p">,</span>
         <span class="n">model_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
@@ -6013,14 +6015,16 @@ predictions = create_predictions(
     <span class="p">)</span>
 
     <span class="c1"># Get predictions of admission to specialty</span>
-    <span class="n">prediction_snapshots</span><span class="p">[</span><span class="s2">&quot;specialty_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_specialty_probs</span><span class="p">(</span>
+    <span class="n">prediction_snapshots</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;specialty_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_specialty_probs</span><span class="p">(</span>
         <span class="n">model_file_path</span><span class="p">,</span>
         <span class="n">prediction_snapshots</span><span class="p">,</span>
         <span class="n">special_category_func</span><span class="o">=</span><span class="n">special_category_func</span><span class="p">,</span>
         <span class="n">special_category_dict</span><span class="o">=</span><span class="n">special_category_dict</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">prediction_snapshots</span><span class="p">[</span><span class="s2">&quot;elapsed_los_hrs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prediction_snapshots</span><span class="p">[</span><span class="s2">&quot;elapsed_los&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">3600</span>
+    <span class="n">prediction_snapshots</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;elapsed_los_hrs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prediction_snapshots</span><span class="p">[</span>
+        <span class="s2">&quot;elapsed_los&quot;</span>
+    <span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">)</span>
 
     <span class="c1"># Get probability of admission within prediction window</span>
     <span class="n">prob_admission_in_window</span> <span class="o">=</span> <span class="n">prediction_snapshots</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
@@ -6095,14 +6099,14 @@ predictions = create_predictions(
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/predict/realtime_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">67</span>
 <span class="normal">68</span>
 <span class="normal">69</span>
-<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">index_of_sum</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">max_sum</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">index_of_sum</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">max_sum</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns the index where the cumulative sum of a sequence of probabilities exceeds max_sum.&quot;&quot;&quot;</span>
     <span class="n">cumulative_sum</span> <span class="o">=</span> <span class="mf">0.0</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sequence</span><span class="p">):</span>
