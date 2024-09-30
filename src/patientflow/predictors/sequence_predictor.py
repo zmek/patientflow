@@ -1,7 +1,7 @@
 """
-This module implements a `SequencePredictor` class that models and predicts the probability distribution 
-of sequences in categorical data. The class builds a model based on training data, where input sequences 
-are mapped to specific outcome categories. It provides methods to fit the model, compute sequence-based 
+This module implements a `SequencePredictor` class that models and predicts the probability distribution
+of sequences in categorical data. The class builds a model based on training data, where input sequences
+are mapped to specific outcome categories. It provides methods to fit the model, compute sequence-based
 probabilities, and make predictions on an unseen datatset of input sequences.
 
 Classes
@@ -18,7 +18,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class SequencePredictor(BaseEstimator, TransformerMixin):
     """
-    A class to model sequence-based predictions for categorical data using input and grouping sequences. 
+    A class to model sequence-based predictions for categorical data using input and grouping sequences.
     This class implements both the `fit` and `predict` methods from the parent sklearn classes.
 
     Parameters
@@ -37,6 +37,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
     input_to_grouping_probs : pd.DataFrame
         A DataFrame that stores the computed probabilities of input sequences being associated with different grouping sequences.
     """
+
     def __init__(self, input_var, grouping_var, outcome_var):
         self.input_var = input_var  # Column name for the input sequence
         self.grouping_var = grouping_var  # Column name for the grouping sequence
@@ -45,8 +46,8 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
 
     def fit(self, X: pd.DataFrame) -> Dict:
         """
-        Fits the predictor based on training data by computing the proportion of each input variable sequence 
-        ending in specific outcome variable categories. It also handles null sequences and incorporates a default 
+        Fits the predictor based on training data by computing the proportion of each input variable sequence
+        ending in specific outcome variable categories. It also handles null sequences and incorporates a default
         probability for sequences without explicit data.
 
         Parameters
@@ -117,8 +118,14 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         # Clean the key to remove excess strint quotes
         def clean_tuple_key(key):
             if isinstance(key, tuple):
-                return tuple(ast.literal_eval(item) if item.startswith("'") and item.endswith("'") else item for item in key)
+                return tuple(
+                    ast.literal_eval(item)
+                    if item.startswith("'") and item.endswith("'")
+                    else item
+                    for item in key
+                )
             return key
+
         cleaned_dict = {clean_tuple_key(k): v for k, v in result_dict.items()}
 
         # save prob_input_var_ends_in_observed_specialty as weights within the model
@@ -146,7 +153,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         input_var_string : str
             The sequence of inputs represented as a string, used to match against sequences in the proportions DataFrame.
         proportions : pd.DataFrame
-            DataFrame containing proportions data with an additional column 'grouping_sequence_to_string' 
+            DataFrame containing proportions data with an additional column 'grouping_sequence_to_string'
             which includes string representations of sequences.
         prop_keys : np.array
             Array of unique outcomes to consider in calculations.
@@ -154,7 +161,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         Returns
         -------
         dict
-            A dictionary where keys are outcome names and values are the aggregated and normalized probabilities 
+            A dictionary where keys are outcome names and values are the aggregated and normalized probabilities
             of an input sequence ending in those outcomes.
 
         """
@@ -215,7 +222,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         Parameters
         ----------
         input_sequence : tuple[str, ...]
-            A tuple containing the categories that have been observed for an entity in the order they 
+            A tuple containing the categories that have been observed for an entity in the order they
             have been encountered. An empty tuple represents an entity with no observed categories.
 
         Returns

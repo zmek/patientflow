@@ -1,5 +1,5 @@
 | Column Name              | Data Type           | Description                                                            | Additional Details                                                                           |
-|:-------------------------|:--------------------|:-----------------------------------------------------------------------|:---------------------------------------------------------------------------------------------|
+| :----------------------- | :------------------ | :--------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- |
 | training_validation_test | object              | Whether visit snapshot is assigned to training, validation or test set | Frequencies: {test: 3,701, train: 7,730, valid: 1,244}                                       |
 | arrival_datetime         | datetime64[ns, UTC] | arrival_datetime                                                       | Date Range: 2031-03-01 00:03 - 2031-12-31 23:32                                              |
 | sex                      | object              | Sex of patient                                                         | Frequencies: {F: 6,389, M: 6,286}                                                            |

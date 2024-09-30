@@ -12,7 +12,7 @@ def plot_calibration(
     media_file_path,
     model_file_path,
     visits_csv_path,
-    model_name, 
+    model_name,
     strategy="uniform",
 ):
     num_plots = len(prediction_times)

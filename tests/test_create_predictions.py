@@ -156,7 +156,7 @@ class TestCreatePredictions(unittest.TestCase):
         pipeline.fit(X, y)
         # transformed_X = pipeline.named_steps['feature_transformer'].transform(X)
 
-        model_name = get_model_name("ed_admission", self.prediction_time)
+        model_name = get_model_name("admissions", self.prediction_time)
         full_path = self.model_file_path / str(model_name + ".joblib")
         joblib.dump(pipeline, full_path)
 

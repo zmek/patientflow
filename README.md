@@ -124,5 +124,3 @@ There are two arguments
 ## Acknowledgements
 
 This work was funded by a grant from the UCL Impact Funding. We are grateful to the Information Governance team and the Caldicott Guardian at UCLH for agreeing that we can release real patient data.
-
-

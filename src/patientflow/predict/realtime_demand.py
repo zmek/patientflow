@@ -16,7 +16,8 @@ from patientflow.aggregate import (
 )
 
 import warnings
-warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)
+
+warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def add_missing_columns(pipeline, df):
@@ -200,7 +201,9 @@ def create_predictions(
         special_category_dict=special_category_dict,
     )
 
-    prediction_snapshots.loc[:, "elapsed_los_hrs"] = prediction_snapshots["elapsed_los"].apply(lambda x: x / 3600)
+    prediction_snapshots.loc[:, "elapsed_los_hrs"] = prediction_snapshots[
+        "elapsed_los"
+    ].apply(lambda x: x / 3600)
 
     # Get probability of admission within prediction window
     prob_admission_in_window = prediction_snapshots.apply(

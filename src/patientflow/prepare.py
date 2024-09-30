@@ -867,10 +867,12 @@ def get_manual_descriptions():
 def write_data_dict(df, dict_name, dict_path):
     cols_to_exclude = ["snapshot_id", "visit_number"]
 
-    df=df.copy(deep=True)
+    df = df.copy(deep=True)
 
     if "visits" in dict_name:
-        df.consultation_sequence = df.consultation_sequence.apply(lambda x: str(x)).to_frame()
+        df.consultation_sequence = df.consultation_sequence.apply(
+            lambda x: str(x)
+        ).to_frame()
         df.final_sequence = df.final_sequence.apply(lambda x: str(x)).to_frame()
         df_admitted = df[df.is_admitted]
         df_not_admitted = df[~df.is_admitted]
