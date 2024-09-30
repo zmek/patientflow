@@ -24,7 +24,6 @@
 <!-- [pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
-[license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
 <!-- prettier-ignore-end -->
 
 Welcome to the PatientFlow repo, which is designed to support hospital bed management through predictive modelling. The repository shows methods for forecasting short-term bed capacity, a crucial aspect of hospital operations that impacts patient care and resource allocation.
