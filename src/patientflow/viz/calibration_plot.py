@@ -12,6 +12,7 @@ def plot_calibration(
     media_file_path,
     model_file_path,
     visits_csv_path,
+    model_name, 
     strategy="uniform",
 ):
     num_plots = len(prediction_times)
@@ -20,7 +21,7 @@ def plot_calibration(
     for i, _prediction_time in enumerate(prediction_times):
         X_test, y_test, pipeline = prepare_for_inference(
             model_file_path=model_file_path,
-            model_name="ed_admission",
+            model_name=model_name,
             prediction_time=_prediction_time,
             data_path=visits_csv_path,
             single_snapshot_per_visit=False,

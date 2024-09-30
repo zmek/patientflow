@@ -647,7 +647,7 @@ def main(data_folder_name=None, uclh=None):
     }
 
     # Train admission model
-    model_name = "ed_admission"
+    model_name = "admissions"
     model_metadata = train_admissions_models(
         visits,
         grid,

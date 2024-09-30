@@ -15,6 +15,9 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
 )
 
+import warnings
+warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)
+
 
 def add_missing_columns(pipeline, df):
     # check input data for missing columns
@@ -167,7 +170,7 @@ def create_predictions(
     # Load models
     admissions_model = prepare_for_inference(
         model_file_path=model_file_path,
-        model_name="ed_admission",
+        model_name="admissions",
         prediction_time=prediction_time,
         model_only=True,
     )
@@ -190,14 +193,14 @@ def create_predictions(
     )
 
     # Get predictions of admission to specialty
-    prediction_snapshots["specialty_prob"] = get_specialty_probs(
+    prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
         model_file_path,
         prediction_snapshots,
         special_category_func=special_category_func,
         special_category_dict=special_category_dict,
     )
 
-    prediction_snapshots["elapsed_los_hrs"] = prediction_snapshots["elapsed_los"] / 3600
+    prediction_snapshots.loc[:, "elapsed_los_hrs"] = prediction_snapshots["elapsed_los"].apply(lambda x: x / 3600)
 
     # Get probability of admission within prediction window
     prob_admission_in_window = prediction_snapshots.apply(
