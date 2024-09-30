@@ -21,6 +21,7 @@
 [documentation-link]:       https://github.com/zmek/patientflow/actions/workflows/docs.yml
 [conda-badge]:              https://img.shields.io/conda/vn/conda-forge/patientflow
 [conda-link]:               https://github.com/conda-forge/patientflow-feedstock
+[license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
 <!-- [pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
