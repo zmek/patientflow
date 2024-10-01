@@ -478,9 +478,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#patientflow.aggregate--assuming-a-predictive-model-and-test-data-are-available" class="md-nav__link">
+  <a href="#patientflow.aggregate--functions" class="md-nav__link">
     <span class="md-ellipsis">
-      Assuming a predictive model and test data are available
+      Functions
     </span>
   </a>
   
@@ -831,6 +831,48 @@
       data_from_csv
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="data_from_csv">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1585,9 +1627,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#patientflow.aggregate--assuming-a-predictive-model-and-test-data-are-available" class="md-nav__link">
+  <a href="#patientflow.aggregate--functions" class="md-nav__link">
     <span class="md-ellipsis">
-      Assuming a predictive model and test data are available
+      Functions
     </span>
   </a>
   
@@ -1938,6 +1980,48 @@
       data_from_csv
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="data_from_csv">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--returns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Returns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--raises" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raises
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.load.data_from_csv--notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -2681,43 +2765,165 @@ on PyPi.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Aggregate Prediction From Patient-Level Probababilities</p>
-<p>This submodule provides functions to generate a probability distribution, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate expressions dynamically, facilitating the computation of aggregate probabilities.</p>
+        <p>Aggregate Prediction From Patient-Level Probabilities</p>
+<p>This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution.
+The module uses symbolic mathematics to generate and manipulate expressions, enabling the computation of aggregate probabilities based on individual patient-level predictions.</p>
 
 
 <details class="dependencies" open>
   <summary>Dependencies</summary>
   <ul>
-<li>numpy: Used for array and numerical operations.</li>
-<li>pandas: Utilized for handling data structures like DataFrames, enabling data manipulation and analysis.</li>
-<li>sympy: A Python library for symbolic mathematics, used here to dynamically create and manipulate symbolic expressions, particularly for the calculation of probabilities.</li>
+<li>numpy: For array operations and numerical calculations.</li>
+<li>pandas: To handle and manipulate tabular data (DataFrames) for analysis.</li>
+<li>sympy: A symbolic mathematics library for building and manipulating symbolic expressions, particularly for calculating probabilities.</li>
 </ul>
-</details>        <p>Functions:
-- create_symbols(n): Generates symbolic variables.
-- compute_core_expression(ri, s): Computes a symbolic expression involving both symbols and constants.
-- build_expression(syms, n): Constructs a cumulative product of symbolic expressions.
-- expression_subs(expression, n, predictions): Substitutes numerical values into a symbolic expression.
-- return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
-- model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
-- pred_proba_to_agg_predicted(predictions_proba, weights): Aggregates probability predictions .
-- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) observed values for a specific date.
-- get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.</p>
-<p>These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method</p>
+</details>        <h4 id="patientflow.aggregate--functions">Functions</h4>
+<p>create_symbols(n):
+    Generates a list of symbolic variables to represent probability terms.</p>
+<pre><code>Parameters
+----------
+n : int
+    Number of symbolic variables to generate.
 
+Returns
+-------
+list of sympy.Symbol
+    A list containing n symbolic variables.
+</code></pre>
+<p>compute_core_expression(ri, s):
+    Computes a symbolic expression using symbolic variables and constants.</p>
+<pre><code>Parameters
+----------
+ri : float
+    A constant value (often a probability).
+s : sympy.Symbol
+    A symbolic variable.
 
-<details class="example-usage" open>
-  <summary>Example Usage</summary>
-  <h3 id="patientflow.aggregate--assuming-a-predictive-model-and-test-data-are-available">Assuming a predictive model and test data are available</h3>
-<p>snapshot_dates = ['2023-01-01', '2023-01-02']
+Returns
+-------
+sympy.Mul
+    A symbolic expression representing the product of `ri` and `s`.
+</code></pre>
+<p>build_expression(syms, n):
+    Constructs a cumulative product of symbolic expressions using symbolic variables.</p>
+<pre><code>Parameters
+----------
+syms : list of sympy.Symbol
+    A list of symbolic variables.
+n : int
+    The number of terms to include in the cumulative product.
+
+Returns
+-------
+sympy.Expr
+    A symbolic expression representing the cumulative product of `syms`.
+</code></pre>
+<p>expression_subs(expression, n, predictions):
+    Substitutes numeric values into a symbolic expression.</p>
+<pre><code>Parameters
+----------
+expression : sympy.Expr
+    A symbolic expression to perform substitution on.
+n : int
+    The number of variables to substitute.
+predictions : array-like
+    Numeric values (e.g., predicted probabilities) to substitute into the expression.
+
+Returns
+-------
+sympy.Expr
+    The symbolic expression after substitution.
+</code></pre>
+<p>return_coeff(expression, i):
+    Extracts the coefficient corresponding to a specific term in an expanded symbolic expression.</p>
+<pre><code>Parameters
+----------
+expression : sympy.Expr
+    A symbolic expression that has been expanded.
+i : int
+    The index of the term for which the coefficient is to be extracted.
+
+Returns
+-------
+float
+    The coefficient for the i-th term.
+</code></pre>
+<p>model_input_to_pred_proba(model_input, model):
+    Converts input data into predicted probabilities using the provided model.</p>
+<pre><code>Parameters
+----------
+model_input : array-like
+    The input data to feed into the model.
+model : object
+    A predictive model object that implements a `predict_proba` method.
+
+Returns
+-------
+array-like
+    The predicted probabilities output by the model.
+</code></pre>
+<p>pred_proba_to_agg_predicted(predictions_proba, weights):
+    Aggregates individual predicted probabilities into an overall prediction using provided weights.</p>
+<pre><code>Parameters
+----------
+predictions_proba : array-like
+    Predicted probabilities for individual patients.
+weights : array-like
+    Weights corresponding to each patient's probability prediction.
+
+Returns
+-------
+float
+    The aggregate predicted probability.
+</code></pre>
+<p>get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time):
+    Computes predicted and observed probabilities for a specific prediction date.</p>
+<pre><code>Parameters
+----------
+X_test : DataFrame or array-like
+    Input test data to be passed to the model for prediction.
+model : object
+    A predictive model object that implements `predict_proba`.
+weights : array-like
+    Weights for aggregating the predicted probabilities.
+y_test : array-like
+    Observed target values corresponding to the test data (optional for inference).
+inference_time : bool
+    Indicates whether the function is used in inference mode (i.e., whether observed data is available).
+
+Returns
+-------
+dict
+    A dictionary containing the predicted and, if applicable, observed probability distributions.
+</code></pre>
+<p>get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
+    Computes probability distributions for multiple snapshot dates.</p>
+<pre><code>Parameters
+----------
+snapshots_dict : dict
+    A dictionary where keys are snapshot dates and values are associated metadata (e.g., test data).
+X_test : DataFrame or array-like
+    Input test data to be passed to the model.
+y_test : array-like
+    Observed target values.
+model : object
+    A predictive model object that implements `predict_proba`.
+weights : array-like
+    Weights for aggregating the predicted probabilities.
+
+Returns
+-------
+dict
+    A dictionary where each key is a snapshot date and the value is the corresponding probability distribution.
+
+Example Usage
+-------------
+# Assuming a predictive model and test data are available
+snapshot_dates = ['2023-01-01', '2023-01-02']
 predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
-print(predicted_distribution)</p>
-</details>
+print(predicted_distribution)
+</code></pre>
 
-<details class="note" open>
-  <summary>Note</summary>
-  <p>This module is designed to be generic and can be adapted to various domains where aggregate
-prediction is applicable.</p>
-</details>
 
 
   <div class="doc doc-children">
@@ -2753,28 +2959,28 @@ n : int
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">build_expression</span><span class="p">(</span><span class="n">syms</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">build_expression</span><span class="p">(</span><span class="n">syms</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Construct a cumulative product expression by combining individual symbolic expressions.</span>
 
@@ -2825,26 +3031,26 @@ s : Symbol
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_core_expression</span><span class="p">(</span><span class="n">ri</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_core_expression</span><span class="p">(</span><span class="n">ri</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.</span>
 
@@ -2891,22 +3097,22 @@ s : Symbol
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_symbols</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_symbols</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate a sequence of symbolic objects intended for use in mathematical expressions.</span>
 
@@ -2953,28 +3159,28 @@ predictions : list
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">expression_subs</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">predictions</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">expression_subs</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">predictions</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Substitute values into a symbolic expression based on a mapping from symbols to predictions.</span>
 
@@ -3042,85 +3248,85 @@ weights : pandas.Series, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist</span><span class="p">(</span><span class="n">snapshots_dict</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate probability distributions for each snapshot date based on given model predictions.</span>
 
@@ -3238,57 +3444,57 @@ y_test : array-like, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
     <span class="n">X_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inference_time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_test</span><span class="o">=</span><span class="kc">None</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -3369,31 +3575,31 @@ model : object
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">model_input_to_pred_proba</span><span class="p">(</span><span class="n">model_input</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">model_input_to_pred_proba</span><span class="p">(</span><span class="n">model_input</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Use a predictive model to convert model input data into predicted probabilities.</span>
 
@@ -3448,42 +3654,42 @@ weights : array-like, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pred_proba_to_agg_predicted</span><span class="p">(</span><span class="n">predictions_proba</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pred_proba_to_agg_predicted</span><span class="p">(</span><span class="n">predictions_proba</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert individual probability predictions into aggregate predicted probability distribution using optional weights.</span>
 
@@ -3548,25 +3754,25 @@ i : int
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">return_coeff</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">return_coeff</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Extract the coefficient of a specified power from an expanded symbolic expression.</span>
 
@@ -3620,16 +3826,24 @@ i : int
 </ul>
 <p>The module handles common file and parsing errors, returning appropriate error messages or exceptions.</p>
 <h4 id="patientflow.load--functions">Functions</h4>
-<ul>
-<li><code>parse_args</code>: Parses command-line arguments for training models.</li>
-<li><code>load_config_file</code>: Load a YAML configuration file and extract key parameters.</li>
-<li><code>set_data_file_names</code>: Set file locations based on UCLH-specific or default data sources.</li>
-<li><code>safe_literal_eval</code>: Safely evaluate string literals into Python objects.</li>
-<li><code>data_from_csv</code>: Load and preprocess data from a CSV file.</li>
-<li><code>get_model_name</code>: Generate a model name based on the time of day.</li>
-<li><code>load_saved_model</code>: Load a machine learning model saved in a joblib file.</li>
-<li><code>get_dict_cols</code>: Categorize columns from a DataFrame into predefined groups for analysis.</li>
-</ul>
+<p>parse_args:
+    Parses command-line arguments for training models.
+load_config_file:
+    Load a YAML configuration file and extract key parameters.
+set_file_paths:
+    Sets up the file paths based on UCLH-specific or default parameters.
+set_data_file_names:
+    Set file locations based on UCLH-specific or default data sources.
+safe_literal_eval:
+    Safely evaluate string literals into Python objects when loading from csv.
+data_from_csv:
+    Load and preprocess data from a CSV file.
+get_model_name:
+    Generate a model name based on the time of day.
+load_saved_model:
+    Load a machine learning model saved in a joblib file.
+get_dict_cols:
+    Categorize columns from a DataFrame into predefined groups for analysis.</p>
 
 
 
@@ -3654,28 +3868,35 @@ i : int
 
     <div class="doc doc-contents ">
 
-        <p>Loads data from csv file</p>
-<p>Args:
-csv_path (str): The path to the ED data file
-index_column (str): The column to set as index
-sort_columns (list): The columns to sort the dataframe by
-eval_columns (list): The columns to apply safe_literal_eval to</p>
-<p>Returns:
-pd.DataFrame: A dataframe with the ED visits. See data dictionary</p>
+        <p>Loads data from a CSV file, with optional transformations.</p>
+<p>This function loads a CSV file into a pandas DataFrame and provides the following optional features:
+- Setting a specified column as the index.
+- Sorting the DataFrame by one or more specified columns.
+- Applying safe literal evaluation to specified columns to handle string representations of Python objects.</p>
+<h5 id="patientflow.load.data_from_csv--parameters">Parameters</h5>
+<p>csv_path : str
+    The relative or absolute path to the CSV file.
+index_column : str, optional
+    The column to set as the index of the DataFrame. If not provided, no index column is set.
+sort_columns : list of str, optional
+    A list of columns by which to sort the DataFrame. If not provided, the DataFrame is not sorted.
+eval_columns : list of str, optional
+    A list of columns to which <code>safe_literal_eval</code> should be applied. This is useful for columns containing
+    string representations of Python data structures (e.g., lists, dictionaries).</p>
+<h5 id="patientflow.load.data_from_csv--returns">Returns</h5>
+<p>pd.DataFrame
+    A pandas DataFrame containing the loaded data with any specified transformations applied.</p>
+<h5 id="patientflow.load.data_from_csv--raises">Raises</h5>
+<p>SystemExit
+    If the file cannot be found or another error occurs during loading or processing.</p>
+<h5 id="patientflow.load.data_from_csv--notes">Notes</h5>
+<p>The function will terminate the program with a message if the file is not found or if any errors
+occur while loading the data. If sorting columns or applying <code>safe_literal_eval</code> fails,
+a warning message is printed, but execution continues.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">345</span>
 <span class="normal">346</span>
 <span class="normal">347</span>
 <span class="normal">348</span>
@@ -3715,18 +3936,76 @@ pd.DataFrame: A dataframe with the ED visits. See data dictionary</p>
 <span class="normal">382</span>
 <span class="normal">383</span>
 <span class="normal">384</span>
-<span class="normal">385</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_from_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">data_from_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Loads data from csv file</span>
+<span class="sd">    Loads data from a CSV file, with optional transformations.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">    csv_path (str): The path to the ED data file</span>
-<span class="sd">    index_column (str): The column to set as index</span>
-<span class="sd">    sort_columns (list): The columns to sort the dataframe by</span>
-<span class="sd">    eval_columns (list): The columns to apply safe_literal_eval to</span>
+<span class="sd">    This function loads a CSV file into a pandas DataFrame and provides the following optional features:</span>
+<span class="sd">    - Setting a specified column as the index.</span>
+<span class="sd">    - Sorting the DataFrame by one or more specified columns.</span>
+<span class="sd">    - Applying safe literal evaluation to specified columns to handle string representations of Python objects.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">    pd.DataFrame: A dataframe with the ED visits. See data dictionary</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    csv_path : str</span>
+<span class="sd">        The relative or absolute path to the CSV file.</span>
+<span class="sd">    index_column : str, optional</span>
+<span class="sd">        The column to set as the index of the DataFrame. If not provided, no index column is set.</span>
+<span class="sd">    sort_columns : list of str, optional</span>
+<span class="sd">        A list of columns by which to sort the DataFrame. If not provided, the DataFrame is not sorted.</span>
+<span class="sd">    eval_columns : list of str, optional</span>
+<span class="sd">        A list of columns to which `safe_literal_eval` should be applied. This is useful for columns containing</span>
+<span class="sd">        string representations of Python data structures (e.g., lists, dictionaries).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        A pandas DataFrame containing the loaded data with any specified transformations applied.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    SystemExit</span>
+<span class="sd">        If the file cannot be found or another error occurs during loading or processing.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The function will terminate the program with a message if the file is not found or if any errors</span>
+<span class="sd">    occur while loading the data. If sorting columns or applying `safe_literal_eval` fails,</span>
+<span class="sd">    a warning message is printed, but execution continues.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">home</span><span class="p">(),</span> <span class="n">csv_path</span><span class="p">)</span>
@@ -3793,41 +4072,7 @@ pd.DataFrame: A dataframe with the ED visits. See data dictionary</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">454</span>
-<span class="normal">455</span>
-<span class="normal">456</span>
-<span class="normal">457</span>
-<span class="normal">458</span>
-<span class="normal">459</span>
-<span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
-<span class="normal">463</span>
-<span class="normal">464</span>
-<span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
-<span class="normal">469</span>
-<span class="normal">470</span>
-<span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
-<span class="normal">474</span>
-<span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
-<span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">488</span>
 <span class="normal">489</span>
 <span class="normal">490</span>
 <span class="normal">491</span>
@@ -3887,7 +4132,41 @@ pd.DataFrame: A dataframe with the ED visits. See data dictionary</p>
 <span class="normal">545</span>
 <span class="normal">546</span>
 <span class="normal">547</span>
-<span class="normal">548</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_dict_cols</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span>
+<span class="normal">569</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span>
+<span class="normal">574</span>
+<span class="normal">575</span>
+<span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span>
+<span class="normal">579</span>
+<span class="normal">580</span>
+<span class="normal">581</span>
+<span class="normal">582</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_dict_cols</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Categorize DataFrame columns into predefined groups.</span>
 
@@ -4011,27 +4290,27 @@ prediction_time_ : tuple of int
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">388</span>
-<span class="normal">389</span>
-<span class="normal">390</span>
-<span class="normal">391</span>
-<span class="normal">392</span>
-<span class="normal">393</span>
-<span class="normal">394</span>
-<span class="normal">395</span>
-<span class="normal">396</span>
-<span class="normal">397</span>
-<span class="normal">398</span>
-<span class="normal">399</span>
-<span class="normal">400</span>
-<span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span>
-<span class="normal">406</span>
-<span class="normal">407</span>
-<span class="normal">408</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_model_name</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_model_name</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a model name based on the time of day.</span>
 
@@ -4083,17 +4362,7 @@ return_start_end_dates : bool, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 72</span>
 <span class="normal"> 73</span>
 <span class="normal"> 74</span>
 <span class="normal"> 75</span>
@@ -4163,7 +4432,17 @@ return_start_end_dates : bool, optional
 <span class="normal">139</span>
 <span class="normal">140</span>
 <span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_config_file</span><span class="p">(</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_config_file</span><span class="p">(</span>
     <span class="n">config_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">return_start_end_dates</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4278,47 +4557,47 @@ prediction_time : tuple of int, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">411</span>
-<span class="normal">412</span>
-<span class="normal">413</span>
-<span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span>
-<span class="normal">419</span>
-<span class="normal">420</span>
-<span class="normal">421</span>
-<span class="normal">422</span>
-<span class="normal">423</span>
-<span class="normal">424</span>
-<span class="normal">425</span>
-<span class="normal">426</span>
-<span class="normal">427</span>
-<span class="normal">428</span>
-<span class="normal">429</span>
-<span class="normal">430</span>
-<span class="normal">431</span>
-<span class="normal">432</span>
-<span class="normal">433</span>
-<span class="normal">434</span>
-<span class="normal">435</span>
-<span class="normal">436</span>
-<span class="normal">437</span>
-<span class="normal">438</span>
-<span class="normal">439</span>
-<span class="normal">440</span>
-<span class="normal">441</span>
-<span class="normal">442</span>
-<span class="normal">443</span>
-<span class="normal">444</span>
-<span class="normal">445</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">445</span>
 <span class="normal">446</span>
 <span class="normal">447</span>
 <span class="normal">448</span>
 <span class="normal">449</span>
 <span class="normal">450</span>
-<span class="normal">451</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_saved_model</span><span class="p">(</span><span class="n">model_file_path</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_saved_model</span><span class="p">(</span><span class="n">model_file_path</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load a saved model from a file.</span>
 
@@ -4403,17 +4682,7 @@ prediction_time : tuple of int, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span>
 <span class="normal">51</span>
@@ -4424,7 +4693,17 @@ prediction_time : tuple of int, optional
 <span class="normal">56</span>
 <span class="normal">57</span>
 <span class="normal">58</span>
-<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">:</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse command-line arguments for the training script.</span>
 
@@ -4475,17 +4754,7 @@ Handles list-like strings by converting them to lists.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">307</span>
 <span class="normal">308</span>
 <span class="normal">309</span>
 <span class="normal">310</span>
@@ -4510,7 +4779,17 @@ Handles list-like strings by converting them to lists.</p>
 <span class="normal">329</span>
 <span class="normal">330</span>
 <span class="normal">331</span>
-<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_literal_eval</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_literal_eval</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Safely evaluate a string literal into a Python object.</span>
 <span class="sd">    Handles list-like strings by converting them to lists.</span>
@@ -4577,17 +4856,7 @@ config_file_path : str, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
@@ -4630,7 +4899,17 @@ config_file_path : str, optional
 <span class="normal">291</span>
 <span class="normal">292</span>
 <span class="normal">293</span>
-<span class="normal">294</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_data_file_names</span><span class="p">(</span><span class="n">uclh</span><span class="p">,</span> <span class="n">data_file_path</span><span class="p">,</span> <span class="n">config_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_data_file_names</span><span class="p">(</span><span class="n">uclh</span><span class="p">,</span> <span class="n">data_file_path</span><span class="p">,</span> <span class="n">config_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Set file locations based on UCLH or default data source.</span>
 
@@ -4701,7 +4980,7 @@ config_file_path : str, optional
 
     <div class="doc doc-contents ">
 
-        <p>Sets up the file paths and loads configuration parameters from a YAML file.</p>
+        <p>Sets up the file paths</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -4818,17 +5097,7 @@ config_file_path : str, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
 <span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
@@ -4911,7 +5180,17 @@ config_file_path : str, optional
 <span class="normal">235</span>
 <span class="normal">236</span>
 <span class="normal">237</span>
-<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_file_paths</span><span class="p">(</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_file_paths</span><span class="p">(</span>
     <span class="n">inference_time</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">train_dttm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">data_folder_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -4920,7 +5199,7 @@ config_file_path : str, optional
     <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;admissions&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Sets up the file paths and loads configuration parameters from a YAML file.</span>
+<span class="sd">    Sets up the file paths</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        inference_time (bool): A flag indicating whether it is inference time or not</span>
