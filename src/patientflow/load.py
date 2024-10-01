@@ -11,15 +11,26 @@ The module handles common file and parsing errors, returning appropriate error m
 
 Functions
 ---------
-- `parse_args`: Parses command-line arguments for training models.
-- `load_config_file`: Load a YAML configuration file and extract key parameters.
-- `set_data_file_names`: Set file locations based on UCLH-specific or default data sources.
-- `safe_literal_eval`: Safely evaluate string literals into Python objects.
-- `data_from_csv`: Load and preprocess data from a CSV file.
-- `get_model_name`: Generate a model name based on the time of day.
-- `load_saved_model`: Load a machine learning model saved in a joblib file.
-- `get_dict_cols`: Categorize columns from a DataFrame into predefined groups for analysis.
+parse_args:
+    Parses command-line arguments for training models.
+load_config_file:
+    Load a YAML configuration file and extract key parameters.
+set_file_paths:
+    Sets up the file paths based on UCLH-specific or default parameters.
+set_data_file_names:
+    Set file locations based on UCLH-specific or default data sources.
+safe_literal_eval:
+    Safely evaluate string literals into Python objects when loading from csv.
+data_from_csv:
+    Load and preprocess data from a CSV file.
+get_model_name:
+    Generate a model name based on the time of day.
+load_saved_model:
+    Load a machine learning model saved in a joblib file.
+get_dict_cols:
+    Categorize columns from a DataFrame into predefined groups for analysis.
 """
+
 
 import ast  # to convert tuples to strings
 import os
@@ -151,7 +162,7 @@ def set_file_paths(
     prefix: str = "admissions",
 ) -> Tuple[Path, Path, Path, Path]:
     """
-    Sets up the file paths and loads configuration parameters from a YAML file.
+    Sets up the file paths
 
     Args:
         inference_time (bool): A flag indicating whether it is inference time or not
