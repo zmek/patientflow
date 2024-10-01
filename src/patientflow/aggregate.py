@@ -1,39 +1,175 @@
 """
+Aggregate Prediction From Patient-Level Probabilities
 
-Aggregate Prediction From Patient-Level Probababilities
-
-This submodule provides functions to generate a probability distribution, based on inputs that are patient-level probabilities. The module uses symbolic mathematics to build and manipulate expressions dynamically, facilitating the computation of aggregate probabilities.
+This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution. 
+The module uses symbolic mathematics to generate and manipulate expressions, enabling the computation of aggregate probabilities based on individual patient-level predictions.
 
 Dependencies:
-    - numpy: Used for array and numerical operations.
-    - pandas: Utilized for handling data structures like DataFrames, enabling data manipulation and analysis.
-    - sympy: A Python library for symbolic mathematics, used here to dynamically create and manipulate symbolic expressions, particularly for the calculation of probabilities.
+    - numpy: For array operations and numerical calculations.
+    - pandas: To handle and manipulate tabular data (DataFrames) for analysis.
+    - sympy: A symbolic mathematics library for building and manipulating symbolic expressions, particularly for calculating probabilities.
 
+Functions
+---------
+create_symbols(n):
+    Generates a list of symbolic variables to represent probability terms.
+    
+    Parameters
+    ----------
+    n : int
+        Number of symbolic variables to generate.
+        
+    Returns
+    -------
+    list of sympy.Symbol
+        A list containing n symbolic variables.
+    
+compute_core_expression(ri, s):
+    Computes a symbolic expression using symbolic variables and constants.
+    
+    Parameters
+    ----------
+    ri : float
+        A constant value (often a probability).
+    s : sympy.Symbol
+        A symbolic variable.
+        
+    Returns
+    -------
+    sympy.Mul
+        A symbolic expression representing the product of `ri` and `s`.
+    
+build_expression(syms, n):
+    Constructs a cumulative product of symbolic expressions using symbolic variables.
+    
+    Parameters
+    ----------
+    syms : list of sympy.Symbol
+        A list of symbolic variables.
+    n : int
+        The number of terms to include in the cumulative product.
+        
+    Returns
+    -------
+    sympy.Expr
+        A symbolic expression representing the cumulative product of `syms`.
+    
+expression_subs(expression, n, predictions):
+    Substitutes numeric values into a symbolic expression.
+    
+    Parameters
+    ----------
+    expression : sympy.Expr
+        A symbolic expression to perform substitution on.
+    n : int
+        The number of variables to substitute.
+    predictions : array-like
+        Numeric values (e.g., predicted probabilities) to substitute into the expression.
+        
+    Returns
+    -------
+    sympy.Expr
+        The symbolic expression after substitution.
+    
+return_coeff(expression, i):
+    Extracts the coefficient corresponding to a specific term in an expanded symbolic expression.
+    
+    Parameters
+    ----------
+    expression : sympy.Expr
+        A symbolic expression that has been expanded.
+    i : int
+        The index of the term for which the coefficient is to be extracted.
+        
+    Returns
+    -------
+    float
+        The coefficient for the i-th term.
+    
+model_input_to_pred_proba(model_input, model):
+    Converts input data into predicted probabilities using the provided model.
+    
+    Parameters
+    ----------
+    model_input : array-like
+        The input data to feed into the model.
+    model : object
+        A predictive model object that implements a `predict_proba` method.
+        
+    Returns
+    -------
+    array-like
+        The predicted probabilities output by the model.
+    
+pred_proba_to_agg_predicted(predictions_proba, weights):
+    Aggregates individual predicted probabilities into an overall prediction using provided weights.
+    
+    Parameters
+    ----------
+    predictions_proba : array-like
+        Predicted probabilities for individual patients.
+    weights : array-like
+        Weights corresponding to each patient's probability prediction.
+        
+    Returns
+    -------
+    float
+        The aggregate predicted probability.
+    
+get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time):
+    Computes predicted and observed probabilities for a specific prediction date.
+    
+    Parameters
+    ----------
+    X_test : DataFrame or array-like
+        Input test data to be passed to the model for prediction.
+    model : object
+        A predictive model object that implements `predict_proba`.
+    weights : array-like
+        Weights for aggregating the predicted probabilities.
+    y_test : array-like
+        Observed target values corresponding to the test data (optional for inference).
+    inference_time : bool
+        Indicates whether the function is used in inference mode (i.e., whether observed data is available).
+        
+    Returns
+    -------
+    dict
+        A dictionary containing the predicted and, if applicable, observed probability distributions.
+    
+get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
+    Computes probability distributions for multiple snapshot dates.
+    
+    Parameters
+    ----------
+    snapshots_dict : dict
+        A dictionary where keys are snapshot dates and values are associated metadata (e.g., test data).
+    X_test : DataFrame or array-like
+        Input test data to be passed to the model.
+    y_test : array-like
+        Observed target values.
+    model : object
+        A predictive model object that implements `predict_proba`.
+    weights : array-like
+        Weights for aggregating the predicted probabilities.
+        
+    Returns
+    -------
+    dict
+        A dictionary where each key is a snapshot date and the value is the corresponding probability distribution.
 
-Functions:
-- create_symbols(n): Generates symbolic variables.
-- compute_core_expression(ri, s): Computes a symbolic expression involving both symbols and constants.
-- build_expression(syms, n): Constructs a cumulative product of symbolic expressions.
-- expression_subs(expression, n, predictions): Substitutes numerical values into a symbolic expression.
-- return_coeff(expression, i): Extracts coefficients from expanded symbolic expressions.
-- model_input_to_pred_proba(model_input, model): Converts model input data into predicted probabilities.
-- pred_proba_to_agg_predicted(predictions_proba, weights): Aggregates probability predictions .
-- get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time): Calculates predicted and (if not inference time) observed values for a specific date.
-- get_prob_dist(snapshots_dict, X_test, y_test, model, weights): Computes probability distributions for multiple snapshot dates.
+Example Usage
+-------------
+>>> # Assuming a predictive model and test data are available
+>>> snapshot_dates = ['2023-01-01', '2023-01-02']
+>>> predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
+>>> print(predicted_distribution)
 
-These functions can work with any model object as long as it provides the predict_proba method. This icludes libraries (like scikit-learn, TensorFlow, or PyTorch), which generally offer this method
-
-Example Usage:
-    # Assuming a predictive model and test data are available
-    snapshot_dates = ['2023-01-01', '2023-01-02']
-    predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
-    print(predicted_distribution)
-
-Note:
-    This module is designed to be generic and can be adapted to various domains where aggregate
-    prediction is applicable.
-
+Notes
+-----
+This module is generic and can be adapted for various applications requiring aggregate predictions from individual-level probabilities.
 """
+
 
 import pandas as pd
 import sympy as sym
