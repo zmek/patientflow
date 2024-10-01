@@ -31,7 +31,6 @@ get_dict_cols:
     Categorize columns from a DataFrame into predefined groups for analysis.
 """
 
-
 import ast  # to convert tuples to strings
 import os
 from pathlib import Path
@@ -345,16 +344,40 @@ def safe_literal_eval(s):
 
 def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
     """
-    Loads data from csv file
+    Loads data from a CSV file, with optional transformations.
 
-    Args:
-    csv_path (str): The path to the ED data file
-    index_column (str): The column to set as index
-    sort_columns (list): The columns to sort the dataframe by
-    eval_columns (list): The columns to apply safe_literal_eval to
+    This function loads a CSV file into a pandas DataFrame and provides the following optional features:
+    - Setting a specified column as the index.
+    - Sorting the DataFrame by one or more specified columns.
+    - Applying safe literal evaluation to specified columns to handle string representations of Python objects.
 
-    Returns:
-    pd.DataFrame: A dataframe with the ED visits. See data dictionary
+    Parameters
+    ----------
+    csv_path : str
+        The relative or absolute path to the CSV file.
+    index_column : str, optional
+        The column to set as the index of the DataFrame. If not provided, no index column is set.
+    sort_columns : list of str, optional
+        A list of columns by which to sort the DataFrame. If not provided, the DataFrame is not sorted.
+    eval_columns : list of str, optional
+        A list of columns to which `safe_literal_eval` should be applied. This is useful for columns containing
+        string representations of Python data structures (e.g., lists, dictionaries).
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas DataFrame containing the loaded data with any specified transformations applied.
+
+    Raises
+    ------
+    SystemExit
+        If the file cannot be found or another error occurs during loading or processing.
+
+    Notes
+    -----
+    The function will terminate the program with a message if the file is not found or if any errors
+    occur while loading the data. If sorting columns or applying `safe_literal_eval` fails,
+    a warning message is printed, but execution continues.
 
     """
     path = os.path.join(Path().home(), csv_path)
