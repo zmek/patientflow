@@ -16,6 +16,7 @@ from patientflow.prepare import prepare_for_inference
 
 
 def get_specialty_probs(
+    specialties,
     model_file_path,
     snapshots_df,
     special_category_func=None,
@@ -31,6 +32,9 @@ def get_specialty_probs(
 
     Parameters
     ----------
+
+    specialties : str
+        List of specialty names for which predictions are required.
     model_file_path : str
         Path to the predictive model file.
     snapshots_df : pandas.DataFrame
@@ -104,6 +108,9 @@ def get_specialty_probs(
     all_keys = set().union(
         *(d.keys() for d in specialty_prob_series if isinstance(d, dict))
     )
+
+    # Combine all_keys with the specialties requested
+    all_keys = set(all_keys).union(set(specialties))
 
     # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
     specialty_prob_series = specialty_prob_series.apply(

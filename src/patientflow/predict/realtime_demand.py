@@ -195,6 +195,7 @@ def create_predictions(
 
     # Get predictions of admission to specialty
     prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
+        specialties,
         model_file_path,
         prediction_snapshots,
         special_category_func=special_category_func,
