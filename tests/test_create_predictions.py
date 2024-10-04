@@ -8,19 +8,6 @@ from scipy.stats import poisson
 from pathlib import Path
 import joblib
 
-# # PROJECT_ROOT = Path().home()
-# # USER_ROOT = Path().home() / 'work'
-
-# sys.path.append(
-#     os.path.abspath(os.path.join(os.path.dirname(__file__), "../functions"))
-# )
-# sys.path.append(
-#     os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/patientflow"))
-# )
-
-# # sys.path.append(str(USER_ROOT / 'patientflow' / 'src' / 'patientflow'))
-# # sys.path.append(str(USER_ROOT / 'patientflow' / 'functions'))
-
 from patientflow.predict.realtime_demand import create_predictions
 from patientflow.load import get_model_name
 from patientflow.prepare import create_special_category_objects
@@ -31,22 +18,6 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 from patientflow.errors import ModelLoadError, MissingKeysError
-
-
-# Example usage:
-# Assuming you have a dataframe `df` with the necessary columns
-# df = pd.read_csv('your_data.csv')
-# pipeline = create_pipeline(df)
-
-# class AdmissionModel:
-#     def __init__(self, df):
-#         self.df = df
-
-#     def fit(self, df, weights = None):
-#         pass
-
-#     def predict(self, df):
-#         return [0.7] * len(df)
 
 
 def create_random_df(n=1000, include_consults=False):
@@ -160,14 +131,14 @@ class TestCreatePredictions(unittest.TestCase):
         full_path = self.model_file_path / str(model_name + ".joblib")
         joblib.dump(pipeline, full_path)
 
-    def create_spec_model(self):
-        probabilities = {
-            "surgical": 0.3,
-            "haem/onc": 0.1,
-            "medical": 0.6,
-            "paediatric": 0.0,
-        }
-
+    def create_spec_model(
+        self,
+        probabilities={
+            "surgical": 0.25,
+            "haem/onc": 0.05,
+            "medical": 0.7,
+        },
+    ):
         model = ProbabilityModel(probabilities)
 
         full_path = self.model_file_path / str("ed_specialty.joblib")
@@ -211,8 +182,6 @@ class TestCreatePredictions(unittest.TestCase):
             special_params=None,
         )
 
-        # print(predictions)
-
         self.assertIsInstance(predictions, dict)
         self.assertIn("paediatric", predictions)
         self.assertIn("medical", predictions)
@@ -220,7 +189,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
         self.assertEqual(predictions["paediatric"]["in_ed"], [0, 0])
-        self.assertEqual(predictions["medical"]["in_ed"], [11, 10])
+        self.assertEqual(predictions["medical"]["in_ed"], [13, 12])
 
     def test_basic_functionality_with_special_category(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
@@ -240,8 +209,6 @@ class TestCreatePredictions(unittest.TestCase):
             special_params=special_params,
         )
 
-        # print(predictions)
-
         self.assertIsInstance(predictions, dict)
         self.assertIn("paediatric", predictions)
         self.assertIn("medical", predictions)
@@ -249,7 +216,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
         self.assertEqual(predictions["paediatric"]["in_ed"], [1, 1])
-        self.assertEqual(predictions["medical"]["in_ed"], [10, 9])
+        self.assertEqual(predictions["medical"]["in_ed"], [12, 11])
 
     def test_incorrect_special_params(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
@@ -367,6 +334,43 @@ class TestCreatePredictions(unittest.TestCase):
 
         self.assertIsInstance(short_window_predictions, dict)
         self.assertIsInstance(long_window_predictions, dict)
+
+    def test_missing_key_prediction_snapshots(self):
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+
+        self.create_spec_model(
+            probabilities={
+                "surgical": 0.3,
+                "medical": 0.7,
+            }
+        )
+
+        # remove paediatric patients
+        prediction_snapshots = prediction_snapshots[
+            prediction_snapshots.age_on_arrival >= 18
+        ]
+
+        predictions = create_predictions(
+            model_file_path=self.model_file_path,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window_hrs=self.prediction_window_hrs,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            special_params=None,
+        )
+
+        print(predictions)
+
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("paediatric", predictions)
+        self.assertIn("haem/onc", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
 
     # def test_large_dataset_performance(self):
     # prediction_snapshots = create_random_df(n = 10000, include_consults = True)
