@@ -6174,7 +6174,8 @@ predictions = create_predictions(
 <span class="normal">256</span>
 <span class="normal">257</span>
 <span class="normal">258</span>
-<span class="normal">259</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_predictions</span><span class="p">(</span>
+<span class="normal">259</span>
+<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">create_predictions</span><span class="p">(</span>
     <span class="n">model_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">,</span>
     <span class="n">prediction_snapshots</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
@@ -6295,6 +6296,7 @@ predictions = create_predictions(
 
     <span class="c1"># Get predictions of admission to specialty</span>
     <span class="n">prediction_snapshots</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;specialty_prob&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_specialty_probs</span><span class="p">(</span>
+        <span class="n">specialties</span><span class="p">,</span>
         <span class="n">model_file_path</span><span class="p">,</span>
         <span class="n">prediction_snapshots</span><span class="p">,</span>
         <span class="n">special_category_func</span><span class="o">=</span><span class="n">special_category_func</span><span class="p">,</span>
@@ -6444,7 +6446,7 @@ have predefined probability distributions.</p>
 
 
 <h4 id="patientflow.predict.specialty_of_admission.get_specialty_probs" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_specialty_probs</span><span class="p">(</span><span class="n">model_file_path</span><span class="p">,</span> <span class="n">snapshots_df</span><span class="p">,</span> <span class="n">special_category_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">special_category_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_specialty_probs</span><span class="p">(</span><span class="n">specialties</span><span class="p">,</span> <span class="n">model_file_path</span><span class="p">,</span> <span class="n">snapshots_df</span><span class="p">,</span> <span class="n">special_category_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">special_category_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -6457,7 +6459,12 @@ specialty probability distributions. Optionally, it can classify certain rows as
 belonging to a special category (like pediatric cases) based on a user-defined function,
 applying a fixed probability distribution for these cases.</p>
 <h6 id="patientflow.predict.specialty_of_admission.get_specialty_probs--parameters">Parameters</h6>
-<p>model_file_path : str
+
+
+<details class="specialties-" open>
+  <summary>str</summary>
+  <p>List of specialty names for which predictions are required.</p>
+</details>        <p>model_file_path : str
     Path to the predictive model file.
 snapshots_df : pandas.DataFrame
     DataFrame containing the data on which predictions are to be made. Must include
@@ -6596,7 +6603,15 @@ dtype: object</p>
 <span class="normal">112</span>
 <span class="normal">113</span>
 <span class="normal">114</span>
-<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_specialty_probs</span><span class="p">(</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_specialty_probs</span><span class="p">(</span>
+    <span class="n">specialties</span><span class="p">,</span>
     <span class="n">model_file_path</span><span class="p">,</span>
     <span class="n">snapshots_df</span><span class="p">,</span>
     <span class="n">special_category_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -6612,6 +6627,9 @@ dtype: object</p>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+
+<span class="sd">    specialties : str</span>
+<span class="sd">        List of specialty names for which predictions are required.</span>
 <span class="sd">    model_file_path : str</span>
 <span class="sd">        Path to the predictive model file.</span>
 <span class="sd">    snapshots_df : pandas.DataFrame</span>
@@ -6685,6 +6703,9 @@ dtype: object</p>
     <span class="n">all_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span><span class="o">.</span><span class="n">union</span><span class="p">(</span>
         <span class="o">*</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">specialty_prob_series</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">))</span>
     <span class="p">)</span>
+
+    <span class="c1"># Combine all_keys with the specialties requested</span>
+    <span class="n">all_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">all_keys</span><span class="p">)</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">specialties</span><span class="p">))</span>
 
     <span class="c1"># Ensure each dictionary contains all keys found, with default values of 0 for missing keys</span>
     <span class="n">specialty_prob_series</span> <span class="o">=</span> <span class="n">specialty_prob_series</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
