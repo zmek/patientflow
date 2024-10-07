@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
@@ -75,7 +76,7 @@ def index_of_sum(sequence: List[float], max_sum: float) -> int:
 
 
 def create_predictions(
-    model_file_path: str,
+    model_file_path: Path,
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
