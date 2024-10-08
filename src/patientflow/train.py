@@ -44,12 +44,13 @@ def split_and_check_sets(
     date_column="snapshot_date",
     print_dates=True,
 ):
-    df[date_column] = pd.to_datetime(df[date_column]).dt.date
+    _df = df.copy()
+    _df[date_column] = pd.to_datetime(_df[date_column]).dt.date
 
     if print_dates:
         # Separate into training, validation and test sets and print summary for each set
-        for value in df.training_validation_test.unique():
-            subset = df[df.training_validation_test == value]
+        for value in _df.training_validation_test.unique():
+            subset = _df[_df.training_validation_test == value]
             counts = subset.training_validation_test.value_counts().values[0]
             min_date = subset[date_column].min()
             max_date = subset[date_column].max()
@@ -58,13 +59,13 @@ def split_and_check_sets(
             )
 
     # Split df into training, validation, and test sets
-    train_df = df[df.training_validation_test == "train"].drop(
+    train_df = _df[_df.training_validation_test == "train"].drop(
         columns="training_validation_test"
     )
-    valid_df = df[df.training_validation_test == "valid"].drop(
+    valid_df = _df[_df.training_validation_test == "valid"].drop(
         columns="training_validation_test"
     )
-    test_df = df[df.training_validation_test == "test"].drop(
+    test_df = _df[_df.training_validation_test == "test"].drop(
         columns="training_validation_test"
     )
 
