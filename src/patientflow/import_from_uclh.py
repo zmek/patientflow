@@ -39,17 +39,12 @@ def prepare_age_and_dates(df):  # conversions necessary for each datetime column
     return df
 
 
-def shift_dates_into_future(df, yta, seed_path):
+def shift_dates_into_future(df: pd.DataFrame, yta: pd.DataFrame):
     # Adjust all dates to anonymise visits
     print("\nConverting dates to anonymise visits. Current min and max snapshot dates:")
     print(df.snapshot_date.min())
     print(df.snapshot_date.max())
 
-    # Read the seed from a saved file
-    with open(seed_path, "r") as file:
-        seed = int(file.read().strip())
-    # Set the seed for numpy
-    np.random.seed(seed=seed)
     n = np.random.randint(1, 10 * 52)
 
     # print(new.snapshot_date.min())
@@ -91,7 +86,6 @@ def reformat_uclh_data_for_modelling(
     start_validation_set,
     start_test_set,
     end_test_set,
-    seed_path,
     uclh,
     name_mapping,
     spec_mapping,
