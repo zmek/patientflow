@@ -1,36 +1,53 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
-def plot_observed_against_expected(results):
-
-    # First, calculate the overall min and max for the differences
-    all_differences = []
-    for values in results.values():
-        observed = np.array(values['observed'])
-        expected = np.array(values['expected'])
-        difference = observed - expected
-        all_differences.extend(difference)
-
-    overall_min = min(all_differences)
-    overall_max = max(all_differences)
-
+def plot_observed_against_expected(
+    results,
+    title="Histograms of Observed - Expected Values",
+    xlabel="Observed - Expected"
+):
+    # Calculate the number of subplots needed
+    num_plots = len(results)
+    
+    # Calculate the number of rows and columns for the subplots
+    num_cols = min(5, num_plots)  # Maximum of 5 columns
+    num_rows = math.ceil(num_plots / num_cols)
+    
+    # Set a minimum width for the figure
+    min_width = 8  # minimum width in inches
+    width = max(min_width, 4 * num_cols)
+    height = 4 * num_rows
+    
     # Create the plot
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
-    fig.suptitle('Histograms of Observed - Expected Values', fontsize=16)
-
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(width, height), squeeze=False)
+    fig.suptitle(title, fontsize=16)
+    
+    # Flatten the axes array
+    axes = axes.flatten()
+    
     for i, (_prediction_time, values) in enumerate(results.items()):
         observed = np.array(values['observed'])
         expected = np.array(values['expected'])
         difference = observed - expected
         
-        axes[i].hist(difference, bins=20, edgecolor='black', alpha=0.7)  # Added alpha for translucency
-        axes[i].axvline(x=0, color='r', linestyle='--', linewidth=1)  # Added vertical line at x=0
-        axes[i].set_title(_prediction_time)
-        axes[i].set_xlabel('Observed - Expected')
-        axes[i].set_ylabel('Frequency')
+        ax = axes[i]
         
-        # Set consistent x-axis limits
-        axes[i].set_xlim(overall_min, overall_max)
-
+        # Use integer bins
+        bins = np.arange(math.floor(min(difference)), math.ceil(max(difference)) + 2) - 0.5
+        
+        ax.hist(difference, bins=bins, edgecolor='black', alpha=0.7)
+        ax.axvline(x=0, color='r', linestyle='--', linewidth=1)
+        ax.set_title(_prediction_time)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel('Frequency')
+        
+        # Ensure x-axis ticks are at integer values
+        # ax.set_xticks(np.arange(math.floor(min(difference)), math.ceil(max(difference)) + 1))
+    
+    # Hide any unused subplots
+    for j in range(num_plots, len(axes)):
+        fig.delaxes(axes[j])
+    
     plt.tight_layout()
     plt.show()
