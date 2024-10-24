@@ -522,31 +522,47 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
 
 
 def get_snapshots_at_prediction_time(
-    df, prediction_time_, exclude_columns, single_snapshot_per_visit=True
+    df, prediction_time_, exclude_columns, single_snapshot_per_visit=True, visit_col="visit_number", label_col="is_admitted"
 ):
+    """
+    Get snapshots of data at a specific prediction time with configurable visit and label columns.
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        Input DataFrame containing the data
+    prediction_time_ : str or datetime
+        The specific prediction time to filter for
+    exclude_columns : list
+        List of columns to exclude from the final DataFrame
+    single_snapshot_per_visit : bool, default=True
+        Whether to select only one snapshot per visit
+    visit_col : str, default="visit_number"
+        Name of the column containing visit identifiers
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels
+    
+    Returns:
+    --------
+    tuple(pandas.DataFrame, pandas.Series)
+        Processed DataFrame and corresponding labels
+    """
     # Filter by the time of day while keeping the original index
     df_tod = df[df["prediction_time"] == prediction_time_].copy()
-
+    
     if single_snapshot_per_visit:
-        # Group by 'visit_number' and get the row with the maximum 'random_number'
-        df_single = select_one_snapshot_per_visit(df_tod, visit_col="visit_number")
-
+        # Group by visit_col and get the row with the maximum 'random_number'
+        df_single = select_one_snapshot_per_visit(df_tod, visit_col)
         # Create label array with the same index
-        y = df_single.pop("is_admitted").astype(int)
-
+        y = df_single.pop(label_col).astype(int)
         # Drop specified columns and ensure we do not reset the index
         df_single.drop(columns=exclude_columns, inplace=True)
-
         return df_single, y
-
     else:
         # Directly modify df_tod without resetting the index
         df_tod.drop(columns=["random_number"] + exclude_columns, inplace=True)
-        y = df_tod.pop("is_admitted").astype(int)
-
+        y = df_tod.pop(label_col).astype(int)
         return df_tod, y
-
-    # include one one snapshot per visit and drop the random number
 
 
 def prepare_for_inference(
