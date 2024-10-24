@@ -228,25 +228,30 @@ def calculate_class_balance(y):
     return {cls: count / total for cls, count in counter.items()}
 
 
+from datetime import date, datetime
+
 def create_json_safe_params(params):
-    # Create a shallow copy of the original params
-    new_params = params.copy()
-
-    # List of keys to check for date objects
-    date_keys = [
-        "start_training_set",
-        "start_validation_set",
-        "start_test_set",
-        "end_test_set",
-    ]
-
-    # Convert dates to ISO format for the specified keys
-    for key in date_keys:
-        if key in new_params and isinstance(new_params[key], date):
-            new_params[key] = new_params[key].isoformat()
-
-    return new_params
-
+    """
+    Recursively converts all date/datetime objects to ISO format strings in a nested structure.
+    Works with dictionaries, lists, and individual values.
+    """
+    if params is None:
+        return None
+    
+    # Handle dictionaries
+    if isinstance(params, dict):
+        return {key: create_json_safe_params(value) for key, value in params.items()}
+    
+    # Handle lists/tuples
+    if isinstance(params, (list, tuple)):
+        return [create_json_safe_params(item) for item in params]
+    
+    # Handle date/datetime objects
+    if isinstance(params, (date, datetime)):
+        return params.isoformat()
+    
+    # Return unchanged for all other types
+    return params
 
 def train_admissions_models(
     visits,

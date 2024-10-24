@@ -98,9 +98,11 @@ def assign_mrns(
     start_test_set,
     end_test_set,
     col_name="arrival_datetime",
+    grouping_cols=["mrn", "encounter"],
 ):
+
     # assign each mrn to only one of the three sets to ensure no visit appears in more than one set
-    mrns = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
+    mrns = df.groupby(grouping_cols)[col_name].max().reset_index()
     mrns["training_set"] = mrns[col_name].dt.date < start_validation_set
     mrns["validation_set"] = (mrns[col_name].dt.date >= start_validation_set) & (
         mrns[col_name].dt.date < start_test_set
@@ -142,10 +144,15 @@ def assign_mrn_to_training_validation_test_set(
     end_test_set,
     yta=None,
     col_name="arrival_datetime",
+    grouping_cols=["mrn", "encounter"]
 ):
+    
     if "snapshot_date" not in df.columns:
         df["snapshot_date"] = df["snapshot_datetime"].dt.date
-
+        remove_snapshot_date = True
+    else:
+        remove_snapshot_date = False
+        
     set_assignment = assign_mrns(
         df,
         start_training_set,
@@ -153,6 +160,7 @@ def assign_mrn_to_training_validation_test_set(
         start_test_set,
         end_test_set,
         col_name,
+        grouping_cols
     ).reset_index()
 
     print(
@@ -250,6 +258,9 @@ def assign_mrn_to_training_validation_test_set(
         ]
 
         return (df, yta)
+    
+    if remove_snapshot_date is not None:
+        df.drop(columns = 'snapshot_date', inplace=True)
 
     return df
 
