@@ -15,7 +15,7 @@ Key Features:
 
 Main Functions:
 - calc_mae_mpe: Calculate MAE and MPE for probability distribution predictions
-- calc_observed_with_ED_targets: Calculate actual admissions assuming ED targets are met
+- calculate_weighted_observed: Calculate actual admissions assuming ED targets are met
 - predict_using_previous_weeks: Predict admissions using average from previous weeks
 - evaluate_six_week_average: Evaluate the six-week average prediction model
 - evaluate_combined_model: Evaluate a combined prediction model
@@ -96,45 +96,7 @@ def calc_mae_mpe(prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]], use_m
 
     return results
 
-def calculate_weighted_observed(df, dt, prediction_time, prediction_window, curve_params):
-    """
-    Calculate weighted observed admissions for a specific date and prediction window
-    
-    Parameters:
-    df: DataFrame with arrival_datetime column
-    dt: target date
-    prediction_time: tuple of (hour, minute)
-    prediction_window: window length in minutes
-    curve_params: tuple of (x1, y1, x2, y2) for aspirational curve
-    """
-    # Create prediction datetime
-    prediction_datetime = pd.to_datetime(dt).replace(hour=prediction_time[0], minute=prediction_time[1])
-    
-    # Filter for target date and get arrivals with probabilities
-    filtered_df = df[df['arrival_datetime'].dt.date == dt]
-    arrived_before, arrived_after = get_arrivals_with_admission_probs(
-        filtered_df,
-        prediction_datetime=prediction_datetime,
-        prediction_window=prediction_window,
-        prediction_time=prediction_time,
-        curve_params=curve_params,
-        target_date=dt
-    )
-    
-    # Calculate weighted sum
-    weighted_observed = arrived_before['prob_admission_in_pred_window'].sum() + \
-                       arrived_after['prob_admission_in_pred_window'].sum()
-    
-    return weighted_observed
 
-
-def create_time_mask(df, hour, minute):
-    """Create a mask for times before/after a specific hour:minute"""
-    return (
-        ((df['arrival_datetime'].dt.hour > hour) | 
-         ((df['arrival_datetime'].dt.hour == hour) & 
-          (df['arrival_datetime'].dt.minute > minute)))
-    )
 
 def calculate_admission_probs_relative_to_prediction(df, prediction_datetime, prediction_window, x1, y1, x2, y2, is_before=True):
     """
@@ -176,8 +138,10 @@ def calculate_admission_probs_relative_to_prediction(df, prediction_datetime, pr
     
     return result
 
+
+
 def get_arrivals_with_admission_probs(df, prediction_datetime, prediction_window, 
-                                    prediction_time, curve_params, 
+                                    prediction_time, x1, y1, x2, y2, 
                                     date_range=None, target_date=None,
                                     target_weekday=None):
     """
@@ -188,7 +152,7 @@ def get_arrivals_with_admission_probs(df, prediction_datetime, prediction_window
     prediction_datetime: datetime for prediction window start
     prediction_window: window length in minutes
     prediction_time: tuple of (hour, minute)
-    curve_params: tuple of (x1, y1, x2, y2) for aspirational curve
+    x1, y1, x2, y2: parameters for aspirational curve
     date_range: optional tuple of (start_date, end_date)
     target_date: optional specific date to analyze
     target_weekday: optional specific weekday to filter for
@@ -196,7 +160,6 @@ def get_arrivals_with_admission_probs(df, prediction_datetime, prediction_window
     Returns:
     tuple of (arrived_before, arrived_after) DataFrames for specified time period
     """
-    x1, y1, x2, y2 = curve_params
     hour, minute = prediction_time
     
     # Create base time masks
@@ -234,79 +197,135 @@ def get_arrivals_with_admission_probs(df, prediction_datetime, prediction_window
     
     return arrived_before, arrived_after
 
-
-
-def predict_using_previous_weeks(df: pd.DataFrame, dt: datetime, prediction_window: int, x1: float, y1: float, x2: float, y2: float, prediction_time: Tuple[int, int], num_weeks: int, weighted=True) -> float:
+def calculate_weighted_observed(df, dt, prediction_window, x1, y1, x2, y2, prediction_time):
     """
-    Calculate predicted number using average from previous weeks.
+    Calculate weighted observed admissions for a specific date and prediction window
+    
+    Parameters:
+    df: DataFrame with arrival_datetime column
+    dt: target date
+    prediction_window: window length in minutes
+    x1, y1, x2, y2: parameters for aspirational curve
+    prediction_time: tuple of (hour, minute)
+    """
+    # Create prediction datetime
+    prediction_datetime = pd.to_datetime(dt).replace(hour=prediction_time[0], minute=prediction_time[1])
+    
+    # Filter for target date and get arrivals with probabilities
+    filtered_df = df[df['arrival_datetime'].dt.date == dt]
+    arrived_before, arrived_after = get_arrivals_with_admission_probs(
+        filtered_df,
+        prediction_datetime,
+        prediction_window,
+        prediction_time,
+        x1,y1,x2,y2,
+        target_date=dt
+    )
+    
+    # Calculate weighted sum
+    weighted_observed = arrived_before['prob_admission_in_pred_window'].sum() + \
+                       arrived_after['prob_admission_in_pred_window'].sum()
+    
+    return weighted_observed
 
+
+def create_time_mask(df, hour, minute):
+    """Create a mask for times before/after a specific hour:minute"""
+    return (
+        ((df['arrival_datetime'].dt.hour > hour) | 
+         ((df['arrival_datetime'].dt.hour == hour) & 
+          (df['arrival_datetime'].dt.minute > minute)))
+    )
+
+
+
+
+def predict_using_previous_weeks(df: pd.DataFrame, dt: datetime, prediction_window: int, 
+                               x1: float, y1: float, x2: float, y2: float, 
+                               prediction_time: Tuple[int, int], num_weeks: int, weighted=True) -> float:
+    """
+    Calculate predicted admissions remaining until midnight.
     Args:
         df (pd.DataFrame): DataFrame containing patient data.
         dt (datetime): Date for prediction.
         prediction_time (Tuple[int, int]): Hour and minute of prediction.
         num_weeks (int): Number of previous weeks to consider.
         weighted(bool): Whether to weight the numbers according to aspirational ED targets
-
     Returns:
-        float: Predicted number of admissions.
+        float: Predicted number of admissions remaining until midnight.
     """
     prediction_datetime = pd.to_datetime(dt).replace(hour=prediction_time[0], minute=prediction_time[1])
     target_day_of_week = dt.weekday()
     
     end_date = dt - timedelta(days=1)
     start_date = end_date - timedelta(weeks=num_weeks)
-
+    
     if weighted:
-
-        # Get historical arrivals
-        historical_before, historical_after = get_arrivals_with_admission_probs(
-            df=df,
-            prediction_datetime=prediction_datetime,
-            prediction_window=prediction_window,
-            prediction_time=prediction_time,
-            curve_params=(x1, y1, x2, y2),
-            date_range=(start_date, end_date),
-            target_weekday=target_day_of_week
+        # Create mask for historical data
+        historical_mask = (
+            (df['arrival_datetime'].dt.date >= start_date) &
+            (df['arrival_datetime'].dt.date <= end_date) &
+            (df['arrival_datetime'].dt.weekday == target_day_of_week)
         )
         
-        # Get target day arrivals
-        target_before, target_after = get_arrivals_with_admission_probs(
-            df=df,
-            prediction_datetime=prediction_datetime,
-            prediction_window=prediction_window,
-            prediction_time=prediction_time,
-            curve_params=(x1, y1, x2, y2),
-            target_date=dt
+        # Create explicit copy of filtered data
+        historical_data = df[historical_mask].copy()
+        
+        # Calculate minutes until midnight
+        midnight_times = historical_data['arrival_datetime'].dt.normalize() + pd.Timedelta(days=1) - pd.Timedelta(minutes=1)
+        historical_data.loc[:, 'minutes_to_midnight'] = (midnight_times - historical_data['arrival_datetime']).dt.total_seconds() / 60
+        
+        # Calculate admission probabilities
+        historical_data.loc[:, 'admission_probability'] = historical_data['minutes_to_midnight'].apply(
+            lambda x: get_y_from_aspirational_curve(x/60, x1, y1, x2, y2)
         )
-          
-
-        # on the historical days, we take everyone's probability of admission anytime that day, whether arriving before or after the predicction time
-        weighted_last_six_weeks = (historical_before['prob_admission_in_pred_window'].sum() \
-            + historical_before['prob_admission_before_pred_window'].sum() \
-            + historical_after['prob_admission_in_pred_window'].sum()) 
-        weighted_average_count = weighted_last_six_weeks / num_weeks
-
-        # on the target day, we take everyone who arrived and needed admission so far, and calculate their probability of admission today
-        weighted_target_day = target_before['prob_admission_before_pred_window'].sum() + target_before['prob_admission_in_pred_window'].sum()
-        still_to_admit = weighted_average_count - weighted_target_day
-
+        
+        # Group by date and calculate average
+        historical_daily_sums = historical_data.groupby(historical_data['arrival_datetime'].dt.date)['admission_probability'].sum()
+        historical_average = historical_daily_sums.mean()
+        
+        # Create mask for today's data
+        today_mask = (
+            (df['arrival_datetime'].dt.date == dt) &
+            (df['arrival_datetime'] < prediction_datetime)
+        )
+        
+        # Create explicit copy of today's filtered data
+        today_data = df[today_mask].copy()
+        
+        # Calculate minutes until midnight for today's data
+        midnight_today = pd.to_datetime(dt).normalize() + pd.Timedelta(days=1) - pd.Timedelta(minutes=1)
+        today_data.loc[:, 'minutes_to_midnight'] = (midnight_today - today_data['arrival_datetime']).dt.total_seconds() / 60
+        
+        # Calculate admission probabilities for today
+        today_data.loc[:, 'admission_probability'] = today_data['minutes_to_midnight'].apply(
+            lambda x: get_y_from_aspirational_curve(x/60, x1, y1, x2, y2)
+        )
+        
+        today_sum = today_data['admission_probability'].sum()
+        
+        still_to_admit = max(historical_average - today_sum, 0)
+        
     else:
-
-        mask = (
+        # Original unweighted logic with explicit copies
+        historical_mask = (
             (df['arrival_datetime'].dt.date >= start_date) &
             (df['arrival_datetime'].dt.date < end_date) &
             (df['arrival_datetime'].dt.weekday == target_day_of_week)
         )
-        filtered_df = df[mask]
-        average_count = len(filtered_df) / num_weeks
-
-        filtered_df = df[df['arrival_datetime'].dt.date == dt]
-        target_date_count = len(df[(df['arrival_datetime'].dt.date == dt) & 
-                                     (df['arrival_datetime'] < prediction_datetime)])
+        historical_df = df[historical_mask].copy()
+        average_count = len(historical_df) / num_weeks
         
-        still_to_admit = average_count - target_date_count
+        target_mask = (
+            (df['arrival_datetime'].dt.date == dt) & 
+            (df['arrival_datetime'] < prediction_datetime)
+        )
+        target_date_count = len(df[target_mask])
+        
+        still_to_admit = max(average_count - target_date_count, 0)
+        
     return still_to_admit
-
+    
 def evaluate_six_week_average(prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]], 
                               df: pd.DataFrame,
                               prediction_window: int,
@@ -336,7 +355,7 @@ def evaluate_six_week_average(prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, 
     
     for dt in prob_dist_dict_all[model_name].keys():
         expected_value: float = float(predict_using_previous_weeks(df, dt, prediction_window, x1, y1, x2, y2, prediction_time, num_weeks))
-        observed_value: float = float(calc_observed_with_ED_targets(df, dt, prediction_window, x1, y1, x2, y2, prediction_time))
+        observed_value: float = float(calculate_weighted_observed(df, dt, prediction_window, x1, y1, x2, y2, prediction_time))
         
         expected_values.append(expected_value)
         observed_values.append(observed_value)
@@ -406,7 +425,7 @@ def evaluate_combined_model(prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, An
         else:
             expected_value: float = float(np.dot(combined['agg_predicted'].index, combined['agg_predicted'].values.flatten()))
         
-        observed_value: float = float(calc_observed_with_ED_targets(df, dt, prediction_window, x1, y1, x2, y2, prediction_time))
+        observed_value: float = float(calculate_weighted_observed(df, dt, prediction_window, x1, y1, x2, y2, prediction_time))
         
         expected_values.append(expected_value)
         observed_values.append(observed_value)
