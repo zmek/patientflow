@@ -96,38 +96,36 @@ def calc_mae_mpe(prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]], use_m
 
     return results
 
-def calc_observed_with_ED_targets(df: pd.DataFrame, dt: datetime, prediction_window: int, x1: float, y1: float, x2: float, y2: float, prediction_time: Tuple[int, int] = (15, 30)) -> float:
+def calculate_weighted_observed(df, dt, prediction_time, prediction_window, curve_params):
     """
-    Calculate actual number admitted within the prediction window, assuming ED targets are met.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing patient data.
-        dt (datetime): Date for prediction.
-        prediction_window (int): Prediction window in minutes.
-        x1 (float), y1 (float), x2 (float), y2 (float): Parameters for aspirational curve.
-        prediction_time (Tuple[int, int], optional): Hour and minute of prediction. Defaults to (15, 30).
-
-    Returns:
-        float: Weighted observed admissions.
+    Calculate weighted observed admissions for a specific date and prediction window
+    
+    Parameters:
+    df: DataFrame with arrival_datetime column
+    dt: target date
+    prediction_time: tuple of (hour, minute)
+    prediction_window: window length in minutes
+    curve_params: tuple of (x1, y1, x2, y2) for aspirational curve
     """
+    # Create prediction datetime
     prediction_datetime = pd.to_datetime(dt).replace(hour=prediction_time[0], minute=prediction_time[1])
     
+    # Filter for target date and get arrivals with probabilities
     filtered_df = df[df['arrival_datetime'].dt.date == dt]
-    arrived_before = filtered_df[filtered_df.arrival_datetime < prediction_datetime].copy()
-    arrived_after = filtered_df[filtered_df.arrival_datetime >= prediction_datetime].copy()
-
-    arrived_before['hours_before_pred_window'] = arrived_before['arrival_datetime'].apply(lambda x: ((prediction_datetime - x)).seconds/3600)
-    arrived_before['prob_admission_in_pred_window'] = \
-        arrived_before['hours_before_pred_window'].apply(lambda x: get_y_from_aspirational_curve(x + prediction_window/60, x1, y1, x2, y2)) - \
-        arrived_before['hours_before_pred_window'].apply(lambda x: get_y_from_aspirational_curve(x, x1, y1, x2, y2))
-
-    arrived_after['hours_after_pred_window'] = arrived_after['arrival_datetime'].apply(lambda x: ((x - prediction_datetime)).seconds/3600)
-    arrived_after['prob_admission_in_pred_window'] = \
-        arrived_after['hours_after_pred_window'].apply(lambda x: get_y_from_aspirational_curve((prediction_window/60) - x, x1, y1, x2, y2))
-
-    weighted_observed = arrived_before['prob_admission_in_pred_window'].sum() + arrived_after['prob_admission_in_pred_window'].sum()
+    arrived_before, arrived_after = get_arrivals_with_admission_probs(
+        filtered_df,
+        prediction_datetime=prediction_datetime,
+        prediction_window=prediction_window,
+        prediction_time=prediction_time,
+        curve_params=curve_params,
+        target_date=dt
+    )
+    
+    # Calculate weighted sum
+    weighted_observed = arrived_before['prob_admission_in_pred_window'].sum() + \
+                       arrived_after['prob_admission_in_pred_window'].sum()
+    
     return weighted_observed
-
 
 
 def create_time_mask(df, hour, minute):
@@ -257,31 +255,32 @@ def predict_using_previous_weeks(df: pd.DataFrame, dt: datetime, prediction_wind
     
     end_date = dt - timedelta(days=1)
     start_date = end_date - timedelta(weeks=num_weeks)
-    
-    # Get historical arrivals
-    historical_before, historical_after = get_arrivals_with_admission_probs(
-        df=df,
-        prediction_datetime=prediction_datetime,
-        prediction_window=prediction_window,
-        prediction_time=prediction_time,
-        curve_params=(x1, y1, x2, y2),
-        date_range=(start_date, end_date),
-        target_weekday=target_day_of_week
-    )
-    
-    # Get target day arrivals
-    target_before, target_after = get_arrivals_with_admission_probs(
-        df=df,
-        prediction_datetime=prediction_datetime,
-        prediction_window=prediction_window,
-        prediction_time=prediction_time,
-        curve_params=(x1, y1, x2, y2),
-        target_date=dt
-    )
-      
+
     if weighted:
 
-        # on the historical days, we take everyone's probability of admission anytime that day, whether arriving before or after it
+        # Get historical arrivals
+        historical_before, historical_after = get_arrivals_with_admission_probs(
+            df=df,
+            prediction_datetime=prediction_datetime,
+            prediction_window=prediction_window,
+            prediction_time=prediction_time,
+            curve_params=(x1, y1, x2, y2),
+            date_range=(start_date, end_date),
+            target_weekday=target_day_of_week
+        )
+        
+        # Get target day arrivals
+        target_before, target_after = get_arrivals_with_admission_probs(
+            df=df,
+            prediction_datetime=prediction_datetime,
+            prediction_window=prediction_window,
+            prediction_time=prediction_time,
+            curve_params=(x1, y1, x2, y2),
+            target_date=dt
+        )
+          
+
+        # on the historical days, we take everyone's probability of admission anytime that day, whether arriving before or after the predicction time
         weighted_last_six_weeks = (historical_before['prob_admission_in_pred_window'].sum() \
             + historical_before['prob_admission_before_pred_window'].sum() \
             + historical_after['prob_admission_in_pred_window'].sum()) 
