@@ -97,7 +97,7 @@ def plot_arrival_rates(inpatient_arrivals,
     )
 
     if lagged_by is not None:
-        arrival_rates_lagged_dict = calculate_time_varying_arrival_rates_lagged(inpatient_arrivals, lagged_by, time_interval=60)
+        arrival_rates_lagged_dict = calculate_time_varying_arrival_rates_lagged(inpatient_arrivals, lagged_by, time_interval)
         arrival_rates_lagged, _, _ = process_arrival_rates(
             arrival_rates_lagged_dict
         

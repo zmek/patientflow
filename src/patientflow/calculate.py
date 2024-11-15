@@ -112,7 +112,7 @@ def get_true_demand_by_hour(inpatient_arrivals, x1, y1, x2, y2, time_interval=60
     # Calculate base arrival rates from historical data
     poisson_means_dict = calculate_time_varying_arrival_rates(
         inpatient_arrivals, 
-        time_interval=time_interval
+        time_interval
     )
     
     # Convert dict to array while preserving order
