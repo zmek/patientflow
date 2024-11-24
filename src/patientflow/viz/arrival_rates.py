@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# from datetime import timedelta
-from patientflow.prepare import calculate_time_varying_arrival_rates
 from patientflow.calculate import (
-    calculate_time_varying_arrival_rates_lagged,
+    time_varying_arrival_rates,
+    time_varying_arrival_rates_lagged,
     process_arrival_rates,
-    get_true_demand_by_hour,
+    true_demand_by_hour,
 )
 
 from patientflow.viz.utils import clean_title_for_filename
@@ -102,22 +101,20 @@ def plot_arrival_rates(
     media_file_path=None,
 ):
     # Calculate arrival rates - returns a dict
-    arrival_rates_dict = calculate_time_varying_arrival_rates(
-        inpatient_arrivals, time_interval
-    )
+    arrival_rates_dict = time_varying_arrival_rates(inpatient_arrivals, time_interval)
 
     # Get values, hour labels and hour values from the dict
     arrival_rates, hour_labels, hour_values = process_arrival_rates(arrival_rates_dict)
 
     if lagged_by is not None:
-        arrival_rates_lagged_dict = calculate_time_varying_arrival_rates_lagged(
+        arrival_rates_lagged_dict = time_varying_arrival_rates_lagged(
             inpatient_arrivals, lagged_by, time_interval
         )
         arrival_rates_lagged, _, _ = process_arrival_rates(arrival_rates_lagged_dict)
 
     if curve_params is not None:
         x1, y1, x2, y2 = curve_params
-        arrival_rates_spread_dict = get_true_demand_by_hour(
+        arrival_rates_spread_dict = true_demand_by_hour(
             inpatient_arrivals, x1, y1, x2, y2
         )
         arrival_rates_spread, _, _ = process_arrival_rates(arrival_rates_spread_dict)
@@ -244,13 +241,13 @@ def plot_cumulative_arrival_rates(
     # Data processing
     if curve_params is not None:
         x1, y1, x2, y2 = curve_params
-        arrival_rates_dict = get_true_demand_by_hour(inpatient_arrivals, x1, y1, x2, y2)
+        arrival_rates_dict = true_demand_by_hour(inpatient_arrivals, x1, y1, x2, y2)
     elif lagged_by is not None:
-        arrival_rates_dict = calculate_time_varying_arrival_rates_lagged(
+        arrival_rates_dict = time_varying_arrival_rates_lagged(
             inpatient_arrivals, lagged_by, time_interval
         )
     else:
-        arrival_rates_dict = calculate_time_varying_arrival_rates(
+        arrival_rates_dict = time_varying_arrival_rates(
             inpatient_arrivals, time_interval
         )
 
