@@ -17,6 +17,7 @@ import numpy as np
 import datetime
 from patientflow.prepare import calculate_time_varying_arrival_rates
 from collections import OrderedDict
+from collections.abc import Iterable
 from typing import Dict, List, Tuple
 from patientflow.predict.admission_in_prediction_window import (
     get_y_from_aspirational_curve,
@@ -24,8 +25,8 @@ from patientflow.predict.admission_in_prediction_window import (
 
 
 def calculate_time_varying_arrival_rates_lagged(
-    inpatient_arrivals, lagged_by, time_interval=60
-):
+    inpatient_arrivals: Iterable, lagged_by: int, time_interval: int = 60
+) -> OrderedDict[datetime.time, float]:
     """
     Calculate lagged time-varying arrival rates.
 
@@ -33,14 +34,22 @@ def calculate_time_varying_arrival_rates_lagged(
     the corresponding arrival rates, sorted by the lagged times.
 
     Args:
-        inpatient_arrivals (iterable): Historical inpatient arrival data.
+        inpatient_arrivals (Iterable): An iterable of datetime objects or timestamps representing historical arrival data.
         lagged_by (int): Number of hours to lag the arrival times.
         time_interval (int, optional): Interval in minutes for calculating arrival rates. Defaults to 60.
 
     Returns:
         OrderedDict: A dictionary mapping lagged times (datetime.time) to arrival rates.
     """
+
+    if not isinstance(inpatient_arrivals, Iterable):
+        raise TypeError(
+            "inpatient_arrivals must be an iterable of datetime objects or timestamps."
+        )
+
+    inpatient_arrivals = list(inpatient_arrivals)
     dict_ = calculate_time_varying_arrival_rates(inpatient_arrivals, time_interval)
+
     # Lag the arrival times by 4 hours
     lagged_dict = OrderedDict()
     for time, rate in dict_.items():
@@ -87,13 +96,18 @@ def process_arrival_rates(
     return arrival_rates, hour_labels, hour_values
 
 
-def calculate_admission_probabilities(hours_since_arrival, x1, y1, x2, y2):
+def calculate_admission_probabilities(
+    hours_since_arrival: np.ndarray, x1: float, y1: float, x2: float, y2: float
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculate probability of admission for each hour since arrival.
 
     Args:
         hours_since_arrival (np.ndarray): Array of hours since arrival.
-        x1, y1, x2, y2 (float): Parameters for the aspirational curve.
+        x1 (float): First x-coordinate of the aspirational curve.
+        y1 (float): First y-coordinate of the aspirational curve.
+        x2 (float): Second x-coordinate of the aspirational curve.
+        y2 (float): Second y-coordinate of the aspirational curve.
 
     Returns:
         Tuple[np.ndarray, np.ndarray]:
@@ -111,7 +125,9 @@ def calculate_admission_probabilities(hours_since_arrival, x1, y1, x2, y2):
     return prob_admission_by_hour, prob_admission_within_hour
 
 
-def calculate_weighted_arrival_rates(poisson_means_all, elapsed_hours, hour_of_day):
+def calculate_weighted_arrival_rates(
+    poisson_means_all: np.ndarray, elapsed_hours: range, hour_of_day: int
+) -> float:
     """Calculate sum of weighted arrival rates for a specific hour of day.
 
     Args:
@@ -130,8 +146,14 @@ def calculate_weighted_arrival_rates(poisson_means_all, elapsed_hours, hour_of_d
 
 
 def get_true_demand_by_hour(
-    inpatient_arrivals, x1, y1, x2, y2, time_interval=60, max_hours_since_arrival=10
-):
+    inpatient_arrivals: Iterable,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    time_interval: int = 60,
+    max_hours_since_arrival: int = 10,
+) -> Dict[datetime.time, float]:
     """
     Calculate true inpatient demand by hour based on historical arrival data.
 
@@ -140,7 +162,10 @@ def get_true_demand_by_hour(
 
     Args:
         inpatient_arrivals (iterable): Historical inpatient arrival data.
-        x1, y1, x2, y2 (float): Parameters for the aspirational curve.
+        x1 (float): First x-coordinate of the aspirational curve.
+        y1 (float): First y-coordinate of the aspirational curve.
+        x2 (float): Second x-coordinate of the aspirational curve.
+        y2 (float): Second y-coordinate of the aspirational curve.
         time_interval (int, optional): Time interval in minutes. Defaults to 60.
         max_hours_since_arrival (int, optional): Maximum hours since arrival to consider. Defaults to 10.
 
