@@ -23,27 +23,20 @@ def annotate_hour_line(
     line_styles,
     x_margin,
     annotation_prefix,
+    text_y_offset=1,  # New parameter with default of 1
+    text_x_position=None,  # New parameter to control horizontal text position
     slope=None,
     x1=None,
     y1=None,
 ):
     """
     Annotate hour lines on a matplotlib plot with consistent formatting.
-
     Args:
-        hour_line (int): Hour to annotate
-        y_value (float): Y-value for the annotation
-        hour_values (list): List of hour values for x-axis
-        start_plot_index (int): Starting index for plot
-        line_styles (dict): Dictionary of line styles for different hours
-        x_margin (float): Margin for x-axis
-        annotation_prefix (str): Prefix for annotation text
-        slope (float, optional): Slope for calculating y position if using window
-        x1 (float, optional): Starting x position if using window
-        y1 (float, optional): Starting y position if using window
+        [previous args...]
+        text_y_offset (float): Vertical offset for the annotation text from the line
+        text_x_position (float, optional): Specific x-position for text. If None, uses default positioning
     """
     a = hour_values[hour_line - start_plot_index]
-
     if slope is not None and x1 is not None:
         y_a = slope * (a - x1) + y1
         plt.plot([a, a], [0, y_a], color="grey", linestyle=line_styles[hour_line])
@@ -56,7 +49,7 @@ def annotate_hour_line(
         annotation_text = (
             f"{annotation_prefix}, {int(y_a)} beds needed by {hour_line}:00"
         )
-        y_position = y_a + 1
+        y_position = y_a + text_y_offset
     else:
         plt.annotate(
             "",
@@ -76,13 +69,18 @@ def annotate_hour_line(
         )
         annotation_text = (
             f"{annotation_prefix}, {int(y_value)} beds needed by {hour_line}:00"
-        )
-        y_position = y_value + 1
+        ).strip()  # strip() removes leading comma if prefix is empty
+        y_position = y_value + text_y_offset
+
+    # Use custom text x position if provided, otherwise use default
+    x_position = text_x_position if text_x_position is not None else (
+        hour_values[1] - x_margin
+    )
 
     plt.annotate(
         annotation_text,
         xy=(a / 2 if slope is not None else a, y_value),
-        xytext=(hour_values[1] - x_margin, y_position),
+        xytext=(x_position, y_position),
         va="bottom",
         ha="left",
         fontsize=10,
@@ -227,6 +225,7 @@ def plot_cumulative_arrival_rates(
     markers=["D", "s", "^", "o", "v"],
     line_styles_centiles=["-.", "--", ":", "-", "-"],
     bed_type_spec="",
+    text_y_offset=1,
 ):
     """
     Plot cumulative arrival rates with statistical distributions for inpatient data.
@@ -329,29 +328,17 @@ def plot_cumulative_arrival_rates(
                     cumsum_at_hour = sum(
                         percentiles[i][0 : hour_line + 1 - start_plot_index]
                     )
-
-                    plt.vlines(
-                        hour_values[hour_line - start_plot_index],
-                        0,
-                        cumsum_at_hour,
-                        linestyles=line_styles[hour_line],
-                        colors="C0",
-                    )
-
-                    plt.hlines(
-                        cumsum_at_hour,
-                        hour_values[0] - x_margin,
-                        hour_values[hour_line - start_plot_index],
-                        linestyles=line_styles[hour_line],
-                        colors="C0",
-                    )
-
-                    plt.annotate(
-                        f"{int(cumsum_at_hour)} beds needed by {hour_line}:00",
-                        xy=(hour_values[0] - x_margin / 2, cumsum_at_hour + 2),
-                        ha="left",
-                        va="bottom",
-                        fontsize=10,
+                    
+                    annotate_hour_line(
+                        hour_line=hour_line,
+                        y_value=cumsum_at_hour,
+                        hour_values=hour_values,
+                        start_plot_index=start_plot_index,
+                        line_styles=line_styles,
+                        x_margin=x_margin,
+                        annotation_prefix=annotation_prefix, 
+                        text_y_offset=text_y_offset
+                        # No slope/x1/y1 needed since we're using the simpler case
                     )
 
         max_y = max(cumulative_value_at_centile)
@@ -433,192 +420,4 @@ def plot_cumulative_arrival_rates(
     if media_file_path:
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
-    plt.show()
-
-
-def plot_dual_arrival_rates(
-    inpatient_arrivals_1,
-    inpatient_arrivals_2,
-    title,
-    labels=("Set 1", "Set 2"),
-    lagged_by=None,
-    curve_params=None,
-    time_interval=60,
-    start_plot_index=0,
-    x_margin=0.5,
-    file_prefix="",
-    media_file_path=None,
-):
-    """
-    Plot two sets of inpatient arrivals on the same chart for comparison.
-    When spread rates are present, they use the main colors while other rates are grey.
-    """
-    # Calculate arrival rates for both sets
-    def process_dataset(arrivals):
-        rates_dict = time_varying_arrival_rates(arrivals, time_interval)
-        rates, hour_labels, hour_values = process_arrival_rates(rates_dict)
-        
-        if lagged_by is not None:
-            lagged_dict = time_varying_arrival_rates_lagged(arrivals, lagged_by, time_interval)
-            rates_lagged, _, _ = process_arrival_rates(lagged_dict)
-        else:
-            rates_lagged = None
-            
-        if curve_params is not None:
-            x1, y1, x2, y2 = curve_params
-            spread_dict = true_demand_by_hour(arrivals, x1, y1, x2, y2)
-            rates_spread, _, _ = process_arrival_rates(spread_dict)
-        else:
-            rates_spread = None
-            
-        return rates, rates_lagged, rates_spread, hour_labels, hour_values
-    
-    # Process both datasets
-    rates1, rates1_lagged, rates1_spread, hour_labels, hour_values = process_dataset(inpatient_arrivals_1)
-    rates2, rates2_lagged, rates2_spread, _, _ = process_dataset(inpatient_arrivals_2)
-    
-    # Helper function for cyclic data
-    def get_cyclic_data(data):
-        return data[start_plot_index:] + data[0:start_plot_index]
-    
-    # Create plot
-    plt.figure(figsize=(12, 7))
-    x_values = get_cyclic_data(hour_labels)
-    
-    # Define main colors for each group
-    color1 = '#1f77b4'  # Blue
-    color2 = '#9467bd'  # Purple
-    
-    # Define grey shades
-    grey1 = '#888888'  # Darker grey
-    grey2 = '#BBBBBB'  # Lighter grey
-    
-    # Plot first dataset
-    y_values1 = get_cyclic_data(rates1)
-    if rates1_spread is not None and len(rates1_spread) > 0:
-        # Base arrival rates in grey
-        plt.plot(
-            x_values,
-            y_values1,
-            marker="x",
-            color=grey1,
-            markersize=4,
-            linestyle=":",
-            linewidth=1,
-            label=f"{labels[0]} - Arrivals",
-        )
-        
-        # Lagged arrival rates in lighter grey
-        if rates1_lagged is not None:
-            plt.plot(
-                x_values,
-                get_cyclic_data(rates1_lagged),
-                marker="o",
-                markersize=4,
-                color=grey2,
-                linestyle="--",
-                linewidth=1,
-                label=f"{labels[0]} - Lagged arrivals",
-            )
-        
-        # Spread arrival rates in main color
-        plt.plot(
-            x_values,
-            get_cyclic_data(rates1_spread),
-            marker="o",
-            color=color1,
-            label=f"{labels[0]} - Aspirational ({int(curve_params[1]*100)}% in {int(curve_params[0])}h)",
-        )
-    else:
-        # If no spread rates, use normal coloring
-        plt.plot(
-            x_values,
-            y_values1,
-            marker="o",
-            color=color1,
-            linestyle="-",
-            label=f"{labels[0]} - Arrivals",
-        )
-        
-        if rates1_lagged is not None:
-            plt.plot(
-                x_values,
-                get_cyclic_data(rates1_lagged),
-                marker="s",
-                color=color1,
-                linestyle="--",
-                label=f"{labels[0]} - Lagged arrivals",
-            )
-    
-    # Plot second dataset
-    y_values2 = get_cyclic_data(rates2)
-    if rates2_spread is not None and len(rates2_spread) > 0:
-        # Base arrival rates in grey
-        plt.plot(
-            x_values,
-            y_values2,
-            marker="x",
-            color=grey1,
-            markersize=4,
-            linestyle=":",
-            linewidth=1,
-            label=f"{labels[1]} - Arrivals",
-        )
-        
-        # Lagged arrival rates in lighter grey
-        if rates2_lagged is not None:
-            plt.plot(
-                x_values,
-                get_cyclic_data(rates2_lagged),
-                marker="o",
-                markersize=4,
-                color=grey2,
-                linestyle="--",
-                linewidth=1,
-                label=f"{labels[1]} - Lagged arrivals",
-            )
-        
-        # Spread arrival rates in main color
-        plt.plot(
-            x_values,
-            get_cyclic_data(rates2_spread),
-            marker="o",
-            color=color2,
-            label=f"{labels[1]} - Aspirational ({int(curve_params[1]*100)}% in {int(curve_params[0])}h)",
-        )
-    else:
-        # If no spread rates, use normal coloring
-        plt.plot(
-            x_values,
-            y_values2,
-            marker="o",
-            color=color2,
-            linestyle="-",
-            label=f"{labels[1]} - Arrivals",
-        )
-        
-        if rates2_lagged is not None:
-            plt.plot(
-                x_values,
-                get_cyclic_data(rates2_lagged),
-                marker="s",
-                color=color2,
-                linestyle="--",
-                label=f"{labels[1]} - Lagged arrivals",
-            )
-    
-    # Set plot parameters
-    plt.ylim(0, max(max(rates1), max(rates2)) + 0.25)
-    plt.xlim(hour_values[0] - x_margin, hour_values[-1] + x_margin)
-    plt.xlabel("Hour of day")
-    plt.ylabel("Arrival Rate (patients per hour)")
-    plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-    
-    if media_file_path:
-        filename = f"{file_prefix}{clean_title_for_filename(title)}"
-        plt.savefig(media_file_path / filename, dpi=300, bbox_inches='tight')
-    
     plt.show()
