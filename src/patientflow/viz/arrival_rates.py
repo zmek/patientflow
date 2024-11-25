@@ -200,7 +200,8 @@ def plot_arrival_rates(
     plt.grid(True)
     plt.tight_layout()
     if media_file_path:
-        plt.savefig(media_file_path / (file_prefix + title.replace(" ", "_")), dpi=300)
+        filename = f"{file_prefix}{clean_title_for_filename(title)}"
+        plt.savefig(media_file_path / filename, dpi=300)
     plt.show()
 
 
