@@ -614,7 +614,7 @@ def plot_dual_arrival_rates(
     plt.ylabel("Arrival Rate (patients per hour)")
     plt.title(title)
     plt.grid(True, alpha=0.3)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(loc='upper right')
     plt.tight_layout()
     
     if media_file_path:
