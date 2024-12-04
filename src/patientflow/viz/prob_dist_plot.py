@@ -1,8 +1,8 @@
 import itertools
-
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
-
+from scipy import stats
 
 def prob_dist_plot(
     prob_dist_data,
@@ -16,28 +16,32 @@ def prob_dist_plot(
     file_name=None,
     min_beds_lines=None,
 ):
+    # Handle Poisson distribution input
+    if isinstance(prob_dist_data, (stats._distn_infrastructure.rv_frozen, 
+                                 stats._discrete_distns.poisson_gen)):
+        x = np.arange(0, truncate_at_beds + 1)
+        probs = prob_dist_data.pmf(x)
+        prob_dist_data = pd.DataFrame({
+            'agg_proba': probs
+        }, index=x)
+    
     plt.figure(figsize=figsize)
-
     if not file_name:
-        file_name = (
-            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
-        )
+        file_name = title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
+
     plt.bar(
         prob_dist_data.index[0 : truncate_at_beds + 1],
         prob_dist_data["agg_proba"].values[0 : truncate_at_beds + 1],
         color=bar_colour,
     )
-
+    
     plt.xlim(-0.5, truncate_at_beds + 0.5)
-    plt.xticks(
-        np.arange(0, truncate_at_beds + 1, 5)
-    )  # Set x-axis ticks at every 5 units
+    plt.xticks(np.arange(0, truncate_at_beds + 1, 5))
 
     if min_beds_lines:
         colors = itertools.cycle(
             plt.cm.gray(np.linspace(0.3, 0.7, len(min_beds_lines)))
         )
-
         for point in min_beds_lines:
             plt.axvline(
                 x=min_beds_lines[point],
@@ -46,7 +50,6 @@ def prob_dist_plot(
                 color=next(colors),
                 label=f"{point*100:.0f}% probability",
             )
-
         plt.legend(loc="upper right")
 
     if text_size:
@@ -58,7 +61,8 @@ def prob_dist_plot(
         plt.ylabel("Probability")
 
     plt.tight_layout()
-
+    
     if directory_path:
         plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
+    
     plt.show()
