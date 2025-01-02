@@ -73,8 +73,8 @@ def annotate_hour_line(
         y_position = y_value + text_y_offset
 
     # Use custom text x position if provided, otherwise use default
-    x_position = text_x_position if text_x_position is not None else (
-        hour_values[1] - x_margin
+    x_position = (
+        text_x_position if text_x_position is not None else (hour_values[1] - x_margin)
     )
 
     plt.annotate(
@@ -328,7 +328,7 @@ def plot_cumulative_arrival_rates(
                     cumsum_at_hour = sum(
                         percentiles[i][0 : hour_line + 1 - start_plot_index]
                     )
-                    
+
                     annotate_hour_line(
                         hour_line=hour_line,
                         y_value=cumsum_at_hour,
@@ -336,8 +336,8 @@ def plot_cumulative_arrival_rates(
                         start_plot_index=start_plot_index,
                         line_styles=line_styles,
                         x_margin=x_margin,
-                        annotation_prefix=annotation_prefix, 
-                        text_y_offset=text_y_offset
+                        annotation_prefix=annotation_prefix,
+                        text_y_offset=text_y_offset,
                         # No slope/x1/y1 needed since we're using the simpler case
                     )
 
