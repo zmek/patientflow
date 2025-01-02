@@ -1,3 +1,23 @@
+"""
+This module contains functions to visualize inpatient arrival rates and their cumulative
+statistics. The visualizations support time-varying analysis, comparison of datasets,
+and statistical distributions for resource planning in healthcare facilities.
+
+Functions:
+    - annotate_hour_line: Annotates hour lines on a matplotlib plot.
+    - plot_arrival_rates: Plots arrival rates for one or two datasets with optional
+                          lagged or spread rates.
+    - plot_cumulative_arrival_rates: Plots cumulative arrival rates with options for
+                                     statistical distribution visualization.
+
+Dependencies:
+    - matplotlib.pyplot
+    - numpy
+    - scipy.stats
+    - patientflow.calculate (for rate calculations)
+    - patientflow.viz.utils (for utility functions)
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -31,10 +51,38 @@ def annotate_hour_line(
 ):
     """
     Annotate hour lines on a matplotlib plot with consistent formatting.
-    Args:
-        [previous args...]
-        text_y_offset (float): Vertical offset for the annotation text from the line
-        text_x_position (float, optional): Specific x-position for text. If None, uses default positioning
+
+    Parameters
+    ----------
+    hour_line : int
+        The hour to annotate on the plot.
+    y_value : float
+        The y-coordinate for annotation positioning.
+    hour_values : list of int
+        Hour values corresponding to the x-axis positions.
+    start_plot_index : int
+        Starting index for the plot's data.
+    line_styles : dict
+        Line styles for annotations keyed by hour.
+    x_margin : float
+        Margin added to x-axis for annotation positioning.
+    annotation_prefix : str
+        Prefix for the annotation text (e.g., "On average").
+    text_y_offset : float, optional
+        Vertical offset for the annotation text from the line (default is 1).
+    text_x_position : float, optional
+        Horizontal position for annotation text (default is calculated).
+    slope : float, optional
+        Slope of a line for extended annotations (used with x1 and y1).
+    x1 : float, optional
+        Reference x-coordinate for slope-based annotation.
+    y1 : float, optional
+        Reference y-coordinate for slope-based annotation.
+
+    Returns
+    -------
+    None
+        Annotates the matplotlib plot in place.
     """
     a = hour_values[hour_line - start_plot_index]
     if slope is not None and x1 is not None:
@@ -90,116 +138,195 @@ def annotate_hour_line(
 def plot_arrival_rates(
     inpatient_arrivals,
     title,
+    inpatient_arrivals_2=None,  # Optional second dataset
+    labels=None,  # Optional tuple of labels for dual plots
     lagged_by=None,
-    curve_params=None,  # specify for spread arrival rates
+    curve_params=None,
     time_interval=60,
     start_plot_index=0,
     x_margin=0.5,
     file_prefix="",
     media_file_path=None,
 ):
-    # Calculate arrival rates - returns a dict
-    arrival_rates_dict = time_varying_arrival_rates(inpatient_arrivals, time_interval)
+    """
+    Plot arrival rates for one or two datasets with optional lagged and spread rates.
 
-    # Get values, hour labels and hour values from the dict
-    arrival_rates, hour_labels, hour_values = process_arrival_rates(arrival_rates_dict)
+    Parameters
+    ----------
+    inpatient_arrivals : array-like
+        Primary dataset of inpatient arrivals.
+    title : str
+        Title of the plot.
+    inpatient_arrivals_2 : array-like, optional
+        Optional second dataset for comparison (default is None).
+    labels : tuple of str, optional
+        Labels for the datasets when comparing two datasets (default is None).
+    lagged_by : int, optional
+        Time lag in hours to apply to the arrival rates (default is None).
+    curve_params : tuple of float, optional
+        Parameters for spread arrival rates as (x1, y1, x2, y2) (default is None).
+    time_interval : int, optional
+        Time interval in minutes for arrival rate calculations (default is 60).
+    start_plot_index : int, optional
+        Starting hour index for plotting (default is 0).
+    x_margin : float, optional
+        Margin on the x-axis (default is 0.5).
+    file_prefix : str, optional
+        Prefix for the saved file name (default is "").
+    media_file_path : str or Path, optional
+        Directory path to save the plot (default is None).
 
-    if lagged_by is not None:
-        arrival_rates_lagged_dict = time_varying_arrival_rates_lagged(
-            inpatient_arrivals, lagged_by, time_interval
+    Returns
+    -------
+    None
+        Displays or saves the matplotlib plot.
+    """
+    is_dual_plot = inpatient_arrivals_2 is not None
+    if is_dual_plot and labels is None:
+        labels = ("Dataset 1", "Dataset 2")
+
+    datasets = [(inpatient_arrivals, "C0", "o")]
+    if is_dual_plot:
+        datasets.append((inpatient_arrivals_2, "C1", "s"))
+
+    # Calculate and process arrival rates for all datasets
+    processed_data = []
+    max_y_values = []
+
+    for dataset, color, marker in datasets:
+        # Calculate base arrival rates
+        arrival_rates_dict = time_varying_arrival_rates(dataset, time_interval)
+        arrival_rates, hour_labels, hour_values = process_arrival_rates(
+            arrival_rates_dict
         )
-        arrival_rates_lagged, _, _ = process_arrival_rates(arrival_rates_lagged_dict)
+        max_y_values.append(max(arrival_rates))
 
-    if curve_params is not None:
-        x1, y1, x2, y2 = curve_params
-        arrival_rates_spread_dict = true_demand_by_hour(
-            inpatient_arrivals, x1, y1, x2, y2
-        )
-        arrival_rates_spread, _, _ = process_arrival_rates(arrival_rates_spread_dict)
-    else:
+        # Calculate lagged rates if needed
+        arrival_rates_lagged = None
+        if lagged_by is not None:
+            arrival_rates_lagged_dict = time_varying_arrival_rates_lagged(
+                dataset, lagged_by, time_interval
+            )
+            arrival_rates_lagged, _, _ = process_arrival_rates(
+                arrival_rates_lagged_dict
+            )
+            max_y_values.append(max(arrival_rates_lagged))
+
+        # Calculate spread rates if needed
         arrival_rates_spread = None
+        if curve_params is not None:
+            x1, y1, x2, y2 = curve_params
+            arrival_rates_spread_dict = true_demand_by_hour(dataset, x1, y1, x2, y2)
+            arrival_rates_spread, _, _ = process_arrival_rates(
+                arrival_rates_spread_dict
+            )
+            max_y_values.append(max(arrival_rates_spread))
 
-    # Plot the data
-    plt.figure(figsize=(10, 6))
+        processed_data.append(
+            {
+                "arrival_rates": arrival_rates,
+                "arrival_rates_lagged": arrival_rates_lagged,
+                "arrival_rates_spread": arrival_rates_spread,
+                "color": color,
+                "marker": marker,
+                "label": labels[len(processed_data)] if is_dual_plot else None,
+            }
+        )
 
     # Helper function to create cyclic data
     def get_cyclic_data(data):
         return data[start_plot_index:] + data[0:start_plot_index]
 
-    # Get x-axis values
+    # Plot setup
+    plt.figure(figsize=(10, 6))
     x_values = get_cyclic_data(hour_labels)
-    # Get base arrival rates
-    y_values = get_cyclic_data(arrival_rates)
 
-    # Define plotting styles based on scenario
-    if arrival_rates_spread is not None and len(arrival_rates_spread) > 0:
-        # Base arrival rates
-        plt.plot(
-            x_values,
-            y_values,
-            marker="x",
-            color="grey",
-            markersize=4,
-            linestyle=":",
-            linewidth=1,
-            label="Arrival rates of admitted patients",
-        )
+    # Plot data for each dataset
+    for data in processed_data:
+        label_suffix = f" ({data['label']})" if data["label"] else ""
 
-        # Lagged arrival rates
-        plt.plot(
-            x_values,
-            get_cyclic_data(arrival_rates_lagged),
-            marker="o",
-            markersize=4,
-            color="grey",
-            linestyle="--",
-            linewidth=1,
-            label="Average number of beds needed 4 hours after arrival",
-        )
+        if curve_params is not None and data["arrival_rates_spread"] is not None:
+            # Base arrival rates
+            plt.plot(
+                x_values,
+                get_cyclic_data(data["arrival_rates"]),
+                marker="x",
+                color=data["color"],
+                markersize=4,
+                linestyle=":",
+                linewidth=1,
+                label=f"Arrival rates of admitted patients{label_suffix}",
+            )
 
-        # Spread arrival rates
-        plt.plot(
-            x_values,
-            get_cyclic_data(arrival_rates_spread),
-            marker="o",
-            label=f"Average number of beds applying ED targets of {int(y1*100)}% in {int(x1)} hours",
-        )
+            if lagged_by is not None:
+                # Lagged arrival rates
+                plt.plot(
+                    x_values,
+                    get_cyclic_data(data["arrival_rates_lagged"]),
+                    marker="o",
+                    markersize=4,
+                    color=data["color"],
+                    linestyle="--",
+                    linewidth=1,
+                    label=f"Average number of beds needed {lagged_by} hours after arrival{label_suffix}",
+                )
 
-    elif lagged_by is not None:
-        # Base arrival rates
-        plt.plot(
-            x_values,
-            y_values,
-            marker="o",
-            linestyle=":",
-            label="Arrival rates of admitted patients",
-        )
+            # Spread arrival rates
+            plt.plot(
+                x_values,
+                get_cyclic_data(data["arrival_rates_spread"]),
+                marker=data["marker"],
+                color=data["color"],
+                label=f"Average number of beds applying ED targets of {int(y1*100)}% in {int(x1)} hours{label_suffix}",
+            )
 
-        # Lagged arrival rates
-        plt.plot(
-            x_values,
-            get_cyclic_data(arrival_rates_lagged),
-            marker="o",
-            color="C0",
-            label="Average number of beds needed 4 hours after arrival",
-        )
+        elif lagged_by is not None:
+            # Base arrival rates
+            plt.plot(
+                x_values,
+                get_cyclic_data(data["arrival_rates"]),
+                marker=data["marker"],
+                linestyle=":",
+                color=data["color"],
+                label=f"Arrival rates of admitted patients{label_suffix}",
+            )
 
-    else:
-        # Only base arrival rates
-        plt.plot(x_values, y_values, marker="o")
+            # Lagged arrival rates
+            plt.plot(
+                x_values,
+                get_cyclic_data(data["arrival_rates_lagged"]),
+                marker=data["marker"],
+                color=data["color"],
+                label=f"Average number of beds needed {lagged_by} hours after arrival{label_suffix}",
+            )
 
-    # plt.xticks(rotation=45)
-    plt.ylim(0, max(arrival_rates) + 0.25)
+        else:
+            # Only base arrival rates
+            plt.plot(
+                x_values,
+                get_cyclic_data(data["arrival_rates"]),
+                marker=data["marker"],
+                color=data["color"],
+                label=data["label"] if data["label"] else None,
+            )
+
+    # Set plot limits and labels
+    plt.ylim(0, max(max_y_values) + 0.25)
     plt.xlim(hour_values[0] - x_margin, hour_values[-1] + x_margin)
 
     plt.xlabel("Hour of day")
     plt.ylabel("Arrival Rate (patients per hour)")
     plt.title(title)
-    plt.grid(True)
+    plt.grid(True, alpha=0.3)
+    if any(d["label"] for d in processed_data):
+        plt.legend()
     plt.tight_layout()
+
+    # Save if path provided
     if media_file_path:
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
+
     plt.show()
 
 
@@ -228,14 +355,59 @@ def plot_cumulative_arrival_rates(
     text_y_offset=1,
 ):
     """
-    Plot cumulative arrival rates with statistical distributions for inpatient data.
+    Plot cumulative arrival rates with optional statistical distributions.
 
-    Additional Parameters:
-    highlight_centile: Percentile to emphasize in visualization
-    centiles: List of percentiles to calculate and display
-    markers: List of markers for different percentile lines
-    line_styles_centiles: List of line styles for percentile visualization
-    bed_type_spec: Specification for bed type (if any)
+    Parameters
+    ----------
+    inpatient_arrivals : array-like
+        Dataset of inpatient arrivals.
+    title : str
+        Title of the plot.
+    curve_params : tuple of float, optional
+        Parameters for spread rates as (x1, y1, x2, y2) (default is None).
+    lagged_by : int, optional
+        Time lag in hours for cumulative rates (default is None).
+    time_interval : int, optional
+        Time interval in minutes for rate calculations (default is 60).
+    start_plot_index : int, optional
+        Starting hour index for plotting (default is 0).
+    draw_window : tuple of int, optional
+        Time window for detailed annotation (default is None).
+    x_margin : float, optional
+        Margin on the x-axis (default is 0.5).
+    file_prefix : str, optional
+        Prefix for the saved file name (default is "").
+    set_y_lim : float, optional
+        Upper limit for the y-axis (default is None).
+    hour_lines : list of int, optional
+        Specific hours to annotate (default is [12, 17]).
+    line_styles : dict, optional
+        Line styles for hour annotations keyed by hour (default is {12: "--", 17: ":", 20: "--"}).
+    annotation_prefix : str, optional
+        Prefix for annotations (default is "On average").
+    line_colour : str, optional
+        Color for the main line plot (default is "red").
+    media_file_path : str or Path, optional
+        Directory path to save the plot (default is None).
+    plot_centiles : bool, optional
+        Whether to include percentile visualization (default is False).
+    highlight_centile : float, optional
+        Percentile to emphasize (default is 0.9).
+    centiles : list of float, optional
+        List of percentiles to calculate (default is [0.3, 0.5, 0.7, 0.9, 0.99]).
+    markers : list of str, optional
+        Marker styles for percentile lines (default is ["D", "s", "^", "o", "v"]).
+    line_styles_centiles : list of str, optional
+        Line styles for percentile visualization (default is ["-.", "--", ":", "-", "-"]).
+    bed_type_spec : str, optional
+        Specification for bed type in annotations (default is "").
+    text_y_offset : float, optional
+        Vertical offset for text annotations (default is 1).
+
+    Returns
+    -------
+    None
+        Displays or saves the matplotlib plot.
     """
 
     # Data processing
