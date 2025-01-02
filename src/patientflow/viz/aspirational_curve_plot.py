@@ -5,6 +5,7 @@ import numpy as np
 from patientflow.predict.admission_in_prediction_window import (
     create_curve,
 )
+from patientflow.viz.utils import clean_title_for_filename
 
 
 def plot_curve(
@@ -16,7 +17,7 @@ def plot_curve(
     figsize=(6, 3),
     include_titles=False,
     text_size=None,
-    directory_path=None,
+    media_file_path=None,
     file_name=None,
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
@@ -52,8 +53,8 @@ def plot_curve(
 
     plt.tight_layout()
 
-    if directory_path:
-        os.makedirs(directory_path, exist_ok=True)
-        plt.savefig(directory_path / file_name, dpi=300)
+    if media_file_path:
+        os.makedirs(media_file_path, exist_ok=True)
+        plt.savefig(media_file_path / clean_title_for_filename(title), dpi=300)
 
     plt.show()

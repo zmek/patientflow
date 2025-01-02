@@ -8,7 +8,7 @@ Dependencies:
     - datetime: For manipulating date and time objects, crucial for time-based predictions.
     - sklearn: Utilizes BaseEstimator and TransformerMixin from scikit-learn for creating custom, interoperable predictors.
     - Custom modules:
-        - prepare.calculate_time_varying_arrival_rates: Computes time-varying arrival rates, for each specified interval within the prediction window.
+        - calculate.time_varying_arrival_rates: Computes time-varying arrival rates, for each specified interval within the prediction window.
         - predict.admission_in_prediction_window: Calculates the probability of admission within a specified prediction window.
 
 Classes:
@@ -38,8 +38,8 @@ from patientflow.predict.admission_in_prediction_window import (
 )
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
-from patientflow.prepare import (
-    calculate_time_varying_arrival_rates,
+from patientflow.calculate import (
+    time_varying_arrival_rates,
 )
 
 
@@ -281,7 +281,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         """
         Ntimes = int(prediction_window / yta_time_interval)
-        arrival_rates_dict = calculate_time_varying_arrival_rates(df, yta_time_interval)
+        arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval)
         prediction_time_dict = {}
 
         for prediction_time_ in prediction_times:
