@@ -1,5 +1,5 @@
 import numpy as np
-import xgboost as xgb
+from xgboost import XGBClassifier
 import pandas as pd
 from joblib import dump
 import json
@@ -177,7 +177,13 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
 
 # Initialise the model with given hyperparameters
 def initialise_xgb(params):
-    model = xgb.XGBClassifier(n_jobs=-1, eval_metric="logloss")
+    model = XGBClassifier(
+        n_jobs=-1,
+        eval_metric="logloss",
+        use_label_encoder=False,
+        enable_categorical=True,
+        scikit_learn=True,  # Add this parameter
+    )
     model.set_params(**params)
     return model
 
