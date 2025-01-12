@@ -290,7 +290,7 @@ def train_admissions_models(
 ):
     # Initialize dictionary to store models
     trained_models = {}
-    
+
     # separate into training, validation and test sets
     train_visits = visits[visits.training_validation_test == "train"].drop(
         columns="training_validation_test"
@@ -483,10 +483,11 @@ def train_yet_to_arrive_model(
 
     return model_metadata, yta_model
 
+
 def save_model(model, model_name, model_file_path):
     """
     Save trained model(s) to disk.
-    
+
     Args:
         model: Single model or dictionary of models to save
         model_name (str): Base name for the model(s)
@@ -504,10 +505,11 @@ def save_model(model, model_name, model_file_path):
         full_path = full_path.with_suffix(".joblib")
         dump(model, full_path)
 
+
 def save_metadata(metadata, base_path, subdir, filename):
     """
     Save model metadata to disk.
-    
+
     Args:
         metadata (dict): Metadata to save
         base_path (Path): Base directory path
@@ -522,6 +524,7 @@ def save_metadata(metadata, base_path, subdir, filename):
     with open(metadata_path, "w") as f:
         json.dump(metadata, f)
 
+
 def test_real_time_predictions(
     visits,
     model_file_path,
@@ -530,11 +533,11 @@ def test_real_time_predictions(
     cdf_cut_points,
     curve_params,
     uclh,
-    random_seed
+    random_seed,
 ):
     """
     Test real-time prediction creation using a random test set sample.
-    
+
     Args:
         visits (pd.DataFrame): DataFrame containing visit data
         model_file_path (Path): Path where models are saved
@@ -544,7 +547,7 @@ def test_real_time_predictions(
         curve_params (tuple): Tuple of (x1, y1, x2, y2) coordinates for curve parameters
         uclh (bool): Flag for UCLH dataset usage
         random_seed (int): Random seed for reproducibility
-        
+
     Returns:
         dict: Dictionary containing prediction time, date and results
     """
@@ -587,8 +590,9 @@ def test_real_time_predictions(
         print(f"Real-time inference failed due to this error: {str(e)}")
         print(realtime_preds_dict)
         sys.exit(1)
-        
+
     return realtime_preds_dict
+
 
 def train_all_models(
     visits,
@@ -607,8 +611,8 @@ def train_all_models(
     cdf_cut_points,
     uclh,
     random_seed,
-    metadata_subdir='model-output',  
-    metadata_filename="model_metadata.json"
+    metadata_subdir="model-output",
+    metadata_filename="model_metadata.json",
 ):
     """
     Main function for training and evaluating patient flow models.
@@ -655,7 +659,7 @@ def train_all_models(
         model_name=model_names["admissions"],
         model_metadata=model_metadata,
     )
-    
+
     # Save admission models
     save_model(admission_models, model_names["admissions"], model_file_path)
 
@@ -666,7 +670,7 @@ def train_all_models(
         model_metadata=model_metadata,
         uclh=uclh,
     )
-    
+
     # Save specialty model
     save_model(specialty_model, model_names["specialty"], model_file_path)
 
@@ -681,9 +685,11 @@ def train_all_models(
         model_metadata=model_metadata,
         uclh=uclh,
     )
-    
+
     # Save yet-to-arrive model with hours appended to name
-    model_name = model_names["yet_to_arrive"] + str(int(prediction_window / 60)) + "_hours"
+    model_name = (
+        model_names["yet_to_arrive"] + str(int(prediction_window / 60)) + "_hours"
+    )
     save_model(yta_model, model_name, model_file_path)
 
     # Test real-time predictions
@@ -695,18 +701,18 @@ def train_all_models(
         cdf_cut_points=cdf_cut_points,
         curve_params=curve_params,
         uclh=uclh,
-        random_seed=random_seed
+        random_seed=random_seed,
     )
 
     # Save results in metadata
     model_metadata["realtime_preds"] = realtime_preds_dict
-    
+
     # Save metadata with configurable path and filename
     save_metadata(
         metadata=model_metadata,
         base_path=model_file_path,
         subdir=metadata_subdir,
-        filename=metadata_filename
+        filename=metadata_filename,
     )
 
     return model_metadata
