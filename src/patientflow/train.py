@@ -488,10 +488,18 @@ def save_model(model, model_name, model_file_path):
     """
     Save trained model(s) to disk.
 
-    Args:
-        model: Single model or dictionary of models to save
-        model_name (str): Base name for the model(s)
-        model_file_path (Path): Path where model(s) should be saved
+    Parameters
+    ----------
+    model : object or dict
+        A single model instance or a dictionary of models to save.
+    model_name : str
+        Base name to use for saving the model(s).
+    model_file_path : Path
+        Directory path where the model(s) will be saved.
+
+    Returns
+    -------
+    None
     """
     if isinstance(model, dict):
         # Handle dictionary of models (e.g., admission models)
@@ -510,11 +518,20 @@ def save_metadata(metadata, base_path, subdir, filename):
     """
     Save model metadata to disk.
 
-    Args:
-        metadata (dict): Metadata to save
-        base_path (Path): Base directory path
-        subdir (str, optional): Subdirectory for metadata. Defaults to "model-output"
-        filename (str, optional): Name of metadata file. Defaults to "model_metadata.json"
+    Parameters
+    ----------
+    metadata : dict
+        Metadata dictionary to save as a JSON file.
+    base_path : Path
+        Base directory where the metadata will be stored.
+    subdir : str, optional
+        Subdirectory within the base directory for saving metadata. Defaults to "model-output".
+    filename : str, optional
+        Name of the metadata file. Defaults to "model_metadata.json".
+
+    Returns
+    -------
+    None
     """
     # Construct full path
     metadata_dir = base_path / subdir if subdir else base_path
@@ -536,20 +553,31 @@ def test_real_time_predictions(
     random_seed,
 ):
     """
-    Test real-time prediction creation using a random test set sample.
+    Test real-time predictions on a sample from a test dataset.
 
-    Args:
-        visits (pd.DataFrame): DataFrame containing visit data
-        model_file_path (Path): Path where models are saved
-        prediction_window (int): Window size for predictions in minutes
-        specialties (list): List of specialties to consider
-        cdf_cut_points (list): CDF cut points for predictions
-        curve_params (tuple): Tuple of (x1, y1, x2, y2) coordinates for curve parameters
-        uclh (bool): Flag for UCLH dataset usage
-        random_seed (int): Random seed for reproducibility
+    Parameters
+    ----------
+    visits : pd.DataFrame
+        DataFrame containing visit data.
+    model_file_path : Path
+        Path where the models are stored.
+    prediction_window : int
+        Size of the prediction window in minutes.
+    specialties : list
+        List of specialties for which predictions are made.
+    cdf_cut_points : list
+        Cumulative distribution function cut points for predictions.
+    curve_params : tuple
+        Tuple containing curve parameters (x1, y1, x2, y2).
+    uclh : bool
+        Indicates if the UCLH dataset is being used.
+    random_seed : int
+        Random seed for reproducibility.
 
-    Returns:
-        dict: Dictionary containing prediction time, date and results
+    Returns
+    -------
+    dict
+        Dictionary containing the prediction time, date, and results.
     """
     # Select random test set row
     random_row = visits[visits.training_validation_test == "test"].sample(
@@ -615,28 +643,51 @@ def train_all_models(
     metadata_filename="model_metadata.json",
 ):
     """
-    Main function for training and evaluating patient flow models.
+    Train and evaluate patient flow models.
 
-    Args:
-        visits (pd.DataFrame): DataFrame containing visit data
-        yta (pd.DataFrame): DataFrame containing yet-to-arrive data
-        model_file_path (Path): Path where models will be saved
-        prediction_times (list): Times of day at which predictions will be made
-        prediction_window (int): Window size for predictions in minutes
-        yta_time_interval (int): Time interval for yet-to-arrive predictions
-        epsilon (float): Epsilon parameter for models
-        curve_params (tuple): Tuple of (x1, y1, x2, y2) coordinates for curve parameters
-        grid_params (dict): XGBoost hyperparameter grid
-        exclude_columns (list): Columns to exclude from training
-        ordinal_mappings (dict): Mappings for ordinal variables
-        model_names (dict): Names for different models
-        specialties (list): List of specialties to consider
-        cdf_cut_points (list): CDF cut points for predictions
-        uclh (bool): Flag for UCLH dataset usage
-        random_seed (int): Random seed for reproducibility
+    Parameters
+    ----------
+    visits : pd.DataFrame
+        DataFrame containing visit data.
+    yta : pd.DataFrame
+        DataFrame containing yet-to-arrive data.
+    model_file_path : Path
+        Path to save trained models.
+    prediction_times : list
+        List of times for making predictions.
+    prediction_window : int
+        Prediction window size in minutes.
+    yta_time_interval : int
+        Interval size for yet-to-arrive predictions in minutes.
+    epsilon : float
+        Epsilon parameter for model training.
+    curve_params : tuple
+        Curve parameters (x1, y1, x2, y2).
+    grid_params : dict
+        Hyperparameter grid for model training.
+    exclude_columns : list
+        Columns to exclude during training.
+    ordinal_mappings : dict
+        Ordinal variable mappings for categorical features.
+    model_names : dict
+        Names for different models.
+    specialties : list
+        List of specialties to consider.
+    cdf_cut_points : list
+        CDF cut points for predictions.
+    uclh : bool
+        Indicates if the UCLH dataset is used.
+    random_seed : int
+        Random seed for reproducibility.
+    metadata_subdir : str, optional
+        Subdirectory for metadata. Defaults to "model-output".
+    metadata_filename : str, optional
+        Metadata filename. Defaults to "model_metadata.json".
 
-    Returns:
-        dict: Model metadata including training results and predictions
+    Returns
+    -------
+    dict
+        Model metadata including training and evaluation details.
     """
     # Set random seed
     np.random.seed(random_seed)
