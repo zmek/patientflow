@@ -507,220 +507,124 @@ def train_yet_to_arrive_model(
 
     return model_metadata
 
-
-def main(data_folder_name=None, uclh=None):
-    # parse arguments
-    if data_folder_name is None or uclh is None:
-        args = parse_args()
-        data_folder_name = (
-            data_folder_name if data_folder_name is not None else args.data_folder_name
-        )
-        uclh = uclh if uclh is not None else args.uclh
-
-    # Now `data_folder_name` and `uclh` contain the appropriate values
-    print(f"Loading data from folder: {data_folder_name}")
-    if uclh:
-        print("Training models using UCLH dataset")
-    else:
-        print("Training models using public dataset")
+def train_all_models(
+    visits,
+    yta,
+    model_file_path,
+    prediction_times,
+    prediction_window,
+    yta_time_interval,
+    epsilon,
+    curve_params,
+    grid_params,
+    exclude_columns,
+    ordinal_mappings,
+    model_names,
+    specialties,
+    cdf_cut_points,
+    uclh,
+    random_seed
+):
+    """
+    Main function for training and evaluating patient flow models.
+    
+    Args:
+        visits (pd.DataFrame): DataFrame containing visit data
+        yta (pd.DataFrame): DataFrame containing yet-to-arrive data
+        model_file_path (Path): Path where models will be saved
+        prediction_times (list): Times of day at which predictions will be made
+        prediction_window (int): Window size for predictions in minutes
+        yta_time_interval (int): Time interval for yet-to-arrive predictions
+        epsilon (float): Epsilon parameter for models
+        curve_params (tuple): Tuple of (x1, y1, x2, y2) coordinates for curve parameters
+        grid_params (dict): XGBoost hyperparameter grid
+        exclude_columns (list): Columns to exclude from training
+        ordinal_mappings (dict): Mappings for ordinal variables
+        model_names (dict): Names for different models
+        specialties (list): List of specialties to consider
+        cdf_cut_points (list): CDF cut points for predictions
+        uclh (bool): Flag for UCLH dataset usage
+        random_seed (int): Random seed for reproducibility
+    
+    Returns:
+        dict: Model metadata including training results and predictions
+    """
+    # Set random seed
+    np.random.seed(random_seed)
 
     train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
 
-    # set file location
-    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        inference_time=False,
-        train_dttm=train_dttm,
-        data_folder_name=data_folder_name,
-        uclh=uclh,
-    )
-
-    # load parameters
-    params = load_config_file(config_path)
-
-    prediction_times = params["prediction_times"]
-    start_training_set, start_validation_set, start_test_set, end_test_set = (
-        params["start_training_set"],
-        params["start_validation_set"],
-        params["start_test_set"],
-        params["end_test_set"],
-    )
-    x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
-    prediction_window = params["prediction_window"]
-    epsilon = float(params["epsilon"])
-    yta_time_interval = params["yta_time_interval"]
-
-    # convert params dates in format that can be saved to json later
-    json_safe_params = create_json_safe_params(params)
-
-    # Load data
-    if uclh:
-        visits_path, visits_csv_path, yta_path, yta_csv_path = set_data_file_names(
-            uclh, data_file_path, config_path
-        )
-    else:
-        visits_csv_path, yta_csv_path = set_data_file_names(uclh, data_file_path)
-
-    visits = data_from_csv(
-        visits_csv_path,
-        index_column="snapshot_id",
-        sort_columns=["visit_number", "snapshot_date", "prediction_time"],
-        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
-    )
-    yta = pd.read_csv(yta_csv_path)
-
-    # Create snapshot date
-    visits["snapshot_date"] = pd.to_datetime(visits["snapshot_date"]).dt.date
-
-    print("\nTimes of day at which predictions will be made")
-    print(prediction_times)
-    print("\nNumber of rows in dataset that are not in these times of day")
-    print(len(visits[~visits.prediction_time.isin(prediction_times)]))
-
-    # Check that input data aligns with specified params in config.yaml ie training, validation and test set dates
-    print("Checking dates for ed_visits dataset (used for patients in ED)")
-    split_and_check_sets(
-        visits, start_training_set, start_validation_set, start_test_set, end_test_set
-    )
-    print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
-
-    split_and_check_sets(
-        yta,
-        start_training_set,
-        start_validation_set,
-        start_test_set,
-        end_test_set,
-        date_column="arrival_datetime",
-    )
-
+    # Create metadata dictionary
     model_metadata = {
-        "data_folder_name": data_folder_name,
         "uclh": uclh,
         "train_dttm": train_dttm,
-        "config": json_safe_params,
-    }
-    filename_results_dict_name = "model_metadata.json"
-
-    # Train admissions model
-
-    # Initialize a dict to save information about the best models for each time of day
-    grid = {
-        "n_estimators": [30],  # , 40, 50],
-        "subsample": [0.7],  # , 0.8,0.9],
-        "colsample_bytree": [0.7],  # , 0.8, 0.9]
-    }
-
-    # certain columns are not used in training
-    exclude_from_training_data = [
-        "visit_number",
-        "snapshot_date",
-        "prediction_time",
-        "specialty",
-        "consultation_sequence",
-        "final_sequence",
-    ]
-
-    ordinal_mappings = {
-        "age_group": [
-            "0-17",
-            "18-24",
-            "25-34",
-            "35-44",
-            "45-54",
-            "55-64",
-            "65-74",
-            "75-102",
-        ],
-        "latest_acvpu": ["A", "C", "V", "P", "U"],
-        "latest_obs_manchester_triage_acuity": [
-            "Blue",
-            "Green",
-            "Yellow",
-            "Orange",
-            "Red",
-        ],
-        "latest_obs_objective_pain_score": [
-            r"Nil",
-            r"Mild",
-            r"Moderate",
-            r"Severe\E\Very Severe",
-        ],
-        "latest_obs_level_of_consciousness": [
-            "A",  # alert
-            "C",  # confused
-            "V",  # voice - responds to voice stimulus
-            "P",  # pain - responds to pain stimulus
-            "U",  # unconscious - no response to pain or voice stimulus
-        ],
     }
 
     # Train admission model
-    model_name = "admissions"
     model_metadata = train_admissions_models(
-        visits,
-        grid,
-        exclude_from_training_data,
-        ordinal_mappings,
-        prediction_times,
-        model_name,
-        model_file_path,
-        model_metadata,
-        filename_results_dict_name,
+        visits=visits,
+        grid=grid_params,
+        exclude_from_training_data=exclude_columns,
+        ordinal_mappings=ordinal_mappings,
+        prediction_times=prediction_times,
+        model_name=model_names["admissions"],
+        model_file_path=model_file_path,
+        model_metadata=model_metadata,
+        filename_results_dict_name="model_metadata.json"
     )
 
     # Train specialty model
-    model_name = "ed_specialty"
     model_metadata = train_specialty_model(
         visits=visits,
-        model_name=model_name,
+        model_name=model_names["specialty"],
         model_metadata=model_metadata,
         model_file_path=model_file_path,
-        uclh=uclh,
+        uclh=uclh
     )
 
     # Train yet-to-arrive model
-    model_name = "ed_yet_to_arrive_by_spec_"
     model_metadata = train_yet_to_arrive_model(
         yta=yta,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
-        model_name=model_name,
-        model_metadata=model_metadata,
+        model_name=model_names["yet_to_arrive"],
         model_file_path=model_file_path,
-        uclh=uclh,
+        model_metadata=model_metadata,
+        uclh=uclh
     )
 
     # Test creation of real-time predictions
-    # Randomly pick a prediction moment to do inference on
-    random_row = visits[visits.training_validation_test == "test"].sample(n=1)
+    random_row = visits[visits.training_validation_test == "test"].sample(n=1, random_state=random_seed)
     prediction_time = random_row.prediction_time.values[0]
     prediction_date = random_row.snapshot_date.values[0]
 
     prediction_snapshots = visits[
-        (visits.prediction_time == prediction_time)
-        & (visits.snapshot_date == prediction_date)
+        (visits.prediction_time == prediction_time) &
+        (visits.snapshot_date == prediction_date)
     ]
     special_params = create_special_category_objects(uclh)
 
     realtime_preds_dict = {
         "prediction_time": str(prediction_time),
-        "prediction_date": str(prediction_date),
+        "prediction_date": str(prediction_date)
     }
 
     try:
+        x1, y1, x2, y2 = curve_params
         realtime_preds_dict["realtime_preds"] = create_predictions(
             model_file_path=model_file_path,
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
-            specialties=["surgical", "haem/onc", "medical", "paediatric"],
+            specialties=specialties,
             prediction_window_hrs=prediction_window / 60,
-            cdf_cut_points=[0.9, 0.7],
+            cdf_cut_points=cdf_cut_points,
             x1=x1,
             y1=y1,
             x2=x2,
             y2=y2,
-            special_params=special_params,
+            special_params=special_params
         )
         print("Real-time inference ran correctly")
     except Exception as e:
@@ -728,15 +632,156 @@ def main(data_folder_name=None, uclh=None):
         print(realtime_preds_dict)
         sys.exit(1)
 
-    # save the results dictionary
+    # Save results
     model_metadata["realtime_preds"] = realtime_preds_dict
+    filename_results_dict_path = model_file_path / "model-output" / "model_metadata.json"
 
-    filename_results_dict_path = model_file_path / "model-output"
-    full_path_results_dict = filename_results_dict_path / filename_results_dict_name
-
-    with open(full_path_results_dict, "w") as f:
+    with open(filename_results_dict_path, "w") as f:
         json.dump(model_metadata, f)
 
+    return model_metadata
+
+def main(data_folder_name=None, uclh=None):
+    """
+    Main entry point for training patient flow models.
+    
+    Args:
+        data_folder_name (str, optional): Name of data folder
+        uclh (bool, optional): Flag indicating if using UCLH dataset
+    """
+    # Parse arguments if not provided
+    if data_folder_name is None or uclh is None:
+        args = parse_args()
+        data_folder_name = data_folder_name if data_folder_name is not None else args.data_folder_name
+        uclh = uclh if uclh is not None else args.uclh
+
+    print(f"Loading data from folder: {data_folder_name}")
+    print("Training models using UCLH dataset" if uclh else "Training models using public dataset")
+
+    train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
+
+    # Set file locations
+    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+        inference_time=False,
+        train_dttm=train_dttm,
+        data_folder_name=data_folder_name,
+        uclh=uclh
+    )
+
+    # Load parameters
+    params = load_config_file(config_path)
+    
+    # Extract parameters
+    prediction_times = params["prediction_times"]
+    start_training_set = params["start_training_set"]
+    start_validation_set = params["start_validation_set"]
+    start_test_set = params["start_test_set"]
+    end_test_set = params["end_test_set"]
+    prediction_window = params["prediction_window"]
+    epsilon = float(params["epsilon"])
+    yta_time_interval = params["yta_time_interval"]
+    x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
+
+    # Load data
+    if uclh:
+        visits_path, visits_csv_path, yta_path, yta_csv_path = set_data_file_names(uclh, data_file_path, config_path)
+    else:
+        visits_csv_path, yta_csv_path = set_data_file_names(uclh, data_file_path)
+
+    visits = data_from_csv(
+        visits_csv_path,
+        index_column="snapshot_id",
+        sort_columns=["visit_number", "snapshot_date", "prediction_time"],
+        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"]
+    )
+    yta = pd.read_csv(yta_csv_path)
+
+    # Create snapshot date
+    visits["snapshot_date"] = pd.to_datetime(visits["snapshot_date"]).dt.date
+
+    # Verify data alignment
+    print("\nTimes of day at which predictions will be made")
+    print(prediction_times)
+    print("\nNumber of rows in dataset that are not in these times of day")
+    print(len(visits[~visits.prediction_time.isin(prediction_times)]))
+
+    # Check dataset splits
+    print("Checking dates for ed_visits dataset (used for patients in ED)")
+    split_and_check_sets(visits, start_training_set, start_validation_set, start_test_set, end_test_set)
+    print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
+    split_and_check_sets(
+        yta,
+        start_training_set,
+        start_validation_set,
+        start_test_set,
+        end_test_set,
+        date_column="arrival_datetime"
+    )
+
+    # Set up model parameters
+    grid_params = {
+        "n_estimators": [30],
+        "subsample": [0.7],
+        "colsample_bytree": [0.7]
+    }
+
+    exclude_columns = [
+        "visit_number",
+        "snapshot_date",
+        "prediction_time",
+        "specialty",
+        "consultation_sequence",
+        "final_sequence"
+    ]
+
+    ordinal_mappings = {
+        "age_group": ["0-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-102"],
+        "latest_acvpu": ["A", "C", "V", "P", "U"],
+        "latest_obs_manchester_triage_acuity": ["Blue", "Green", "Yellow", "Orange", "Red"],
+        "latest_obs_objective_pain_score": ["Nil", "Mild", "Moderate", "Severe\\E\\Very Severe"],
+        "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"]
+    }
+
+    model_names = {
+        "admissions": "admissions",
+        "specialty": "ed_specialty",
+        "yet_to_arrive": "ed_yet_to_arrive_by_spec_"
+    }
+
+    specialties = ["surgical", "haem/onc", "medical", "paediatric"]
+    cdf_cut_points = [0.9, 0.7]
+    curve_params = (x1, y1, x2, y2)
+    random_seed = 42
+
+    # Call train_all_models with prepared parameters
+    model_metadata = train_all_models(
+        visits=visits,
+        yta=yta,
+        model_file_path=model_file_path,
+        prediction_times=prediction_times,
+        prediction_window=prediction_window,
+        yta_time_interval=yta_time_interval,
+        epsilon=epsilon,
+        curve_params=curve_params,
+        grid_params=grid_params,
+        exclude_columns=exclude_columns,
+        ordinal_mappings=ordinal_mappings,
+        model_names=model_names,
+        specialties=specialties,
+        cdf_cut_points=cdf_cut_points,
+        random_seed=random_seed,
+        uclh=uclh
+    )
+
+    # Add additional metadata
+    model_metadata.update({
+        "data_folder_name": data_folder_name,
+        "uclh": uclh,
+        "train_dttm": train_dttm,
+        "config": create_json_safe_params(params)
+    })
+
+    return model_metadata
 
 if __name__ == "__main__":
     main()
