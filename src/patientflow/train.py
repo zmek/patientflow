@@ -180,9 +180,9 @@ def initialise_xgb(params):
     model = XGBClassifier(
         n_jobs=-1,
         eval_metric="logloss",
-        use_label_encoder=False,
+        # use_label_encoder=False,
         enable_categorical=True,
-        scikit_learn=True,  # Add this parameter
+        # scikit_learn=True,  # Add this parameter
     )
     model.set_params(**params)
     return model
@@ -254,6 +254,31 @@ def create_json_safe_params(params):
     return new_params
 
 
+def get_default_visits(admitted, uclh):
+    # Get the special category objects based on the uclh flag
+    special_params = create_special_category_objects(uclh)
+
+    # Extract the function from special_params that will be used to identify the visits falling into the default category
+    # ie visits that do not require special functionality (in our case, the non-paediatric patients
+    opposite_special_category_func = special_params["special_func_map"]["default"]
+
+    # Get the special handling category (e.g., "paediatric") from the dictionary
+    special_category_key = next(
+        key
+        for key, value in special_params["special_category_dict"].items()
+        if value == 1.0
+    )
+
+    # Apply the function to filter out rows where the default handling (non-paediatric) applies
+    # Also, filter out rows where the 'specialty' matches the special handling category
+    filtered_admitted = admitted[
+        admitted.apply(opposite_special_category_func, axis=1)
+        & (admitted["specialty"] != special_category_key)
+    ]
+
+    return filtered_admitted
+
+
 def train_admissions_models(
     visits,
     grid,
@@ -261,12 +286,12 @@ def train_admissions_models(
     ordinal_mappings,
     prediction_times,
     model_name,
-    model_file_path,
     model_metadata,
-    filename_results_dict_name,
 ):
+    # Initialize dictionary to store models
+    trained_models = {}
+    
     # separate into training, validation and test sets
-
     train_visits = visits[visits.training_validation_test == "train"].drop(
         columns="training_validation_test"
     )
@@ -284,14 +309,11 @@ def train_admissions_models(
         # create a name for the model based on the time of day it is trained for
         MODEL__ED_ADMISSIONS__NAME = get_model_name(model_name, _prediction_time)
 
-        # use this name in the path for saving best model
-        full_path = model_file_path / MODEL__ED_ADMISSIONS__NAME
-        full_path = full_path.with_suffix(".joblib")
-
         # initialise data used for saving attributes of the model
         model_metadata[MODEL__ED_ADMISSIONS__NAME] = {}
         best_valid_logloss = float("inf")
         results_dict = {}
+        best_pipeline = None
 
         # get visits that were in at the time of day in question and preprocess the training, validation and test sets
         X_train, y_train = get_snapshots_at_prediction_time(
@@ -347,10 +369,10 @@ def train_admissions_models(
                 "valid_logloss": cv_results["valid_logloss"],
             }
 
-            # Update and save best model if current model is better on validation set
+            # Update best model if current model is better on validation set
             if cv_results["valid_logloss"] < best_valid_logloss:
-                # save the details of the best model
                 best_valid_logloss = cv_results["valid_logloss"]
+                best_pipeline = pipeline
 
                 # save the best model params
                 model_metadata[MODEL__ED_ADMISSIONS__NAME]["best_params"] = str(g)
@@ -371,7 +393,6 @@ def train_admissions_models(
                 }
 
                 # save the best features
-                # To access transformed feature names:
                 transformed_cols = pipeline.named_steps[
                     "feature_transformer"
                 ].get_feature_names_out()
@@ -383,45 +404,13 @@ def train_admissions_models(
                     ].feature_importances_.tolist(),
                 }
 
-                # save the best model
-                dump(pipeline, full_path)
+        # Store the best model for this prediction time
+        trained_models[MODEL__ED_ADMISSIONS__NAME] = best_pipeline
 
-    # save the results dictionary
-    filename_results_dict_path = model_file_path / "model-output"
-    full_path_results_dict = filename_results_dict_path / filename_results_dict_name
-
-    with open(full_path_results_dict, "w") as f:
-        json.dump(model_metadata, f)
-
-    return model_metadata
+    return model_metadata, trained_models
 
 
-def get_default_visits(admitted, uclh):
-    # Get the special category objects based on the uclh flag
-    special_params = create_special_category_objects(uclh)
-
-    # Extract the function from special_params that will be used to identify the visits falling into the default category
-    # ie visits that do not require special functionality (in our case, the non-paediatric patients
-    opposite_special_category_func = special_params["special_func_map"]["default"]
-
-    # Get the special handling category (e.g., "paediatric") from the dictionary
-    special_category_key = next(
-        key
-        for key, value in special_params["special_category_dict"].items()
-        if value == 1.0
-    )
-
-    # Apply the function to filter out rows where the default handling (non-paediatric) applies
-    # Also, filter out rows where the 'specialty' matches the special handling category
-    filtered_admitted = admitted[
-        admitted.apply(opposite_special_category_func, axis=1)
-        & (admitted["specialty"] != special_category_key)
-    ]
-
-    return filtered_admitted
-
-
-def train_specialty_model(visits, model_name, model_metadata, model_file_path, uclh):
+def train_specialty_model(visits, model_name, model_metadata, uclh):
     # Select one snapshot per visit
     visits_single = select_one_snapshot_per_visit(visits, visit_col="visit_number")
 
@@ -455,12 +444,7 @@ def train_specialty_model(visits, model_name, model_metadata, model_file_path, u
         "train_set_no": len(train_visits),
     }
 
-    # Save the model
-    full_path = model_file_path / model_name
-    full_path = full_path.with_suffix(".joblib")
-    dump(spec_model, full_path)
-
-    return model_metadata
+    return model_metadata, spec_model
 
 
 def train_yet_to_arrive_model(
@@ -470,15 +454,12 @@ def train_yet_to_arrive_model(
     prediction_times,
     epsilon,
     model_name,
-    model_file_path,
     model_metadata,
     uclh,
 ):
     specialty_filters = create_yta_filters(uclh)
 
-    train_yta = yta[
-        yta.training_validation_test == "train"
-    ]  # .drop(columns='training_validation_test'
+    train_yta = yta[yta.training_validation_test == "train"]
     train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
         train_yta["arrival_datetime"], utc=True
     )
@@ -500,12 +481,114 @@ def train_yet_to_arrive_model(
         "train_set_no": len(train_yta),
     }
 
-    full_path = model_file_path / model_name
-    full_path = full_path.with_suffix(".joblib")
+    return model_metadata, yta_model
 
-    dump(yta_model, full_path)
+def save_model(model, model_name, model_file_path):
+    """
+    Save trained model(s) to disk.
+    
+    Args:
+        model: Single model or dictionary of models to save
+        model_name (str): Base name for the model(s)
+        model_file_path (Path): Path where model(s) should be saved
+    """
+    if isinstance(model, dict):
+        # Handle dictionary of models (e.g., admission models)
+        for name, m in model.items():
+            full_path = model_file_path / name
+            full_path = full_path.with_suffix(".joblib")
+            dump(m, full_path)
+    else:
+        # Handle single model (e.g., specialty or yet-to-arrive model)
+        full_path = model_file_path / model_name
+        full_path = full_path.with_suffix(".joblib")
+        dump(model, full_path)
 
-    return model_metadata
+def save_metadata(metadata, base_path, subdir, filename):
+    """
+    Save model metadata to disk.
+    
+    Args:
+        metadata (dict): Metadata to save
+        base_path (Path): Base directory path
+        subdir (str, optional): Subdirectory for metadata. Defaults to "model-output"
+        filename (str, optional): Name of metadata file. Defaults to "model_metadata.json"
+    """
+    # Construct full path
+    metadata_dir = base_path / subdir if subdir else base_path
+    metadata_dir.mkdir(exist_ok=True, parents=True)
+    metadata_path = metadata_dir / filename
+
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f)
+
+def test_real_time_predictions(
+    visits,
+    model_file_path,
+    prediction_window,
+    specialties,
+    cdf_cut_points,
+    curve_params,
+    uclh,
+    random_seed
+):
+    """
+    Test real-time prediction creation using a random test set sample.
+    
+    Args:
+        visits (pd.DataFrame): DataFrame containing visit data
+        model_file_path (Path): Path where models are saved
+        prediction_window (int): Window size for predictions in minutes
+        specialties (list): List of specialties to consider
+        cdf_cut_points (list): CDF cut points for predictions
+        curve_params (tuple): Tuple of (x1, y1, x2, y2) coordinates for curve parameters
+        uclh (bool): Flag for UCLH dataset usage
+        random_seed (int): Random seed for reproducibility
+        
+    Returns:
+        dict: Dictionary containing prediction time, date and results
+    """
+    # Select random test set row
+    random_row = visits[visits.training_validation_test == "test"].sample(
+        n=1, random_state=random_seed
+    )
+    prediction_time = random_row.prediction_time.values[0]
+    prediction_date = random_row.snapshot_date.values[0]
+
+    # Get prediction snapshots
+    prediction_snapshots = visits[
+        (visits.prediction_time == prediction_time)
+        & (visits.snapshot_date == prediction_date)
+    ]
+    special_params = create_special_category_objects(uclh)
+
+    realtime_preds_dict = {
+        "prediction_time": str(prediction_time),
+        "prediction_date": str(prediction_date),
+    }
+
+    try:
+        x1, y1, x2, y2 = curve_params
+        realtime_preds_dict["realtime_preds"] = create_predictions(
+            model_file_path=model_file_path,
+            prediction_time=prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=specialties,
+            prediction_window_hrs=prediction_window / 60,
+            cdf_cut_points=cdf_cut_points,
+            x1=x1,
+            y1=y1,
+            x2=x2,
+            y2=y2,
+            special_params=special_params,
+        )
+        print("Real-time inference ran correctly")
+    except Exception as e:
+        print(f"Real-time inference failed due to this error: {str(e)}")
+        print(realtime_preds_dict)
+        sys.exit(1)
+        
+    return realtime_preds_dict
 
 def train_all_models(
     visits,
@@ -523,11 +606,13 @@ def train_all_models(
     specialties,
     cdf_cut_points,
     uclh,
-    random_seed
+    random_seed,
+    metadata_subdir='model-output',  
+    metadata_filename="model_metadata.json"
 ):
     """
     Main function for training and evaluating patient flow models.
-    
+
     Args:
         visits (pd.DataFrame): DataFrame containing visit data
         yta (pd.DataFrame): DataFrame containing yet-to-arrive data
@@ -545,7 +630,7 @@ def train_all_models(
         cdf_cut_points (list): CDF cut points for predictions
         uclh (bool): Flag for UCLH dataset usage
         random_seed (int): Random seed for reproducibility
-    
+
     Returns:
         dict: Model metadata including training results and predictions
     """
@@ -560,91 +645,77 @@ def train_all_models(
         "train_dttm": train_dttm,
     }
 
-    # Train admission model
-    model_metadata = train_admissions_models(
+    # Train admission models
+    model_metadata, admission_models = train_admissions_models(
         visits=visits,
         grid=grid_params,
         exclude_from_training_data=exclude_columns,
         ordinal_mappings=ordinal_mappings,
         prediction_times=prediction_times,
         model_name=model_names["admissions"],
-        model_file_path=model_file_path,
         model_metadata=model_metadata,
-        filename_results_dict_name="model_metadata.json"
     )
+    
+    # Save admission models
+    save_model(admission_models, model_names["admissions"], model_file_path)
 
     # Train specialty model
-    model_metadata = train_specialty_model(
+    model_metadata, specialty_model = train_specialty_model(
         visits=visits,
         model_name=model_names["specialty"],
         model_metadata=model_metadata,
-        model_file_path=model_file_path,
-        uclh=uclh
+        uclh=uclh,
     )
+    
+    # Save specialty model
+    save_model(specialty_model, model_names["specialty"], model_file_path)
 
     # Train yet-to-arrive model
-    model_metadata = train_yet_to_arrive_model(
+    model_metadata, yta_model = train_yet_to_arrive_model(
         yta=yta,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
         model_name=model_names["yet_to_arrive"],
-        model_file_path=model_file_path,
         model_metadata=model_metadata,
-        uclh=uclh
+        uclh=uclh,
+    )
+    
+    # Save yet-to-arrive model with hours appended to name
+    model_name = model_names["yet_to_arrive"] + str(int(prediction_window / 60)) + "_hours"
+    save_model(yta_model, model_name, model_file_path)
+
+    # Test real-time predictions
+    realtime_preds_dict = test_real_time_predictions(
+        visits=visits,
+        model_file_path=model_file_path,
+        prediction_window=prediction_window,
+        specialties=specialties,
+        cdf_cut_points=cdf_cut_points,
+        curve_params=curve_params,
+        uclh=uclh,
+        random_seed=random_seed
     )
 
-    # Test creation of real-time predictions
-    random_row = visits[visits.training_validation_test == "test"].sample(n=1, random_state=random_seed)
-    prediction_time = random_row.prediction_time.values[0]
-    prediction_date = random_row.snapshot_date.values[0]
-
-    prediction_snapshots = visits[
-        (visits.prediction_time == prediction_time) &
-        (visits.snapshot_date == prediction_date)
-    ]
-    special_params = create_special_category_objects(uclh)
-
-    realtime_preds_dict = {
-        "prediction_time": str(prediction_time),
-        "prediction_date": str(prediction_date)
-    }
-
-    try:
-        x1, y1, x2, y2 = curve_params
-        realtime_preds_dict["realtime_preds"] = create_predictions(
-            model_file_path=model_file_path,
-            prediction_time=prediction_time,
-            prediction_snapshots=prediction_snapshots,
-            specialties=specialties,
-            prediction_window_hrs=prediction_window / 60,
-            cdf_cut_points=cdf_cut_points,
-            x1=x1,
-            y1=y1,
-            x2=x2,
-            y2=y2,
-            special_params=special_params
-        )
-        print("Real-time inference ran correctly")
-    except Exception as e:
-        print(f"Real-time inference failed due to this error: {str(e)}")
-        print(realtime_preds_dict)
-        sys.exit(1)
-
-    # Save results
+    # Save results in metadata
     model_metadata["realtime_preds"] = realtime_preds_dict
-    filename_results_dict_path = model_file_path / "model-output" / "model_metadata.json"
-
-    with open(filename_results_dict_path, "w") as f:
-        json.dump(model_metadata, f)
+    
+    # Save metadata with configurable path and filename
+    save_metadata(
+        metadata=model_metadata,
+        base_path=model_file_path,
+        subdir=metadata_subdir,
+        filename=metadata_filename
+    )
 
     return model_metadata
+
 
 def main(data_folder_name=None, uclh=None):
     """
     Main entry point for training patient flow models.
-    
+
     Args:
         data_folder_name (str, optional): Name of data folder
         uclh (bool, optional): Flag indicating if using UCLH dataset
@@ -652,39 +723,47 @@ def main(data_folder_name=None, uclh=None):
     # Parse arguments if not provided
     if data_folder_name is None or uclh is None:
         args = parse_args()
-        data_folder_name = data_folder_name if data_folder_name is not None else args.data_folder_name
+        data_folder_name = (
+            data_folder_name if data_folder_name is not None else args.data_folder_name
+        )
         uclh = uclh if uclh is not None else args.uclh
 
     print(f"Loading data from folder: {data_folder_name}")
-    print("Training models using UCLH dataset" if uclh else "Training models using public dataset")
+    print(
+        "Training models using UCLH dataset"
+        if uclh
+        else "Training models using public dataset"
+    )
 
     train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
 
     # Set file locations
-    data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+    data_file_path, _, model_file_path, config_path = set_file_paths(
         inference_time=False,
         train_dttm=train_dttm,
         data_folder_name=data_folder_name,
-        uclh=uclh
+        uclh=uclh,
     )
 
     # Load parameters
-    params = load_config_file(config_path)
-    
+    config = load_config_file(config_path)
+
     # Extract parameters
-    prediction_times = params["prediction_times"]
-    start_training_set = params["start_training_set"]
-    start_validation_set = params["start_validation_set"]
-    start_test_set = params["start_test_set"]
-    end_test_set = params["end_test_set"]
-    prediction_window = params["prediction_window"]
-    epsilon = float(params["epsilon"])
-    yta_time_interval = params["yta_time_interval"]
-    x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
+    prediction_times = config["prediction_times"]
+    start_training_set = config["start_training_set"]
+    start_validation_set = config["start_validation_set"]
+    start_test_set = config["start_test_set"]
+    end_test_set = config["end_test_set"]
+    prediction_window = config["prediction_window"]
+    epsilon = float(config["epsilon"])
+    yta_time_interval = config["yta_time_interval"]
+    x1, y1, x2, y2 = config["x1"], config["y1"], config["x2"], config["y2"]
 
     # Load data
     if uclh:
-        visits_path, visits_csv_path, yta_path, yta_csv_path = set_data_file_names(uclh, data_file_path, config_path)
+        _, visits_csv_path, _, yta_csv_path = set_data_file_names(
+            uclh, data_file_path, config_path
+        )
     else:
         visits_csv_path, yta_csv_path = set_data_file_names(uclh, data_file_path)
 
@@ -692,7 +771,7 @@ def main(data_folder_name=None, uclh=None):
         visits_csv_path,
         index_column="snapshot_id",
         sort_columns=["visit_number", "snapshot_date", "prediction_time"],
-        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"]
+        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
     )
     yta = pd.read_csv(yta_csv_path)
 
@@ -707,7 +786,9 @@ def main(data_folder_name=None, uclh=None):
 
     # Check dataset splits
     print("Checking dates for ed_visits dataset (used for patients in ED)")
-    split_and_check_sets(visits, start_training_set, start_validation_set, start_test_set, end_test_set)
+    split_and_check_sets(
+        visits, start_training_set, start_validation_set, start_test_set, end_test_set
+    )
     print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
     split_and_check_sets(
         yta,
@@ -715,15 +796,11 @@ def main(data_folder_name=None, uclh=None):
         start_validation_set,
         start_test_set,
         end_test_set,
-        date_column="arrival_datetime"
+        date_column="arrival_datetime",
     )
 
     # Set up model parameters
-    grid_params = {
-        "n_estimators": [30],
-        "subsample": [0.7],
-        "colsample_bytree": [0.7]
-    }
+    grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}
 
     exclude_columns = [
         "visit_number",
@@ -731,21 +808,41 @@ def main(data_folder_name=None, uclh=None):
         "prediction_time",
         "specialty",
         "consultation_sequence",
-        "final_sequence"
+        "final_sequence",
     ]
 
     ordinal_mappings = {
-        "age_group": ["0-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-102"],
+        "age_group": [
+            "0-17",
+            "18-24",
+            "25-34",
+            "35-44",
+            "45-54",
+            "55-64",
+            "65-74",
+            "75-102",
+        ],
         "latest_acvpu": ["A", "C", "V", "P", "U"],
-        "latest_obs_manchester_triage_acuity": ["Blue", "Green", "Yellow", "Orange", "Red"],
-        "latest_obs_objective_pain_score": ["Nil", "Mild", "Moderate", "Severe\\E\\Very Severe"],
-        "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"]
+        "latest_obs_manchester_triage_acuity": [
+            "Blue",
+            "Green",
+            "Yellow",
+            "Orange",
+            "Red",
+        ],
+        "latest_obs_objective_pain_score": [
+            "Nil",
+            "Mild",
+            "Moderate",
+            "Severe\\E\\Very Severe",
+        ],
+        "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"],
     }
 
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
-        "yet_to_arrive": "ed_yet_to_arrive_by_spec_"
+        "yet_to_arrive": "ed_yet_to_arrive_by_spec_",
     }
 
     specialties = ["surgical", "haem/onc", "medical", "paediatric"]
@@ -770,18 +867,21 @@ def main(data_folder_name=None, uclh=None):
         specialties=specialties,
         cdf_cut_points=cdf_cut_points,
         random_seed=random_seed,
-        uclh=uclh
+        uclh=uclh,
     )
 
     # Add additional metadata
-    model_metadata.update({
-        "data_folder_name": data_folder_name,
-        "uclh": uclh,
-        "train_dttm": train_dttm,
-        "config": create_json_safe_params(params)
-    })
+    model_metadata.update(
+        {
+            "data_folder_name": data_folder_name,
+            "uclh": uclh,
+            "train_dttm": train_dttm,
+            "config": create_json_safe_params(config),
+        }
+    )
 
     return model_metadata
+
 
 if __name__ == "__main__":
     main()
