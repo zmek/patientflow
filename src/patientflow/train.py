@@ -280,27 +280,19 @@ def get_default_visits(admitted, uclh):
 
 
 def train_admissions_models(
-    visits,
+    train_visits,
+    valid_visits,
+    test_visits,
     grid,
     exclude_from_training_data,
     ordinal_mappings,
     prediction_times,
     model_name,
     model_metadata,
+    visit_col,
 ):
     # Initialize dictionary to store models
     trained_models = {}
-
-    # separate into training, validation and test sets
-    train_visits = visits[visits.training_validation_test == "train"].drop(
-        columns="training_validation_test"
-    )
-    valid_visits = visits[visits.training_validation_test == "valid"].drop(
-        columns="training_validation_test"
-    )
-    test_visits = visits[visits.training_validation_test == "test"].drop(
-        columns="training_validation_test"
-    )
 
     # Process each time of day
     for _prediction_time in prediction_times:
@@ -317,13 +309,22 @@ def train_admissions_models(
 
         # get visits that were in at the time of day in question and preprocess the training, validation and test sets
         X_train, y_train = get_snapshots_at_prediction_time(
-            train_visits, _prediction_time, exclude_from_training_data
+            df=train_visits,
+            prediction_time=_prediction_time, 
+            exclude_columns=exclude_from_training_data, 
+            visit_col=visit_col
         )
         X_valid, y_valid = get_snapshots_at_prediction_time(
-            valid_visits, _prediction_time, exclude_from_training_data
+            df=valid_visits,      
+            prediction_time=_prediction_time, 
+            exclude_columns=exclude_from_training_data, 
+            visit_col=visit_col
         )
         X_test, y_test = get_snapshots_at_prediction_time(
-            test_visits, _prediction_time, exclude_from_training_data
+            df=test_visits,
+            prediction_time=_prediction_time, 
+            exclude_columns=exclude_from_training_data, 
+            visit_col=visit_col
         )
 
         y_train_class_balance = calculate_class_balance(y_train)
@@ -410,9 +411,9 @@ def train_admissions_models(
     return model_metadata, trained_models
 
 
-def train_specialty_model(visits, model_name, model_metadata, uclh):
+def train_specialty_model(train_visits, model_name, model_metadata, uclh, visit_col):
     # Select one snapshot per visit
-    visits_single = select_one_snapshot_per_visit(visits, visit_col="visit_number")
+    visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
 
     # Prepare dataset of admitted visits only for training specialty model
     admitted = visits_single[
@@ -428,27 +429,23 @@ def train_specialty_model(visits, model_name, model_metadata, uclh):
         "final_sequence"
     ].apply(lambda x: tuple(x) if x else ())
 
-    # Train model
-    train_visits = filtered_admitted[
-        filtered_admitted.training_validation_test == "train"
-    ]
     spec_model = SequencePredictor(
         input_var="consultation_sequence",
         grouping_var="final_sequence",
         outcome_var="specialty",
     )
-    spec_model.fit(train_visits)
+    spec_model.fit(filtered_admitted)
 
     model_metadata[model_name] = {}
     model_metadata[model_name]["train_set_no"] = {
-        "train_set_no": len(train_visits),
+        "train_set_no": len(filtered_admitted),
     }
 
     return model_metadata, spec_model
 
 
 def train_yet_to_arrive_model(
-    yta,
+    train_yta,
     prediction_window,
     yta_time_interval,
     prediction_times,
@@ -459,7 +456,6 @@ def train_yet_to_arrive_model(
 ):
     specialty_filters = create_yta_filters(uclh)
 
-    train_yta = yta[yta.training_validation_test == "train"]
     train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
         train_yta["arrival_datetime"], utc=True
     )
@@ -639,6 +635,7 @@ def train_all_models(
     cdf_cut_points,
     uclh,
     random_seed,
+    visit_col='visit_number',
     metadata_subdir="model-output",
     metadata_filename="model_metadata.json",
 ):
@@ -679,6 +676,8 @@ def train_all_models(
         Indicates if the UCLH dataset is used.
     random_seed : int
         Random seed for reproducibility.
+    visit_col : str, optional
+        Name of column in dataset that is used to identify a hospital visit (eg visit_number, csn).
     metadata_subdir : str, optional
         Subdirectory for metadata. Defaults to "model-output".
     metadata_filename : str, optional
@@ -700,15 +699,29 @@ def train_all_models(
         "train_dttm": train_dttm,
     }
 
+    # Separate into training, validation and test sets
+    train_visits = visits[visits.training_validation_test == "train"].drop(
+        columns="training_validation_test"
+    )
+    valid_visits = visits[visits.training_validation_test == "valid"].drop(
+        columns="training_validation_test"
+    )
+    test_visits = visits[visits.training_validation_test == "test"].drop(
+        columns="training_validation_test"
+    )
+
     # Train admission models
     model_metadata, admission_models = train_admissions_models(
-        visits=visits,
+        train_visits=train_visits,
+        valid_visits=valid_visits,
+        test_visits=test_visits,
         grid=grid_params,
         exclude_from_training_data=exclude_columns,
         ordinal_mappings=ordinal_mappings,
         prediction_times=prediction_times,
         model_name=model_names["admissions"],
         model_metadata=model_metadata,
+        visit_col=visit_col
     )
 
     # Save admission models
@@ -720,6 +733,7 @@ def train_all_models(
         model_name=model_names["specialty"],
         model_metadata=model_metadata,
         uclh=uclh,
+        visit_col=visit_col
     )
 
     # Save specialty model

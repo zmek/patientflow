@@ -18,7 +18,7 @@ prepare_for_inference(model_file_path, model_name, prediction_time=None,
 select_one_snapshot_per_visit(df, visit_col, seed=42)
     Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
 
-get_snapshots_at_prediction_time(df, prediction_time_, exclude_columns, single_snapshot_per_visit=True)
+get_snapshots_at_prediction_time(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
     Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
 
 prepare_snapshots_dict(df, start_dt=None, end_dt=None)
@@ -522,7 +522,7 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
 
 
 def get_snapshots_at_prediction_time(
-    df, prediction_time_, exclude_columns, single_snapshot_per_visit=True, visit_col="visit_number", label_col="is_admitted"
+    df, prediction_time, exclude_columns, single_snapshot_per_visit=True, visit_col="visit_number", label_col="is_admitted"
 ):
     """
     Get snapshots of data at a specific prediction time with configurable visit and label columns.
@@ -531,7 +531,7 @@ def get_snapshots_at_prediction_time(
     -----------
     df : pandas.DataFrame
         Input DataFrame containing the data
-    prediction_time_ : str or datetime
+    prediction_time : str or datetime
         The specific prediction time to filter for
     exclude_columns : list
         List of columns to exclude from the final DataFrame
@@ -547,8 +547,11 @@ def get_snapshots_at_prediction_time(
     tuple(pandas.DataFrame, pandas.Series)
         Processed DataFrame and corresponding labels
     """
+
+
+    
     # Filter by the time of day while keeping the original index
-    df_tod = df[df["prediction_time"] == prediction_time_].copy()
+    df_tod = df[df["prediction_time"] == prediction_time].copy()
     
     if single_snapshot_per_visit:
         # Group by visit_col and get the row with the maximum 'random_number'
