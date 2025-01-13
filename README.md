@@ -22,7 +22,7 @@
 [conda-badge]:              https://img.shields.io/conda/vn/conda-forge/patientflow
 [conda-link]:               https://github.com/conda-forge/patientflow-feedstock
 [license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
-[![ORCID](https://img.shields.io/badge/ORCID-0000-0001-7389-1527-brightgreen)](https://orcid.org/0000-0001-7389-1527)
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
 
 <!-- [pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
