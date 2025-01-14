@@ -453,13 +453,18 @@ def train_yet_to_arrive_model(
     model_name,
     model_metadata,
     uclh,
+    specialty_filters
 ):
-    specialty_filters = create_yta_filters(uclh)
+    if train_yta.index.name is None:
+        if "arrival_datetime" in train_yta.columns:
 
-    train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
-        train_yta["arrival_datetime"], utc=True
-    )
-    train_yta.set_index("arrival_datetime", inplace=True)
+            train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
+                train_yta["arrival_datetime"], utc=True
+            )
+            train_yta.set_index("arrival_datetime", inplace=True)
+            
+    elif train_yta.index.name is not 'arrival_datetime':
+        print("Dataset needs arrival_datetime column")
 
     yta_model = WeightedPoissonPredictor(filters=specialty_filters)
     yta_model.fit(
@@ -740,6 +745,8 @@ def train_all_models(
     save_model(specialty_model, model_names["specialty"], model_file_path)
 
     # Train yet-to-arrive model
+    specialty_filters = create_yta_filters(uclh)
+
     model_metadata, yta_model = train_yet_to_arrive_model(
         yta=yta,
         prediction_window=prediction_window,
