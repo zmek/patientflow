@@ -134,6 +134,7 @@ def annotate_hour_line(
         fontsize=10,
     )
 
+
 def plot_arrival_rates(
     inpatient_arrivals,
     title,
@@ -192,7 +193,6 @@ def plot_arrival_rates(
     processed_data = []
     max_y_values = []
 
-
     for dataset, color, marker in datasets:
         # Calculate base arrival rates
         arrival_rates_dict = time_varying_arrival_rates(dataset, time_interval)
@@ -243,8 +243,8 @@ def plot_arrival_rates(
 
     # Plot data for each dataset
     for data in processed_data:
-        dataset_suffix = f" ({data['dataset_label']})" if data['dataset_label'] else ""
-        
+        dataset_suffix = f" ({data['dataset_label']})" if data["dataset_label"] else ""
+
         # Base arrival rates
         base_label = f"Arrival rates of admitted patients{dataset_suffix}"
         plt.plot(
@@ -279,7 +279,7 @@ def plot_arrival_rates(
                 x_values,
                 get_cyclic_data(data["arrival_rates_spread"]),
                 marker=data["marker"],  # Keep original dataset marker
-                color=data["color"],    # Keep original dataset color
+                color=data["color"],  # Keep original dataset color
                 label=spread_label,
             )
 
@@ -291,11 +291,11 @@ def plot_arrival_rates(
     plt.ylabel("Arrival Rate (patients per hour)")
     plt.title(title)
     plt.grid(True, alpha=0.3)
-    
+
     # Always show legend if there are multiple datasets or multiple rate types
     if is_dual_plot or lagged_by is not None or curve_params is not None:
         plt.legend()
-    
+
     plt.tight_layout()
 
     # Save if path provided
@@ -304,7 +304,6 @@ def plot_arrival_rates(
         plt.savefig(media_file_path / filename, dpi=300)
 
     plt.show()
-
 
 
 def plot_cumulative_arrival_rates(
