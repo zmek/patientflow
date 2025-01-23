@@ -37,7 +37,7 @@ Please note that you are looking at this repo prior to its first release. It is 
 
 1. Develop code that was originally written for University College London Hospital (UCLH) into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/)
 2. Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems
-3. Provide training materials to inform and educate anyone who wishes to adopt a similar approach
+3. Provide explanatory materials to inform and educate anyone who wishes to adopt a similar approach
 
 ## Main Features of our modelling approach
 
@@ -114,12 +114,12 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic -
 There are two arguments
 
 - data_folder_name - specifies where to find the data. This should be in a folder named data-xxx directly below the root of the repository
-- uclh - tells the package whether the data is the original UCLH data (in which case certain additional features available, including the patient's age in years) or not
+- uclh - tells the package whether the data is the original UCLH implementation (in which case certain additional features, including the patient's age in years are included)
 
 ## Roadmap
 
 - [x] Initial Research
-- [ ] Minimum viable product <-- You are Here
+- [x] Minimum viable product <-- You are Here
 - [ ] Alpha Release
 - [ ] Feature-Complete Release
 
