@@ -1,6 +1,6 @@
 """
 This module provides functions to calculate and process time-varying arrival rates,
-admission probabilities based on an aspirational approach, and true demand rates for inpatient arrivals.
+admission probabilities based on an aspirational approach, and undelayed demand rates for inpatient arrivals.
 
 Functions:
     time_varying_arrival_rates(df: DataFrame, yta_time_interval: int) -> OrderedDict[time, float]:
