@@ -411,37 +411,55 @@ def train_admissions_models(
     return model_metadata, trained_models
 
 
-def train_specialty_model(train_visits, model_name, model_metadata, uclh, visit_col):
-    # Select one snapshot per visit
-    visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
+def train_specialty_model(
+   train_visits,
+   model_name,
+   model_metadata,
+   uclh,
+   visit_col,
+   input_var,
+   grouping_var,
+   outcome_var,
+):
+   """Train a specialty prediction model.
 
-    # Prepare dataset of admitted visits only for training specialty model
-    admitted = visits_single[
-        (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
-    ]
-    filtered_admitted = get_default_visits(admitted, uclh=uclh)
+   Args:
+       train_visits (pd.DataFrame): Training data containing visit information
+       model_name (str): Name identifier for the model
+       model_metadata (dict): Dictionary to store model metadata
+       uclh (bool): Flag for UCLH specific processing
+       visit_col (str): Column name containing visit identifiers
+       input_var (str, optional): Column name for input sequence. Defaults to "consultation_sequence"
+       grouping_var (str, optional): Column name for grouping sequence. Defaults to "final_sequence"
+       outcome_var (str, optional): Column name for target variable. Defaults to "specialty"
 
-    # convert consults data format from list to tuple (required input for SequencePredictor)
-    filtered_admitted.loc[:, "consultation_sequence"] = filtered_admitted[
-        "consultation_sequence"
-    ].apply(lambda x: tuple(x) if x else ())
-    filtered_admitted.loc[:, "final_sequence"] = filtered_admitted[
-        "final_sequence"
-    ].apply(lambda x: tuple(x) if x else ())
-
-    spec_model = SequencePredictor(
-        input_var="consultation_sequence",
-        grouping_var="final_sequence",
-        outcome_var="specialty",
-    )
-    spec_model.fit(filtered_admitted)
-
-    model_metadata[model_name] = {}
-    model_metadata[model_name]["train_set_no"] = {
-        "train_set_no": len(filtered_admitted),
-    }
-
-    return model_metadata, spec_model
+   Returns:
+       tuple: Updated model metadata dictionary and trained SequencePredictor model
+   """
+   visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
+   admitted = visits_single[
+       (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
+   ]
+   filtered_admitted = get_default_visits(admitted, uclh=uclh)
+   
+   filtered_admitted.loc[:, input_var] = filtered_admitted[
+       input_var
+   ].apply(lambda x: tuple(x) if x else ())
+   filtered_admitted.loc[:, grouping_var] = filtered_admitted[
+       grouping_var
+   ].apply(lambda x: tuple(x) if x else ())
+   
+   spec_model = SequencePredictor(
+       input_var=input_var,
+       grouping_var=grouping_var,
+       outcome_var=outcome_var,
+   )
+   spec_model.fit(filtered_admitted)
+   model_metadata[model_name] = {}
+   model_metadata[model_name]["train_set_no"] = {
+       "train_set_no": len(filtered_admitted),
+   }
+   return model_metadata, spec_model
 
 
 def train_yet_to_arrive_model(
@@ -453,7 +471,8 @@ def train_yet_to_arrive_model(
     model_name,
     model_metadata,
     uclh,
-    specialty_filters
+    specialty_filters,
+    num_days
 ):
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
@@ -463,7 +482,7 @@ def train_yet_to_arrive_model(
             )
             train_yta.set_index("arrival_datetime", inplace=True)
             
-    elif train_yta.index.name is not 'arrival_datetime':
+    elif train_yta.index.name != 'arrival_datetime':
         print("Dataset needs arrival_datetime column")
 
     yta_model = WeightedPoissonPredictor(filters=specialty_filters)
@@ -473,9 +492,8 @@ def train_yet_to_arrive_model(
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
+        num_days=num_days
     )
-
-    model_name = model_name + str(int(prediction_window / 60)) + "_hours"
 
     model_metadata[model_name] = {}
     model_metadata[model_name]["train_set_no"] = {

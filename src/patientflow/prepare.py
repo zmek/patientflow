@@ -133,14 +133,12 @@ def assign_mrns(
     )
     return mrns
 
-
 def assign_mrn_to_training_validation_test_set(
     df,
     start_training_set,
     start_validation_set,
     start_test_set,
     end_test_set,
-    yta=None,
     col_name="arrival_datetime",
 ):
     if "snapshot_date" not in df.columns:
@@ -155,287 +153,42 @@ def assign_mrn_to_training_validation_test_set(
         col_name,
     ).reset_index()
 
-    print(
-        "\nNumber of rows before assigning mrn to a single set - training, validation or test"
-    )
-    print(df.shape)
+    # Define MRN sets
+    training_mrns = set(set_assignment[set_assignment.training_validation_test == "train"]["mrn"])
+    validation_mrns = set(set_assignment[set_assignment.training_validation_test == "valid"]["mrn"])
+    test_mrns = set(set_assignment[set_assignment.training_validation_test == "test"]["mrn"])
 
-    df.loc["training_validation_test"] = None
+    # Create training set
+    train_df = df[
+        (df[col_name].dt.date < start_validation_set) & 
+        (df.mrn.isin(training_mrns)) &
+        (df.snapshot_date < start_validation_set)
+    ].copy()
 
-    # Define the criteria for each set
+    # Create validation set
+    valid_df = df[
+        (df[col_name].dt.date >= start_validation_set) & 
+        (df[col_name].dt.date < start_test_set) &
+        (df.mrn.isin(validation_mrns)) &
+        (df.snapshot_date >= start_validation_set) &
+        (df.snapshot_date < start_test_set)
+    ].copy()
 
-    training_mrns = set_assignment[set_assignment.training_validation_test == "train"][
-        "mrn"
-    ]
-    validation_mrns = set_assignment[
-        set_assignment.training_validation_test == "valid"
-    ]["mrn"]
-    test_mrns = set_assignment[set_assignment.training_validation_test == "test"]["mrn"]
+    # Create test set
+    test_df = df[
+        (df[col_name].dt.date >= start_test_set) &
+        (df[col_name].dt.date < end_test_set) &
+        (df.mrn.isin(test_mrns)) &
+        (df.snapshot_date >= start_test_set) &
+        (df.snapshot_date < end_test_set)
+    ].copy()
 
-    # Assign relevant set
-    df.loc[
-        (df[col_name].dt.date < start_validation_set) & (df.mrn.isin(training_mrns)),
-        "training_validation_test",
-    ] = "train"
-    df.loc[
-        (df[col_name].dt.date >= start_validation_set)
-        & (df[col_name].dt.date < start_test_set)
-        & (df.mrn.isin(validation_mrns)),
-        "training_validation_test",
-    ] = "valid"
-    df.loc[
-        (df[col_name].dt.date >= start_test_set)
-        & (df[col_name].dt.date < end_test_set)
-        & (df.mrn.isin(test_mrns)),
-        "training_validation_test",
-    ] = "test"
+    print(f"Training set: {train_df.shape[0]} rows")
+    print(f"Validation set: {valid_df.shape[0]} rows")
+    print(f"Test set: {test_df.shape[0]} rows")
 
-    # Filter to include only the rows that were assigned to a set
-    df = df[df["training_validation_test"].notnull()]
+    return train_df, valid_df, test_df
 
-    # Remove any snapshots that fall outside the start and end dates for the relevant set
-    df = df[
-        (
-            (df.training_validation_test == "train")
-            & (df.snapshot_date < start_validation_set)
-        )
-        | (
-            (df.training_validation_test == "valid")
-            & (df.snapshot_date >= start_validation_set)
-            & (df.snapshot_date < start_test_set)
-        )
-        | (
-            (df.training_validation_test == "test")
-            & (df.snapshot_date >= start_test_set)
-            & (df.snapshot_date < end_test_set)
-        )
-    ]
-
-    print("Number of rows after assigning mrn to a set")
-    print(df.shape)
-
-    if yta is not None:
-        yta.loc[:, "training_validation_test"] = None
-        # Assign relevant set to yta
-        yta.loc[
-            (yta[col_name].dt.date < start_validation_set), "training_validation_test"
-        ] = "train"
-        yta.loc[
-            (yta[col_name].dt.date >= start_validation_set)
-            & (yta[col_name].dt.date < start_test_set),
-            "training_validation_test",
-        ] = "valid"
-        yta.loc[
-            (yta[col_name].dt.date >= start_test_set)
-            & (yta[col_name].dt.date < end_test_set),
-            "training_validation_test",
-        ] = "test"
-
-        # Remove any snapshots that fall outside the start and end dates for the relevant set
-        yta = yta[
-            (
-                (yta.training_validation_test == "train")
-                & (yta[col_name].dt.date < start_validation_set)
-            )
-            | (
-                (yta.training_validation_test == "valid")
-                & (yta[col_name].dt.date >= start_validation_set)
-                & (yta[col_name].dt.date < start_test_set)
-            )
-            | (
-                (yta.training_validation_test == "test")
-                & (yta[col_name].dt.date >= start_test_set)
-                & (yta[col_name].dt.date < end_test_set)
-            )
-        ]
-
-        return (df, yta)
-
-    return df
-
-
-def prep_uclh_dataset_for_inference(
-    df,
-    uclh,
-    remove_bed_requests=False,
-    exclude_minority_categories=False,
-    inference_time=True,
-):
-    pd.set_option("future.no_silent_downcasting", True)
-
-    if exclude_minority_categories:
-        df = df[~df.sex.isin(["U", "I"])].copy()  # Ensure it's a copy
-
-    if remove_bed_requests:
-        df["has_bed_request"] = df["has_bed_request"].fillna(False)
-        df["has_bed_request"] = df["has_bed_request"].astype(bool)
-        df = df[~df.has_bed_request].copy()  # Ensure it's a copy
-
-    # Convert locations from set to dummy variables
-    visited = convert_set_to_dummies(df, "visited_location_types", "visited")
-
-    # Convert number of observations dictionary to values
-    num_obs = convert_dict_to_values(df, "observation_counts", "num_obs")
-
-    # Convert obs and set missing values
-    latest_obs = convert_dict_to_values(df, "latest_observation_values", "latest_obs")
-    latest_obs.loc[
-        latest_obs.latest_obs_RESPIRATIONS == 0, "latest_obs_RESPIRATIONS"
-    ] = pd.NA
-    latest_obs.loc[
-        latest_obs.latest_obs_TEMPERATURE > 110, "latest_obs_TEMPERATURE"
-    ] = pd.NA
-    latest_obs["latest_obs_R NEWS SCORE RESULT - DISPLAYED"] = latest_obs[
-        "latest_obs_R NEWS SCORE RESULT - DISPLAYED"
-    ].astype("float")
-    latest_obs.loc[
-        latest_obs["latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE"].isin(
-            [r"Severe\E\Very Severe", r"Severe\Very Severe"]
-        ),
-        "latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE",
-    ] = "Severe_Very Severe"
-
-    # Convert lab orders from set to dummies
-    lab_orders = convert_set_to_dummies(df, "requested_lab_batteries", "lab_orders")
-
-    # Convert lab results from dict to values
-    lab_results = convert_dict_to_values(df, "latest_lab_results", "latest_lab_results")
-
-    # Create dummy variable for consultations (used in prob admission model, in which consultations data is otherwise not used)
-    df["has_consultation"] = df.consultations.map(len) > 0
-
-    if inference_time:
-        df["visit_number"] = df.index
-
-    dfs_to_join = (
-        [
-            df[
-                [
-                    "snapshot_date",
-                    "prediction_time",
-                    "visit_number",
-                    "elapsed_los",
-                    "sex",
-                    "age_on_arrival",
-                    "arrival_method",
-                    "current_location_type",
-                    "total_locations_visited",
-                    "num_obs",
-                    "num_obs_events",
-                    "num_obs_types",
-                    "num_lab_batteries_ordered",
-                    "has_consultation",
-                    "has_bed_request",
-                    "consultations",
-                ]
-            ],
-            visited,
-            num_obs,
-            latest_obs,
-            lab_orders,
-            lab_results,
-        ]
-        if uclh
-        else [
-            df[
-                [
-                    "snapshot_date",
-                    "prediction_time",
-                    "visit_number",
-                    "elapsed_los",
-                    "sex",
-                    "age_group",
-                    "arrival_method",
-                    "current_location_type",
-                    "total_locations_visited",
-                    "num_obs",
-                    "num_obs_events",
-                    "num_obs_types",
-                    "num_lab_batteries_ordered",
-                    "has_consultation",
-                    "has_bed_request",
-                    "consultations",
-                ]
-            ],
-            visited,
-            num_obs,
-            latest_obs,
-            lab_orders,
-            lab_results,
-        ]
-    )
-
-    if not inference_time:
-        dfs_to_join.append(
-            df[
-                [
-                    "training_validation_test",
-                    "all_consultations",
-                    "specialty",
-                    "destination",
-                ]
-            ]
-        )
-
-    new = reduce(lambda left, right: left.join(right, how="left"), dfs_to_join)
-
-    for col in new.select_dtypes(include="object").columns:
-        if new[col].dropna().isin([True, False]).all():
-            new[col] = new[col].fillna(False)
-            new[col] = new[col].astype("bool")
-
-    bool_cols = new.select_dtypes(include="bool").columns
-    new[bool_cols] = new[bool_cols].fillna(False)
-
-    if exclude_minority_categories:
-        new = new[~(new.current_location_type == "taf")].copy()
-        new = new[~(new.visited_taf)].copy()
-        new.drop(columns="visited_taf", inplace=True)
-
-    float_cols = [
-        col
-        for col in new.select_dtypes(include="float").columns
-        if col.startswith("num_obs")
-    ]
-    new[float_cols] = new[float_cols].fillna(0)
-
-    new.columns = (
-        new.columns.str.lower()
-        .str.replace(" - displayed", "")
-        .str.replace(" ", "_")
-        .str.replace("_r_", "_")
-    )
-    new = new.drop(columns="latest_lab_results_hco3", errors="ignore")
-
-    new = new.rename(
-        columns={
-            "num_obs_uclh_ed_manchester_triage_subjective_pain_score": "num_obs_subjective_pain_score",
-            "num_obs_uclh_ed_manchester_triage_objective_pain_score": "num_obs_objective_pain_score",
-            "num_obs_uclh_ed_manchester_triage_calculated_acuity": "num_obs_manchester_triage_acuity",
-            "latest_obs_uclh_ed_manchester_triage_objective_pain_score": "latest_obs_objective_pain_score",
-            "latest_obs_uclh_ed_manchester_triage_calculated_acuity": "latest_obs_manchester_triage_acuity",
-        }
-    )
-
-    if inference_time:
-        new = new.rename(columns={"consultations": "consultation_sequence"})
-        new["consultation_sequence"] = new["consultation_sequence"].apply(
-            lambda x: tuple(x) if x else ()
-        )
-
-    if not inference_time:
-        new["is_admitted"] = df.destination == 2
-        new.drop(columns="destination", inplace=True)
-        np.random.seed(seed=42)
-        new["random_number"] = np.random.randint(0, len(new), new.shape[0])
-
-    if remove_bed_requests:
-        new = new.drop(columns="has_bed_request")
-
-    new = new.reset_index(drop=True)
-    new.index.name = "snapshot_id"
-
-    return new
 
 
 def create_special_category_objects(uclh):

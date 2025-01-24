@@ -12,12 +12,9 @@ get_specialty_probs(model_file_path, snapshots_df, special_category_func=None, s
     Calculate specialty probability distributions for patient visits based on their data.
 """
 
-from patientflow.prepare import prepare_for_inference
-
-
 def get_specialty_probs(
     specialties,
-    model_file_path,
+    specialty_model,
     snapshots_df,
     special_category_func=None,
     special_category_dict=None,
@@ -35,8 +32,8 @@ def get_specialty_probs(
 
     specialties : str
         List of specialty names for which predictions are required.
-    model_file_path : str
-        Path to the predictive model file.
+    specialty_model : object
+        Trained model for making specialty predictions.
     snapshots_df : pandas.DataFrame
         DataFrame containing the data on which predictions are to be made. Must include
         a 'consultation_sequence' column if no special_category_func is applied.
@@ -88,11 +85,6 @@ def get_specialty_probs(
         raise ValueError(
             "special_category_dict must be provided if special_category_func is specified."
         )
-
-    # Load model for specialty predictions
-    specialty_model = prepare_for_inference(
-        model_file_path, "ed_specialty", model_only=True
-    )
 
     # Function to determine the specialty probabilities
     def determine_specialty(row):

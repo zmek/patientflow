@@ -265,7 +265,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         return filtered_df
 
     def _calculate_parameters(
-        self, df, prediction_window, yta_time_interval, prediction_times
+        self, df, prediction_window, yta_time_interval, prediction_times, num_days
     ):
         """
         Calculate parameters required for the model.
@@ -275,13 +275,14 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             prediction_window (int): The total prediction window for prediction.
             yta_time_interval (int): The interval for splitting the prediction window.
             prediction_times (list): Times of day at which predictions are made.
+            num_days (int): Number of days over which to calculate time-varying arrival rates
 
         Returns:
             dict: Calculated lambda_t parameters organized by time of day.
 
         """
         Ntimes = int(prediction_window / yta_time_interval)
-        arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval)
+        arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval, num_days)
         prediction_time_dict = {}
 
         for prediction_time_ in prediction_times:
@@ -313,6 +314,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         prediction_times: List[float],
         epsilon: float = 10**-7,
         y: Optional[None] = None,
+        num_days: int = None
     ) -> "WeightedPoissonPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
@@ -330,6 +332,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
             y (None, optional):
                 Ignored, present for compatibility with scikit-learn's fit method.
+            num_days (int, optional):
+                 The number of days that the train_df spans
 
         Returns:
             WeightedPoissonPredictor: The instance itself, fitted with the training data.
@@ -352,6 +356,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                     prediction_window,
                     yta_time_interval,
                     prediction_times,
+                    num_days
                 )
         else:
             # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'

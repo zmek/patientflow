@@ -72,16 +72,19 @@ from patientflow.predict.admission_in_prediction_window import (
 
 
 def time_varying_arrival_rates(
-    df: DataFrame, yta_time_interval: int
+    df: DataFrame, 
+    yta_time_interval: int,
+    num_days: int = None
 ) -> OrderedDict[time, float]:
     """
     Calculate the time-varying arrival rates for a dataset indexed by datetime.
 
-    This function computes the arrival rates for each time interval specified, across the entire date range present in the dataframe. The arrival rate is calculated as the number of entries in the dataframe for each time interval, divided by the number of days in the dataset's timespan.
+    This function computes the arrival rates for each time interval specified, across the entire date range present in the dataframe. The arrival rate is calculated as the number of entries in the dataframe for each time interval, divided by the number of days in the dataset's timespan. The minimum and maximum dates in the dataset are used to determine the timespan
 
     Args:
         df (pandas.DataFrame): A DataFrame indexed by datetime, representing the data for which arrival rates are to be calculated. The index of the DataFrame should be of datetime type.
         yta_time_interval (int): The time interval, in minutes, for which the arrival rates are to be calculated. For example, if `yta_time_interval=60`, the function will calculate hourly arrival rates.
+        num_days (int. optional): The number of days that the DataFrame spans. If not provided the number of days is calculated from the date of the min and max arrival datetimes
 
     Returns
         OrderedDict: A dictionary mapping lagged times (datetime.time) to arrival rates.
@@ -107,16 +110,21 @@ def time_varying_arrival_rates(
         raise ValueError(
             f"Time interval ({yta_time_interval} minutes) must divide evenly into 24 hours."
         )
+    if num_days is None:
 
-    # Calculate the total number of days
-    num_days = pd.Series(df.index.date).nunique()
+        # Calculate total days between first and last date
+        print("Inferring number of days from dataset")
+        start_date = df.index.date.min()
+        end_date = df.index.date.max()
+        num_days = (end_date - start_date).days + 1
+    
     if num_days == 0:
         raise ValueError("DataFrame contains no data.")
-
+        
     print(
         f"Calculating time-varying arrival rates for data provided, which spans {num_days} unique dates"
     )
-
+    
     arrival_rates_dict = OrderedDict()
 
     # Initialize a time object to iterate through one day in the specified intervals
