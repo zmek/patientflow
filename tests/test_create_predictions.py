@@ -8,7 +8,7 @@ from scipy.stats import poisson
 from pathlib import Path
 import joblib
 
-from patientflow.predict.realtime_demand import create_predictions
+from patientflow.predict.emergency_demand import create_predictions
 from patientflow.load import get_model_name
 from patientflow.prepare import create_special_category_objects
 

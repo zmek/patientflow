@@ -108,7 +108,7 @@ The data provided (which is synthetic) can be used to demonstrate training the m
 
 ```sh
 cd src
-python -m patientflow.train --data_folder_name=data-synthetic --uclh=False
+python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic --uclh=False
 ```
 
 There are two arguments

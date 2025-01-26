@@ -33,7 +33,7 @@ from patientflow.load import (
 )
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from patientflow.predict.realtime_demand import create_predictions
+from patientflow.predict.emergency_demand import create_predictions
 
 
 def split_and_check_sets(
