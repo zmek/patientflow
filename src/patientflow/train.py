@@ -734,56 +734,28 @@ def train_all_models(
 
     models = dict.fromkeys(model_names)
 
-    if "training_validation_test" in visits.columns:
-        # Check dataset splits
-        print("Checking dates for ed_visits dataset (used for patients in ED)")
-        split_and_check_sets(
-            visits,
-            start_training_set,
-            start_validation_set,
-            start_test_set,
-            end_test_set,
-        )
-        print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
-        split_and_check_sets(
-            yta,
-            start_training_set,
-            start_validation_set,
-            start_test_set,
-            end_test_set,
-            date_column="arrival_datetime",
-        )
-
-        # separate into training, validation and test sets
-
-        train_visits = visits[visits.training_validation_test == "train"].drop(
-            columns="training_validation_test"
-        )
-        valid_visits = visits[visits.training_validation_test == "valid"].drop(
-            columns="training_validation_test"
-        )
-        test_visits = visits[visits.training_validation_test == "test"].drop(
-            columns="training_validation_test"
-        )
-
-        train_yta = yta[yta.training_validation_test == "train"]
-
+    if "arrival_datetime" in visits.columns:
+        col_name = "arrival_datetime"
     else:
-        # Separate into training, validation and test sets
-        train_visits, valid_visits, test_visits = create_temporal_splits(
-            visits,
-            start_training_set,
-            start_validation_set,
-            start_test_set,
-            end_test_set,
-            col_name="arrival_datetime",
-        )
+        col_name = "snapshot_date"
 
-        train_yta = yta[
-            (yta["arrival_datetime"].dt.date >= start_training_set)
-            & (yta["arrival_datetime"].dt.date < start_validation_set)
-            & (~yta.specialty.isnull())
-        ]
+    train_visits, valid_visits, test_visits = create_temporal_splits(
+        visits,
+        start_training_set,
+        start_validation_set,
+        start_test_set,
+        end_test_set,
+        col_name=col_name,
+    )
+
+    train_yta, _, _ = create_temporal_splits(
+        yta[(~yta.specialty.isnull())],
+        start_training_set,
+        start_validation_set,
+        start_test_set,
+        end_test_set,
+        col_name="arrival_datetime",
+    )
 
     prediction_times = visits.prediction_time.unique()
 

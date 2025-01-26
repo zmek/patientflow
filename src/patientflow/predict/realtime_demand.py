@@ -121,8 +121,7 @@ def create_predictions(
     - cdf_cut_points (List[float]): List of CDF cut points
     - special_params (Optional[Dict[str, Any]]): Special handling parameters
     """
-    print(model_names)
-    print(models.keys())
+
     validate_model_names(models, model_names)
 
     if special_params:

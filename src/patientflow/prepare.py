@@ -145,33 +145,41 @@ def assign_mrns(
 def create_temporal_splits(
     df, start_train, start_valid, start_test, end_test, col_name="arrival_datetime"
 ):
-    """Split dataset into temporal train/validation/test sets with optional MRN handling.
+    """Split dataset into temporal train/validation/test sets.
+
+    Creates temporal data splits using primary datetime column and optional snapshot dates.
+    Handles MRN (patient ID) grouping if present to prevent data leakage.
 
     Args:
-        df (pd.DataFrame): Input dataframe with datetime columns
-        start_train (date): Start date for training set (inclusive)
-        start_valid (date): Start date for validation set (inclusive)
-        start_test (date): Start date for test set (inclusive)
-        end_test (date): End date for test set (exclusive)
-        col_name (str, optional): Column name for splitting. Defaults to "arrival_datetime"
+        df (pd.DataFrame): Input dataframe
+        start_train (date): Training start (inclusive)
+        start_valid (date): Validation start (inclusive)
+        start_test (date): Test start (inclusive)
+        end_test (date): Test end (exclusive)
+        col_name (str): Primary datetime column for splitting. Default "arrival_datetime"
 
     Returns:
-        tuple: (train_df, valid_df, test_df) - Split dataframes
+        tuple: (train_df, valid_df, test_df) Split dataframes
 
     MRN Processing:
-        - If 'mrn' column exists, ensures all records for a patient stay in same split
-        - Probabilistically assigns MRNs to sets based on their encounter distribution
-        - MRN with 70% training encounters has 70% chance of training assignment
-        - Ensures each MRN's data stays entirely within one split
-        - Then filters each split to only include records from assigned MRNs
-        - Prevents patient data leakage across train/valid/test boundaries
+        - Groups patient records by MRN if 'mrn' column exists
+        - Assigns MRNs probabilistically based on temporal distribution
+        - MRN with 70% training encounters -> 70% chance of training set
+        - Keeps all records for each MRN in same split
+        - Prevents patient data leakage across splits
 
     Time Boundaries:
-        - Records must have both arrival_datetime and snapshot_date within split bounds
-        - Uses inclusive start dates and exclusive end dates
+        - Primary split on col_name between set boundaries
+        - Secondary filter on snapshot_date if column exists
+        - Uses inclusive start, exclusive end dates
     """
 
-    # df["snapshot_date"] = df.get("snapshot_date", df["snapshot_datetime"].dt.date)
+    def get_date_value(series):
+        """Convert timestamp or date column to date, handling both types"""
+        try:
+            return pd.to_datetime(series).dt.date
+        except (AttributeError, TypeError):
+            return series
 
     if "mrn" in df.columns:
         set_assignment = assign_mrns(
@@ -188,12 +196,14 @@ def create_temporal_splits(
         (start_valid, start_test, "valid"),
         (start_test, end_test, "test"),
     ]:
-        mask = (
-            (df[col_name].dt.date >= start)
-            & (df[col_name].dt.date < end)
-            & (df.snapshot_date >= start)
-            & (df.snapshot_date < end)
+        mask = (get_date_value(df[col_name]) >= start) & (
+            get_date_value(df[col_name]) < end
         )
+
+        if "snapshot_date" in df.columns:
+            mask &= (get_date_value(df.snapshot_date) >= start) & (
+                get_date_value(df.snapshot_date) < end
+            )
 
         if "mrn" in df.columns:
             mask &= df.mrn.isin(mrn_sets[mrn_key])
