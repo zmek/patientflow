@@ -8,8 +8,8 @@ distributions such as the Poisson distribution, and dictionary input.
 
 Functions
 ---------
-prob_dist_plot(prob_dist_data, title, directory_path=None, figsize=(6, 3), 
-               include_titles=False, truncate_at_beds=(0, 20), text_size=None, 
+prob_dist_plot(prob_dist_data, title, directory_path=None, figsize=(6, 3),
+               include_titles=False, truncate_at_beds=(0, 20), text_size=None,
                bar_colour="#5B9BD5", file_name=None, min_beds_lines=None,
                plot_min_beds_lines=True, plot_bed_base=None, xlabel="Number of beds")
     Plots a bar chart of a probability distribution with optional customization for
@@ -30,6 +30,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy import stats
 
+
 def prob_dist_plot(
     prob_dist_data,
     title,
@@ -43,7 +44,7 @@ def prob_dist_plot(
     min_beds_lines=None,
     plot_min_beds_lines=True,
     plot_bed_base=None,
-    xlabel="Number of beds"
+    xlabel="Number of beds",
 ):
     """
     Plot a probability distribution as a bar chart with enhanced plotting options.
@@ -75,7 +76,7 @@ def prob_dist_plot(
         Whether to include titles and axis labels in the plot.
 
     truncate_at_beds : int or tuple of (int, int), optional, default=(0, 20)
-        Either a single number specifying the upper bound, or a tuple of 
+        Either a single number specifying the upper bound, or a tuple of
         (lower_bound, upper_bound) for the x-axis range.
 
     text_size : int, optional
@@ -98,7 +99,7 @@ def prob_dist_plot(
     plot_bed_base : dict, optional
         Dictionary of bed balance lines to plot in red.
         Keys are labels and values are x-axis positions.
-        
+
     xlabel : str, optional, default="Number of beds"
         A label for the x axis
 
@@ -135,8 +136,10 @@ def prob_dist_plot(
     )
     """
     # Handle Poisson distribution input
-    if isinstance(prob_dist_data, (stats._distn_infrastructure.rv_frozen, 
-                                 stats._discrete_distns.poisson_gen)):
+    if isinstance(
+        prob_dist_data,
+        (stats._distn_infrastructure.rv_frozen, stats._discrete_distns.poisson_gen),
+    ):
         # Modified to handle bounds
         if isinstance(truncate_at_beds, (int, float)):
             upper_bound = truncate_at_beds
@@ -144,23 +147,23 @@ def prob_dist_plot(
         else:
             lower_bound, upper_bound = truncate_at_beds
             lower_bound = max(0, lower_bound) if lower_bound > 0 else lower_bound
-            
+
         x = np.arange(lower_bound, upper_bound + 1)
         probs = prob_dist_data.pmf(x)
-        prob_dist_data = pd.DataFrame({
-            'agg_proba': probs
-        }, index=x)
+        prob_dist_data = pd.DataFrame({"agg_proba": probs}, index=x)
 
     # Handle dictionary input
     elif isinstance(prob_dist_data, dict):
         prob_dist_data = pd.DataFrame(
             {"agg_proba": list(prob_dist_data.values())},
-            index=list(prob_dist_data.keys())
+            index=list(prob_dist_data.keys()),
         )
-    
+
     plt.figure(figsize=figsize)
     if not file_name:
-        file_name = title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
+        file_name = (
+            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
+        )
 
     # Handle bounds and filtering
     if isinstance(truncate_at_beds, (int, float)):
@@ -169,7 +172,7 @@ def prob_dist_plot(
     else:
         lower_bound, upper_bound = truncate_at_beds
         lower_bound = max(0, lower_bound) if lower_bound > 0 else lower_bound
-    
+
     mask = (prob_dist_data.index >= lower_bound) & (prob_dist_data.index <= upper_bound)
     filtered_data = prob_dist_data[mask]
 
@@ -179,7 +182,7 @@ def prob_dist_plot(
         filtered_data["agg_proba"].values,
         color=bar_colour,
     )
-    
+
     # Dynamic tick generation
     tick_start = (lower_bound // 5) * 5
     tick_end = upper_bound + 1
@@ -204,10 +207,7 @@ def prob_dist_plot(
     if plot_bed_base:
         for point in plot_bed_base:
             plt.axvline(
-                x=plot_bed_base[point],
-                linewidth=2,
-                color="red",
-                label="bed balance"
+                x=plot_bed_base[point], linewidth=2, color="red", label="bed balance"
             )
         plt.legend(loc="upper right", fontsize=14)
 
@@ -225,8 +225,8 @@ def prob_dist_plot(
             plt.ylabel("Probability")
 
     plt.tight_layout()
-    
+
     if directory_path:
         plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
-    
+
     plt.show()

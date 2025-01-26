@@ -314,7 +314,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         prediction_times: List[float],
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        num_days: int = None
+        num_days: Optional[int] = None,
     ) -> "WeightedPoissonPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
@@ -343,7 +343,14 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         self.prediction_window = prediction_window
         self.yta_time_interval = yta_time_interval
         self.epsilon = epsilon
-        self.prediction_times = prediction_times
+        self.prediction_times = [
+            tuple(x)
+            if isinstance(x, (list, np.ndarray))
+            else (x, 0)
+            if isinstance(x, (int, float))
+            else x
+            for x in prediction_times
+        ]
 
         # Initialize yet_to_arrive_dict
         self.weights = {}
@@ -356,12 +363,16 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                     prediction_window,
                     yta_time_interval,
                     prediction_times,
-                    num_days
+                    num_days,
                 )
         else:
             # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'
             self.weights["default"] = self._calculate_parameters(
-                train_df, prediction_window, yta_time_interval, prediction_times
+                train_df,
+                prediction_window,
+                yta_time_interval,
+                prediction_times,
+                num_days,
             )
 
         print(f"Poisson Binomial Predictor trained for these times: {prediction_times}")

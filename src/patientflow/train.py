@@ -21,6 +21,7 @@ from patientflow.prepare import (
     select_one_snapshot_per_visit,
     create_special_category_objects,
     create_yta_filters,
+    create_temporal_splits,
 )
 from patientflow.load import (
     load_config_file,
@@ -310,21 +311,21 @@ def train_admissions_models(
         # get visits that were in at the time of day in question and preprocess the training, validation and test sets
         X_train, y_train = get_snapshots_at_prediction_time(
             df=train_visits,
-            prediction_time=_prediction_time, 
-            exclude_columns=exclude_from_training_data, 
-            visit_col=visit_col
+            prediction_time=_prediction_time,
+            exclude_columns=exclude_from_training_data,
+            visit_col=visit_col,
         )
         X_valid, y_valid = get_snapshots_at_prediction_time(
-            df=valid_visits,      
-            prediction_time=_prediction_time, 
-            exclude_columns=exclude_from_training_data, 
-            visit_col=visit_col
+            df=valid_visits,
+            prediction_time=_prediction_time,
+            exclude_columns=exclude_from_training_data,
+            visit_col=visit_col,
         )
         X_test, y_test = get_snapshots_at_prediction_time(
             df=test_visits,
-            prediction_time=_prediction_time, 
-            exclude_columns=exclude_from_training_data, 
-            visit_col=visit_col
+            prediction_time=_prediction_time,
+            exclude_columns=exclude_from_training_data,
+            visit_col=visit_col,
         )
 
         y_train_class_balance = calculate_class_balance(y_train)
@@ -412,54 +413,54 @@ def train_admissions_models(
 
 
 def train_specialty_model(
-   train_visits,
-   model_name,
-   model_metadata,
-   uclh,
-   visit_col,
-   input_var,
-   grouping_var,
-   outcome_var,
+    train_visits,
+    model_name,
+    model_metadata,
+    uclh,
+    visit_col,
+    input_var,
+    grouping_var,
+    outcome_var,
 ):
-   """Train a specialty prediction model.
+    """Train a specialty prediction model.
 
-   Args:
-       train_visits (pd.DataFrame): Training data containing visit information
-       model_name (str): Name identifier for the model
-       model_metadata (dict): Dictionary to store model metadata
-       uclh (bool): Flag for UCLH specific processing
-       visit_col (str): Column name containing visit identifiers
-       input_var (str, optional): Column name for input sequence. Defaults to "consultation_sequence"
-       grouping_var (str, optional): Column name for grouping sequence. Defaults to "final_sequence"
-       outcome_var (str, optional): Column name for target variable. Defaults to "specialty"
+    Args:
+        train_visits (pd.DataFrame): Training data containing visit information
+        model_name (str): Name identifier for the model
+        model_metadata (dict): Dictionary to store model metadata
+        uclh (bool): Flag for UCLH specific processing
+        visit_col (str): Column name containing visit identifiers
+        input_var (str, optional): Column name for input sequence. Defaults to "consultation_sequence"
+        grouping_var (str, optional): Column name for grouping sequence. Defaults to "final_sequence"
+        outcome_var (str, optional): Column name for target variable. Defaults to "specialty"
 
-   Returns:
-       tuple: Updated model metadata dictionary and trained SequencePredictor model
-   """
-   visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
-   admitted = visits_single[
-       (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
-   ]
-   filtered_admitted = get_default_visits(admitted, uclh=uclh)
-   
-   filtered_admitted.loc[:, input_var] = filtered_admitted[
-       input_var
-   ].apply(lambda x: tuple(x) if x else ())
-   filtered_admitted.loc[:, grouping_var] = filtered_admitted[
-       grouping_var
-   ].apply(lambda x: tuple(x) if x else ())
-   
-   spec_model = SequencePredictor(
-       input_var=input_var,
-       grouping_var=grouping_var,
-       outcome_var=outcome_var,
-   )
-   spec_model.fit(filtered_admitted)
-   model_metadata[model_name] = {}
-   model_metadata[model_name]["train_set_no"] = {
-       "train_set_no": len(filtered_admitted),
-   }
-   return model_metadata, spec_model
+    Returns:
+        tuple: Updated model metadata dictionary and trained SequencePredictor model
+    """
+    visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
+    admitted = visits_single[
+        (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
+    ]
+    filtered_admitted = get_default_visits(admitted, uclh=uclh)
+
+    filtered_admitted.loc[:, input_var] = filtered_admitted[input_var].apply(
+        lambda x: tuple(x) if x else ()
+    )
+    filtered_admitted.loc[:, grouping_var] = filtered_admitted[grouping_var].apply(
+        lambda x: tuple(x) if x else ()
+    )
+
+    spec_model = SequencePredictor(
+        input_var=input_var,
+        grouping_var=grouping_var,
+        outcome_var=outcome_var,
+    )
+    spec_model.fit(filtered_admitted)
+    model_metadata[model_name] = {}
+    model_metadata[model_name]["train_set_no"] = {
+        "train_set_no": len(filtered_admitted),
+    }
+    return model_metadata, spec_model
 
 
 def train_yet_to_arrive_model(
@@ -472,17 +473,16 @@ def train_yet_to_arrive_model(
     model_metadata,
     uclh,
     specialty_filters,
-    num_days
+    num_days,
 ):
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
-
             train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
                 train_yta["arrival_datetime"], utc=True
             )
             train_yta.set_index("arrival_datetime", inplace=True)
-            
-    elif train_yta.index.name != 'arrival_datetime':
+
+    elif train_yta.index.name != "arrival_datetime":
         print("Dataset needs arrival_datetime column")
 
     yta_model = WeightedPoissonPredictor(filters=specialty_filters)
@@ -492,7 +492,7 @@ def train_yet_to_arrive_model(
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
-        num_days=num_days
+        num_days=num_days,
     )
 
     model_metadata[model_name] = {}
@@ -563,7 +563,8 @@ def save_metadata(metadata, base_path, subdir, filename):
 
 def test_real_time_predictions(
     visits,
-    model_file_path,
+    models,
+    model_names,
     prediction_window,
     specialties,
     cdf_cut_points,
@@ -599,9 +600,7 @@ def test_real_time_predictions(
         Dictionary containing the prediction time, date, and results.
     """
     # Select random test set row
-    random_row = visits[visits.training_validation_test == "test"].sample(
-        n=1, random_state=random_seed
-    )
+    random_row = visits.sample(n=1, random_state=random_seed)
     prediction_time = random_row.prediction_time.values[0]
     prediction_date = random_row.snapshot_date.values[0]
 
@@ -620,7 +619,8 @@ def test_real_time_predictions(
     try:
         x1, y1, x2, y2 = curve_params
         realtime_preds_dict["realtime_preds"] = create_predictions(
-            model_file_path=model_file_path,
+            models=models,
+            model_names=model_names,
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=specialties,
@@ -643,6 +643,10 @@ def test_real_time_predictions(
 
 def train_all_models(
     visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
     yta,
     model_file_path,
     prediction_times,
@@ -658,7 +662,7 @@ def train_all_models(
     cdf_cut_points,
     uclh,
     random_seed,
-    visit_col='visit_number',
+    visit_col="visit_number",
     metadata_subdir="model-output",
     metadata_filename="model_metadata.json",
 ):
@@ -722,16 +726,66 @@ def train_all_models(
         "train_dttm": train_dttm,
     }
 
-    # Separate into training, validation and test sets
-    train_visits = visits[visits.training_validation_test == "train"].drop(
-        columns="training_validation_test"
-    )
-    valid_visits = visits[visits.training_validation_test == "valid"].drop(
-        columns="training_validation_test"
-    )
-    test_visits = visits[visits.training_validation_test == "test"].drop(
-        columns="training_validation_test"
-    )
+    model_names = {
+        "admissions": "admissions",
+        "specialty": "ed_specialty",
+        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
+    }
+
+    models = dict.fromkeys(model_names)
+
+    if "training_validation_test" in visits.columns:
+        # Check dataset splits
+        print("Checking dates for ed_visits dataset (used for patients in ED)")
+        split_and_check_sets(
+            visits,
+            start_training_set,
+            start_validation_set,
+            start_test_set,
+            end_test_set,
+        )
+        print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
+        split_and_check_sets(
+            yta,
+            start_training_set,
+            start_validation_set,
+            start_test_set,
+            end_test_set,
+            date_column="arrival_datetime",
+        )
+
+        # separate into training, validation and test sets
+
+        train_visits = visits[visits.training_validation_test == "train"].drop(
+            columns="training_validation_test"
+        )
+        valid_visits = visits[visits.training_validation_test == "valid"].drop(
+            columns="training_validation_test"
+        )
+        test_visits = visits[visits.training_validation_test == "test"].drop(
+            columns="training_validation_test"
+        )
+
+        train_yta = yta[yta.training_validation_test == "train"]
+
+    else:
+        # Separate into training, validation and test sets
+        train_visits, valid_visits, test_visits = create_temporal_splits(
+            visits,
+            start_training_set,
+            start_validation_set,
+            start_test_set,
+            end_test_set,
+            col_name="arrival_datetime",
+        )
+
+        train_yta = yta[
+            (yta["arrival_datetime"].dt.date >= start_training_set)
+            & (yta["arrival_datetime"].dt.date < start_validation_set)
+            & (~yta.specialty.isnull())
+        ]
+
+    prediction_times = visits.prediction_time.unique()
 
     # Train admission models
     model_metadata, admission_models = train_admissions_models(
@@ -744,48 +798,57 @@ def train_all_models(
         prediction_times=prediction_times,
         model_name=model_names["admissions"],
         model_metadata=model_metadata,
-        visit_col=visit_col
+        visit_col=visit_col,
     )
 
     # Save admission models
+    models[model_names["admissions"]] = admission_models
     save_model(admission_models, model_names["admissions"], model_file_path)
 
     # Train specialty model
     model_metadata, specialty_model = train_specialty_model(
-        visits=visits,
+        train_visits=train_visits,
         model_name=model_names["specialty"],
         model_metadata=model_metadata,
         uclh=uclh,
-        visit_col=visit_col
+        input_var="consultation_sequence",
+        grouping_var="final_sequence",
+        outcome_var="specialty",
+        visit_col=visit_col,
     )
 
     # Save specialty model
+    models[model_names["specialty"]] = specialty_model
     save_model(specialty_model, model_names["specialty"], model_file_path)
 
     # Train yet-to-arrive model
     specialty_filters = create_yta_filters(uclh)
+    yta_model_name = model_names["yet_to_arrive"]
+
+    num_days = (start_validation_set - start_training_set).days
 
     model_metadata, yta_model = train_yet_to_arrive_model(
-        yta=yta,
+        train_yta=train_yta,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
-        model_name=model_names["yet_to_arrive"],
+        model_name=yta_model_name,
         model_metadata=model_metadata,
         uclh=uclh,
+        specialty_filters=specialty_filters,
+        num_days=num_days,
     )
 
-    # Save yet-to-arrive model with hours appended to name
-    model_name = (
-        model_names["yet_to_arrive"] + str(int(prediction_window / 60)) + "_hours"
-    )
-    save_model(yta_model, model_name, model_file_path)
+    # Save yet-to-arrive model
+    models[model_names["yet_to_arrive"]] = yta_model
+    save_model(yta_model, yta_model_name, model_file_path)
 
     # Test real-time predictions
     realtime_preds_dict = test_real_time_predictions(
         visits=visits,
-        model_file_path=model_file_path,
+        models=models,
+        model_names=model_names,
         prediction_window=prediction_window,
         specialties=specialties,
         cdf_cut_points=cdf_cut_points,
@@ -880,21 +943,6 @@ def main(data_folder_name=None, uclh=None):
     print("\nNumber of rows in dataset that are not in these times of day")
     print(len(visits[~visits.prediction_time.isin(prediction_times)]))
 
-    # Check dataset splits
-    print("Checking dates for ed_visits dataset (used for patients in ED)")
-    split_and_check_sets(
-        visits, start_training_set, start_validation_set, start_test_set, end_test_set
-    )
-    print("Checking dates for admissions dataset (used for yet-to-arrive patients)")
-    split_and_check_sets(
-        yta,
-        start_training_set,
-        start_validation_set,
-        start_test_set,
-        end_test_set,
-        date_column="arrival_datetime",
-    )
-
     # Set up model parameters
     grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}
 
@@ -949,6 +997,10 @@ def main(data_folder_name=None, uclh=None):
     # Call train_all_models with prepared parameters
     model_metadata = train_all_models(
         visits=visits,
+        start_training_set=start_training_set,
+        start_validation_set=start_validation_set,
+        start_test_set=start_test_set,
+        end_test_set=end_test_set,
         yta=yta,
         model_file_path=model_file_path,
         prediction_times=prediction_times,

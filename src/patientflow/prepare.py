@@ -33,7 +33,6 @@ import numpy as np
 import random
 from patientflow.load import data_from_csv, load_saved_model, get_dict_cols
 from datetime import datetime
-from functools import reduce
 
 
 from typing import Dict, Any
@@ -99,96 +98,110 @@ def assign_mrns(
     end_test_set,
     col_name="arrival_datetime",
 ):
-    # assign each mrn to only one of the three sets to ensure no visit appears in more than one set
+    """Probabilistically assign MRNs to train/validation/test sets.
+
+    Args:
+        df: DataFrame with mrn, encounter, and temporal columns
+        start_training_set: Start date for training period
+        start_validation_set: Start date for validation period
+        start_test_set: Start date for test period
+        end_test_set: End date for test period
+        col_name: Column name for temporal splitting
+
+    Returns:
+        DataFrame with MRN assignments based on weighted random sampling
+
+    Notes:
+        - Counts encounters in each time period per MRN
+        - Randomly assigns each MRN to one set, weighted by their temporal distribution
+        - MRN with 70% encounters in training, 30% in validation has 70% chance of training assignment
+    """
     mrns = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
-    mrns["training_set"] = mrns[col_name].dt.date < start_validation_set
+
+    mrns["training_set"] = (mrns[col_name].dt.date >= start_training_set) & (
+        mrns[col_name].dt.date < start_validation_set
+    )
     mrns["validation_set"] = (mrns[col_name].dt.date >= start_validation_set) & (
         mrns[col_name].dt.date < start_test_set
     )
-    mrns["test_set"] = mrns[col_name].dt.date >= start_test_set
+    mrns["test_set"] = (mrns[col_name].dt.date >= start_test_set) & (
+        mrns[col_name].dt.date < end_test_set
+    )
+
     mrns = mrns.groupby("mrn")[["training_set", "validation_set", "test_set"]].sum()
     mrns["training_validation_test"] = mrns.apply(apply_set, axis=1)
+
     print(
-        "\n" + f"{mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} "
-        f"mrns are in both training and validation sets, of a total of "
-        f"{mrns[mrns.training_set + mrns.validation_set > 0].shape[0]} "
-        "mrns in one or other set"
+        f"\nMRN Set Overlaps (before random assignment):"
+        f"\nTrain-Valid: {mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.validation_set > 0].shape[0]}"
+        f"\nValid-Test: {mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.validation_set + mrns.test_set > 0].shape[0]}"
+        f"\nTrain-Test: {mrns[mrns.training_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.test_set > 0].shape[0]}"
+        f"\nAll Sets: {mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns.shape[0]} total MRNs"
     )
-    print(
-        f"{mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in both validation and test sets, of a total of "
-        f"{mrns[mrns.validation_set + mrns.test_set > 0].shape[0]} "
-        "mrns in one or other set"
-    )
-    print(
-        f"{mrns[mrns.training_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in both training and test sets, of a total of "
-        f"{mrns[mrns.training_set + mrns.test_set > 0].shape[0]} "
-        "mrns in one or other set"
-    )
-    print(
-        f"{mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in all three sets, of a total of "
-        f"{mrns.shape[0]} mrns"
-    )
+
     return mrns
 
-def assign_mrn_to_training_validation_test_set(
-    df,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name="arrival_datetime",
+
+def create_temporal_splits(
+    df, start_train, start_valid, start_test, end_test, col_name="arrival_datetime"
 ):
-    if "snapshot_date" not in df.columns:
-        df["snapshot_date"] = df["snapshot_datetime"].dt.date
+    """Split dataset into temporal train/validation/test sets with optional MRN handling.
 
-    set_assignment = assign_mrns(
-        df,
-        start_training_set,
-        start_validation_set,
-        start_test_set,
-        end_test_set,
-        col_name,
-    ).reset_index()
+    Args:
+        df (pd.DataFrame): Input dataframe with datetime columns
+        start_train (date): Start date for training set (inclusive)
+        start_valid (date): Start date for validation set (inclusive)
+        start_test (date): Start date for test set (inclusive)
+        end_test (date): End date for test set (exclusive)
+        col_name (str, optional): Column name for splitting. Defaults to "arrival_datetime"
 
-    # Define MRN sets
-    training_mrns = set(set_assignment[set_assignment.training_validation_test == "train"]["mrn"])
-    validation_mrns = set(set_assignment[set_assignment.training_validation_test == "valid"]["mrn"])
-    test_mrns = set(set_assignment[set_assignment.training_validation_test == "test"]["mrn"])
+    Returns:
+        tuple: (train_df, valid_df, test_df) - Split dataframes
 
-    # Create training set
-    train_df = df[
-        (df[col_name].dt.date < start_validation_set) & 
-        (df.mrn.isin(training_mrns)) &
-        (df.snapshot_date < start_validation_set)
-    ].copy()
+    MRN Processing:
+        - If 'mrn' column exists, ensures all records for a patient stay in same split
+        - Probabilistically assigns MRNs to sets based on their encounter distribution
+        - MRN with 70% training encounters has 70% chance of training assignment
+        - Ensures each MRN's data stays entirely within one split
+        - Then filters each split to only include records from assigned MRNs
+        - Prevents patient data leakage across train/valid/test boundaries
 
-    # Create validation set
-    valid_df = df[
-        (df[col_name].dt.date >= start_validation_set) & 
-        (df[col_name].dt.date < start_test_set) &
-        (df.mrn.isin(validation_mrns)) &
-        (df.snapshot_date >= start_validation_set) &
-        (df.snapshot_date < start_test_set)
-    ].copy()
+    Time Boundaries:
+        - Records must have both arrival_datetime and snapshot_date within split bounds
+        - Uses inclusive start dates and exclusive end dates
+    """
 
-    # Create test set
-    test_df = df[
-        (df[col_name].dt.date >= start_test_set) &
-        (df[col_name].dt.date < end_test_set) &
-        (df.mrn.isin(test_mrns)) &
-        (df.snapshot_date >= start_test_set) &
-        (df.snapshot_date < end_test_set)
-    ].copy()
+    # df["snapshot_date"] = df.get("snapshot_date", df["snapshot_datetime"].dt.date)
 
-    print(f"Training set: {train_df.shape[0]} rows")
-    print(f"Validation set: {valid_df.shape[0]} rows")
-    print(f"Test set: {test_df.shape[0]} rows")
+    if "mrn" in df.columns:
+        set_assignment = assign_mrns(
+            df, start_train, start_valid, start_test, end_test, col_name
+        )
+        mrn_sets = {
+            k: set(set_assignment[set_assignment.training_validation_test == v]["mrn"])
+            for k, v in {"train": "train", "valid": "valid", "test": "test"}.items()
+        }
 
-    return train_df, valid_df, test_df
+    splits = []
+    for start, end, mrn_key in [
+        (start_train, start_valid, "train"),
+        (start_valid, start_test, "valid"),
+        (start_test, end_test, "test"),
+    ]:
+        mask = (
+            (df[col_name].dt.date >= start)
+            & (df[col_name].dt.date < end)
+            & (df.snapshot_date >= start)
+            & (df.snapshot_date < end)
+        )
 
+        if "mrn" in df.columns:
+            mask &= df.mrn.isin(mrn_sets[mrn_key])
+
+        splits.append(df[mask].copy())
+
+    print(f"Split sizes: {[len(split) for split in splits]}")
+    return splits
 
 
 def create_special_category_objects(uclh):
@@ -275,11 +288,16 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
 
 
 def get_snapshots_at_prediction_time(
-    df, prediction_time, exclude_columns, single_snapshot_per_visit=True, visit_col="visit_number", label_col="is_admitted"
+    df,
+    prediction_time,
+    exclude_columns,
+    single_snapshot_per_visit=True,
+    visit_col="visit_number",
+    label_col="is_admitted",
 ):
     """
     Get snapshots of data at a specific prediction time with configurable visit and label columns.
-    
+
     Parameters:
     -----------
     df : pandas.DataFrame
@@ -294,18 +312,16 @@ def get_snapshots_at_prediction_time(
         Name of the column containing visit identifiers
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
-    
+
     Returns:
     --------
     tuple(pandas.DataFrame, pandas.Series)
         Processed DataFrame and corresponding labels
     """
 
-
-    
     # Filter by the time of day while keeping the original index
     df_tod = df[df["prediction_time"] == prediction_time].copy()
-    
+
     if single_snapshot_per_visit:
         # Group by visit_col and get the row with the maximum 'random_number'
         df_single = select_one_snapshot_per_visit(df_tod, visit_col)

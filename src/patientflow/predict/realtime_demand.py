@@ -1,10 +1,9 @@
-from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 from patientflow.load import get_model_name
-from patientflow.prepare import prepare_for_inference, validate_special_category_objects
+from patientflow.prepare import validate_special_category_objects
 
 from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
@@ -17,6 +16,8 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
 )
 
+
+from patientflow.errors import ModelLoadError
 import warnings
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
@@ -76,6 +77,22 @@ def index_of_sum(sequence: List[float], max_sum: float) -> int:
     return len(sequence) - 1  # Return the last index if the sum doesn't exceed max_sum
 
 
+def validate_model_names(models: Dict[str, Any], model_names: Dict[str, str]) -> None:
+    """
+    Validates that all model types specified in model_names exist in models.
+
+    Args:
+        models: Dictionary containing all required models
+        model_names: Dictionary mapping model types to their names
+
+    Raises:
+        ModelLoadError: If a required model name is not found in models
+    """
+    missing_models = [name for name in model_names.values() if name not in models]
+    if missing_models:
+        raise ModelLoadError(f"Missing required models: {missing_models}")
+
+
 def create_predictions(
     models: Dict[str, Any],
     model_names: Dict[str, str],
@@ -92,7 +109,7 @@ def create_predictions(
 ) -> Dict[str, Dict[str, List[int]]]:
     """
     Create predictions for emergency demand for a single prediction moment.
-    
+
     Parameters:
     - models (Dict[str, Any]): Dictionary containing all required models
     - model_names (Dict[str, str]): Dictionary mapping model types to their names
@@ -104,6 +121,10 @@ def create_predictions(
     - cdf_cut_points (List[float]): List of CDF cut points
     - special_params (Optional[Dict[str, Any]]): Special handling parameters
     """
+    print(model_names)
+    print(models.keys())
+    validate_model_names(models, model_names)
+
     if special_params:
         validate_special_category_objects(special_params)
         special_category_func = special_params["special_category_func"]
@@ -117,14 +138,16 @@ def create_predictions(
     }
 
     # Get appropriate model for prediction time
-    model_for_prediction_time = get_model_name(model_names["admissions"], prediction_time)
+    model_for_prediction_time = get_model_name(
+        model_names["admissions"], prediction_time
+    )
     admissions_model = models[model_names["admissions"]][model_for_prediction_time]
 
     # Add missing columns expected by the model
     prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
 
     # Get yet to arrive model
-    yet_to_arrive_model = models[model_names['yet_to_arrive']]
+    yet_to_arrive_model = models[model_names["yet_to_arrive"]]
 
     # Get predictions of admissions for ED patients
     prob_admission_after_ed = model_input_to_pred_proba(

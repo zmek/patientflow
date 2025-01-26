@@ -1,11 +1,6 @@
 import pandas as pd
 import numpy as np
 
-from patientflow.prepare import (
-    prep_uclh_dataset_for_inference,
-    assign_mrn_to_training_validation_test_set,
-)
-
 
 def prepare_age_and_dates(df):  # conversions necessary for each datetime column
     # calculate age on arrival
@@ -82,5 +77,3 @@ def map_consultations_to_types(df, name_mapping):
     df["final_sequence"] = df["final_sequence"].apply(map_codes_to_types)
 
     return df
-
-
