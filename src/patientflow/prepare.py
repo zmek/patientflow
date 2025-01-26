@@ -118,6 +118,21 @@ def assign_mrns(
     """
     mrns: pd.DataFrame = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
 
+    # Filter out MRNs outside temporal bounds
+    pre_training_mrns = mrns[mrns[col_name].dt.date < start_training_set]
+    post_test_mrns = mrns[mrns[col_name].dt.date >= end_test_set]
+    
+    if len(pre_training_mrns) > 0:
+        print(f"Filtered out {len(pre_training_mrns)} MRNs with only pre-training visits")
+    if len(post_test_mrns) > 0:
+        print(f"Filtered out {len(post_test_mrns)} MRNs with only post-test visits")
+        
+    valid_mrns = mrns[
+        (mrns[col_name].dt.date >= start_training_set) & 
+        (mrns[col_name].dt.date < end_test_set)
+    ]
+    mrns = valid_mrns
+
     mrns["training_set"] = (mrns[col_name].dt.date >= start_training_set) & (
         mrns[col_name].dt.date < start_validation_set
     )
