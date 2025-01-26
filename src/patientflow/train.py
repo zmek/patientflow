@@ -421,7 +421,7 @@ def train_specialty_model(
     input_var,
     grouping_var,
     outcome_var,
-):
+) -> tuple[dict, SequencePredictor]:
     """Train a specialty prediction model.
 
     Args:
@@ -435,8 +435,9 @@ def train_specialty_model(
         outcome_var (str, optional): Column name for target variable. Defaults to "specialty"
 
     Returns:
-        tuple: Updated model metadata dictionary and trained SequencePredictor model
+       tuple[dict, SequencePredictor]: Updated model metadata dictionary and trained SequencePredictor model
     """
+
     visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
     admitted = visits_single[
         (visits_single.is_admitted) & ~(visits_single.specialty.isnull())

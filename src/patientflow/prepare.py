@@ -32,10 +32,11 @@ import pandas as pd
 import numpy as np
 import random
 from patientflow.load import data_from_csv, load_saved_model, get_dict_cols
-from datetime import datetime
+from datetime import datetime, date
 
 
-from typing import Dict, Any
+from typing import Tuple, List, Set, Dict, Any
+
 from patientflow.errors import MissingKeysError
 
 
@@ -82,8 +83,7 @@ def convert_dict_to_values(df, column, prefix):
     return dict_df
 
 
-# function that will assign each mrn to one of training, validation, making a random choice that is weighted by the proportion of visits occuring in each set
-def apply_set(row):
+def apply_set(row: pd.Series) -> str:
     return random.choices(
         ["train", "valid", "test"],
         weights=[row.training_set, row.validation_set, row.test_set],
@@ -91,13 +91,13 @@ def apply_set(row):
 
 
 def assign_mrns(
-    df,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name="arrival_datetime",
-):
+    df: pd.DataFrame,
+    start_training_set: date,
+    start_validation_set: date,
+    start_test_set: date,
+    end_test_set: date,
+    col_name: str = "arrival_datetime",
+) -> pd.DataFrame:
     """Probabilistically assign MRNs to train/validation/test sets.
 
     Args:
@@ -116,7 +116,7 @@ def assign_mrns(
         - Randomly assigns each MRN to one set, weighted by their temporal distribution
         - MRN with 70% encounters in training, 30% in validation has 70% chance of training assignment
     """
-    mrns = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
+    mrns: pd.DataFrame = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
 
     mrns["training_set"] = (mrns[col_name].dt.date >= start_training_set) & (
         mrns[col_name].dt.date < start_validation_set
@@ -143,38 +143,31 @@ def assign_mrns(
 
 
 def create_temporal_splits(
-    df, start_train, start_valid, start_test, end_test, col_name="arrival_datetime"
-):
+    df: pd.DataFrame,
+    start_train: date,
+    start_valid: date,
+    start_test: date,
+    end_test: date,
+    col_name: str = "arrival_datetime",
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split dataset into temporal train/validation/test sets.
 
     Creates temporal data splits using primary datetime column and optional snapshot dates.
     Handles MRN (patient ID) grouping if present to prevent data leakage.
 
     Args:
-        df (pd.DataFrame): Input dataframe
-        start_train (date): Training start (inclusive)
-        start_valid (date): Validation start (inclusive)
-        start_test (date): Test start (inclusive)
-        end_test (date): Test end (exclusive)
-        col_name (str): Primary datetime column for splitting. Default "arrival_datetime"
+        df: Input dataframe
+        start_train: Training start (inclusive)
+        start_valid: Validation start (inclusive)
+        start_test: Test start (inclusive)
+        end_test: Test end (exclusive)
+        col_name: Primary datetime column for splitting
 
     Returns:
         tuple: (train_df, valid_df, test_df) Split dataframes
-
-    MRN Processing:
-        - Groups patient records by MRN if 'mrn' column exists
-        - Assigns MRNs probabilistically based on temporal distribution
-        - MRN with 70% training encounters -> 70% chance of training set
-        - Keeps all records for each MRN in same split
-        - Prevents patient data leakage across splits
-
-    Time Boundaries:
-        - Primary split on col_name between set boundaries
-        - Secondary filter on snapshot_date if column exists
-        - Uses inclusive start, exclusive end dates
     """
 
-    def get_date_value(series):
+    def get_date_value(series: pd.Series) -> pd.Series:
         """Convert timestamp or date column to date, handling both types"""
         try:
             return pd.to_datetime(series).dt.date
@@ -182,15 +175,15 @@ def create_temporal_splits(
             return series
 
     if "mrn" in df.columns:
-        set_assignment = assign_mrns(
+        set_assignment: pd.DataFrame = assign_mrns(
             df, start_train, start_valid, start_test, end_test, col_name
         )
-        mrn_sets = {
-            k: set(set_assignment[set_assignment.training_validation_test == v]["mrn"])
+        mrn_sets: Dict[str, Set] = {
+            k: set(set_assignment[set_assignment.training_validation_test == v].index)
             for k, v in {"train": "train", "valid": "valid", "test": "test"}.items()
         }
 
-    splits = []
+    splits: List[pd.DataFrame] = []
     for start, end, mrn_key in [
         (start_train, start_valid, "train"),
         (start_valid, start_test, "valid"),
@@ -211,7 +204,7 @@ def create_temporal_splits(
         splits.append(df[mask].copy())
 
     print(f"Split sizes: {[len(split) for split in splits]}")
-    return splits
+    return tuple(splits)
 
 
 def create_special_category_objects(uclh):
