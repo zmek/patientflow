@@ -26,7 +26,8 @@ A set of notebooks showing how the modelling has been done at UCLH. These can be
 - **[4c_Predict_probablity_of_admission_to_specialty](4c_Predict_probability_of_admission_to_specialty.ipynb):** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently
 - **[4d_Predict_demand_from_patients_yet_to_arrive](4d_Predict_demand_from_patients_yet_to_arrive.ipynb):** Show the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrates the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window
 
-A set of notebooks that shows how you might being to evaluate the performance of your models, and how you could use them for real-time prediction. 
+A set of notebooks that shows how you might being to evaluate the performance of your models, and how you could use them for real-time prediction.
+
 - **[5_Evaluate_model_performance](5_Evaluate_model_performance.ipynb)**: Discusses how to evaluate the models' predictions
 - **[6_Bring_it_all_together](6_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
 
@@ -36,72 +37,81 @@ Other notebooks showing analysis we have done for our users.
 
 ## Preparing your notebook environment
 
-The `PROJECT_ROOT` environment variable needs to be set so notebooks can find the repository root directory. You have various options: -**use a virtual enviromment and set it up within that (recommended)** -**set it temporarily within each notebook**
-**set it globally on your computer**
+The `PATH_TO_PATIENTFLOW` environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:
 
-### To set the PROJECT_ROOT environment variable within your virtual environment (recommended)
+- use a virtual enviromment and set PATH_TO_PATIENTFLOW up within that
+- set PATH_TO_PATIENTFLOW temporarily within each notebook
+- set PATH_TO_PATIENTFLOW globally on your computer
+
+### To set the PATH_TO_PATIENTFLOW environment variable within your virtual environment
 
 **Conda environments**
 
-Add PROJECT_ROOT to the `environment.yml` file:
+Add PATH_TO_PATIENTFLOW to the `environment.yml` file:
 
 ```yaml
 variables:
-  PROJECT_ROOT: /path/to/patientflow
+  PATH_TO_PATIENTFLOW: /path/to/patientflow
 ```
 
-**venv**
+**venv environment**
 
-Add PROJECT_ROOT to the venv activation script:
+Add path_to_patientflow to the venv activation script:
 
 ```sh
-echo 'export PROJECT_ROOT=/path/to/patientflow' >> venv/bin/activate  # Linux/Mac
-echo 'set PROJECT_ROOT=/path/to/patientflow' >> venv/Scripts/activate.bat  # Windows
+echo 'export PATH_TO_PATIENTFLOW=/path/to/patientflow' >> venv/bin/activate  # Linux/Mac
+echo 'set PATH_TO_PATIENTFLOW=/path/to/patientflow' >> venv/Scripts/activate.bat  # Windows
 ```
 
 The environment variable will be set whenever you activate the virtual environment and unset when you deactivate it.
 Replace /path/to/patientflow with your repository path.
 
-### To set the PROJECT_ROOT environment variable temporarily
+### To set the project_root environment variable from within each notebook
 
-From the terminal before launching Jupyter:
+A function called `set_project_root()` can be run in each notebook. If you include the name of a environment variable as shown below, the function will look in your global environment for a variable of this name.
 
-```sh
-Linux/Mac:
-export PROJECT_ROOT=/path/to/patientflow
+Alternatively, if you call the function without any arguments, the function will try to infer the location of the patientflow repo from your currently active path.
 
-Windows:
-set PROJECT_ROOT=C:\path\to\patientflow
+```python
+# to specify an environment variable that has been set elsewhere
+project_root = set_project_root(env_var ="PATH_TO_PATIENTFLOW")
+
+# to let the notebook infer the path
+project_root = set_project_root()
+
 ```
 
-From a notebook cell:
+You can also set an environment variable from within a notebook cell:
 
 **Linux/Mac:**
 
 ```sh
-%env PROJECT_ROOT=/path/to/patientflow
+%env PATH_TO_PATIENTFLOW=/path/to/patientflow
 ```
 
 Windows:
 
 ```sh
-%env PROJECT_ROOT=C:\path\to\patientflow
+%env PATH_TO_PATIENTFLOW=C:\path\to\patientflow
 ```
 
 Replace /path/to/patientflow with the actual path to your cloned repository.
 
-### To set PROJECT_ROOT environment variable permanently on your system
+### To set project_root environment variable permanently on your system
 
 **Linux/Mac:**
-Add to ~/.bashrc or ~/.zshrc:
-`export PROJECT_ROOT=/path/to/patientflow`
+
+```sh
+# Add to ~/.bashrc or ~/.zshrc:
+export PATH_TO_PATIENTFLOW=/path/to/patientflow
+```
 
 **Windows:**
 
 ```sh
 Open System Properties > Advanced > Environment Variables
 Under User Variables, click New
-Variable name: PROJECT_ROOT
+Variable name: PATH_TO_PATIENTFLOW
 Variable value: C:\path\to\patientflow
 Click OK
 ```

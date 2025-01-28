@@ -10,11 +10,12 @@ import sys
 # import argparse
 
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
+from dataclasses import dataclass
 
 from patientflow.prepare import (
     get_snapshots_at_prediction_time,
@@ -27,9 +28,9 @@ from patientflow.load import (
     load_config_file,
     get_model_name,
     set_file_paths,
-    set_data_file_names,
-    data_from_csv,
+    load_data,
     parse_args,
+    set_project_root,
 )
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
@@ -116,63 +117,79 @@ def split_and_check_sets(
     return
 
 
+@dataclass
+class MetricResults:
+    """Store evaluation metrics for a single fold."""
+
+    auc: float
+    logloss: float
+    auprc: float
+
+
+def evaluate_predictions(y_true, y_pred):
+    """
+    Calculate multiple metrics for given predictions.
+
+    Args:
+        y_true: True labels
+        y_pred: Predicted probabilities
+
+    Returns:
+        MetricResults object containing all metrics
+    """
+    return MetricResults(
+        auc=roc_auc_score(y_true, y_pred),
+        logloss=log_loss(y_true, y_pred),
+        auprc=average_precision_score(y_true, y_pred),
+    )
+
+
 def chronological_cross_validation(pipeline, X, y, n_splits=5):
     """
-    Perform time series cross-validation.
+    Perform time series cross-validation with multiple metrics.
 
-    :param pipeline: The machine learning pipeline (preprocessing + model).
-    :param X: Input features.
-    :param y: Target variable.
-    :param n_splits: Number of splits for cross-validation.
-    :return: Dictionary with the average training and validation scores.
+    Args:
+        pipeline: The machine learning pipeline (preprocessing + model)
+        X: Input features
+        y: Target variable
+        n_splits: Number of splits for cross-validation
+
+    Returns:
+        Dictionary with averaged metrics across all folds
     """
-    # Initialize TimeSeriesSplit
     tscv = TimeSeriesSplit(n_splits=n_splits)
 
-    # Lists to collect scores for each fold
-    train_aucs = []
-    train_loglosses = []
-    valid_aucs = []
-    valid_loglosses = []
+    # Calculate metrics for each fold
+    train_metrics = []
+    valid_metrics = []
 
-    # Iterate over train-test splits
-    for train_index, test_index in tscv.split(X):
-        X_train, X_valid = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_valid = y.iloc[train_index], y.iloc[test_index]
+    for train_idx, valid_idx in tscv.split(X):
+        # Split data
+        X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
+        y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
 
-        # Fit the pipeline to the training data
-        # Note that you don't need to manually transform the data; the pipeline handles it
+        # Fit and predict
         pipeline.fit(X_train, y_train)
+        train_preds = pipeline.predict_proba(X_train)[:, 1]
+        valid_preds = pipeline.predict_proba(X_valid)[:, 1]
 
-        # # To access transformed feature names:
-        # transformed_cols = pipeline.named_steps['feature_transformer'].get_feature_names_out()
-        # transformed_cols = [col.split('__')[-1] for col in transformed_cols]
+        # Calculate metrics
+        train_metrics.append(evaluate_predictions(y_train, train_preds))
+        valid_metrics.append(evaluate_predictions(y_valid, valid_preds))
 
-        # Evaluate on the training split
-        y_train_pred = pipeline.predict_proba(X_train)[:, 1]
-        train_auc = roc_auc_score(y_train, y_train_pred)
-        train_logloss = log_loss(y_train, y_train_pred)
-        train_aucs.append(train_auc)
-        train_loglosses.append(train_logloss)
+    # Calculate means across folds
+    def aggregate_metrics(metrics_list):
+        return {
+            field: np.mean([getattr(m, field) for m in metrics_list])
+            for field in MetricResults.__dataclass_fields__
+        }
 
-        # Evaluate on the validation split
-        y_valid_pred = pipeline.predict_proba(X_valid)[:, 1]
-        valid_auc = roc_auc_score(y_valid, y_valid_pred)
-        valid_logloss = log_loss(y_valid, y_valid_pred)
-        valid_aucs.append(valid_auc)
-        valid_loglosses.append(valid_logloss)
+    train_means = aggregate_metrics(train_metrics)
+    valid_means = aggregate_metrics(valid_metrics)
 
-    # Calculate mean scores
-    mean_train_auc = sum(train_aucs) / n_splits
-    mean_train_logloss = sum(train_loglosses) / n_splits
-    mean_valid_auc = sum(valid_aucs) / n_splits
-    mean_valid_logloss = sum(valid_loglosses) / n_splits
-
-    return {
-        "train_auc": mean_train_auc,
-        "valid_auc": mean_valid_auc,
-        "train_logloss": mean_train_logloss,
-        "valid_logloss": mean_valid_logloss,
+    # Format final results
+    return {f"train_{metric}": value for metric, value in train_means.items()} | {
+        f"valid_{metric}": value for metric, value in valid_means.items()
     }
 
 
@@ -280,6 +297,122 @@ def get_default_visits(admitted, uclh):
     return filtered_admitted
 
 
+@dataclass
+class ModelResults:
+    """Store model training results and metadata."""
+
+    pipeline: Pipeline
+    valid_logloss: float
+    feature_names: list
+    feature_importances: list
+    metrics: dict
+
+
+def log_if_verbose(message, verbose=False):
+    """Helper function to handle verbose logging."""
+    if verbose:
+        print(message)
+
+
+def get_dataset_metadata(X_train, X_valid, X_test, y_train, y_valid, y_test):
+    """Get dataset sizes and class balances."""
+    return {
+        "train_valid_test_set_no": {
+            "train_set_no": len(X_train),
+            "valid_set_no": len(X_valid),
+            "test_set_no": len(X_test),
+        },
+        "train_valid_test_class_balance": {
+            "y_train_class_balance": calculate_class_balance(y_train),
+            "y_valid_class_balance": calculate_class_balance(y_valid),
+            "y_test_class_balance": calculate_class_balance(y_test),
+        },
+    }
+
+
+def evaluate_model(pipeline, X_test, y_test):
+    """Evaluate model on test set."""
+    y_test_pred = pipeline.predict_proba(X_test)[:, 1]
+    return {
+        "test_auc": roc_auc_score(y_test, y_test_pred),
+        "test_logloss": log_loss(y_test, y_test_pred),
+        "test_auprc": average_precision_score(y_test, y_test_pred),
+    }
+
+
+def get_feature_metadata(pipeline):
+    """Extract feature names and importances from pipeline."""
+    transformed_cols = pipeline.named_steps[
+        "feature_transformer"
+    ].get_feature_names_out()
+    return {
+        "feature_names": [col.split("__")[-1] for col in transformed_cols],
+        "feature_importances": pipeline.named_steps[
+            "classifier"
+        ].feature_importances_.tolist(),
+    }
+
+
+def train_single_model(
+    X_train,
+    X_valid,
+    X_test,
+    y_train,
+    y_valid,
+    y_test,
+    grid,
+    ordinal_mappings,
+    verbose=False,
+):
+    """Train a single model for one prediction time."""
+    best_model = ModelResults(
+        pipeline=None,
+        valid_logloss=float("inf"),
+        feature_names=[],
+        feature_importances=[],
+        metrics={},
+    )
+    results_dict = {}
+
+    for params in ParameterGrid(grid):
+        # Initialize model and pipeline
+        model = initialise_xgb(params)
+        column_transformer = create_column_transformer(X_test, ordinal_mappings)
+        pipeline = Pipeline(
+            [("feature_transformer", column_transformer), ("classifier", model)]
+        )
+
+        # Cross-validate
+        cv_results = chronological_cross_validation(
+            pipeline, X_train, y_train, n_splits=5
+        )
+        results_dict[str(params)] = cv_results
+
+        # Update best model if better
+        if cv_results["valid_logloss"] < best_model.valid_logloss:
+            best_model.pipeline = pipeline
+            best_model.valid_logloss = cv_results["valid_logloss"]
+            best_model.metrics = {
+                "params": str(params),
+                "train_valid_set_results": results_dict,
+                "test_set_results": evaluate_model(pipeline, X_test, y_test),
+            }
+            best_model.feature_names = get_feature_metadata(pipeline)["feature_names"]
+            best_model.feature_importances = get_feature_metadata(pipeline)[
+                "feature_importances"
+            ]
+
+            if verbose:
+                log_if_verbose("\nNew best model found:", verbose)
+                log_if_verbose(
+                    f"Valid LogLoss: {best_model.valid_logloss:.4f}", verbose
+                )
+                log_if_verbose(f"Valid AUPRC: {cv_results['valid_auprc']:.4f}", verbose)
+                log_if_verbose(f"Valid AUC: {cv_results['valid_auc']:.4f}", verbose)
+
+    return best_model
+
+
 def train_admissions_models(
     train_visits,
     valid_visits,
@@ -291,123 +424,99 @@ def train_admissions_models(
     model_name,
     model_metadata,
     visit_col,
+    verbose=False,
 ):
-    # Initialize dictionary to store models
+    """
+    Train admission prediction models for different prediction times.
+
+    Args:
+        train_visits: Training dataset
+        valid_visits: Validation dataset
+        test_visits: Test dataset
+        grid: Hyperparameter grid
+        exclude_from_training_data: Columns to exclude
+        ordinal_mappings: Mappings for ordinal features
+        prediction_times: List of prediction times
+        model_name: Base name for the model
+        model_metadata: Dictionary to store model metadata
+        visit_col: Name of visit column
+        verbose: Whether to print progress messages (default: False)
+
+    Returns:
+        Tuple of (model_metadata, trained_models)
+    """
     trained_models = {}
 
-    # Process each time of day
-    for _prediction_time in prediction_times:
-        print("\nProcessing :" + str(_prediction_time))
+    for prediction_time in prediction_times:
+        print(f"\nProcessing: {prediction_time}")
+        model_key = get_model_name(model_name, prediction_time)
 
-        # create a name for the model based on the time of day it is trained for
-        MODEL__ED_ADMISSIONS__NAME = get_model_name(model_name, _prediction_time)
-
-        # initialise data used for saving attributes of the model
-        model_metadata[MODEL__ED_ADMISSIONS__NAME] = {}
-        best_valid_logloss = float("inf")
-        results_dict = {}
-        best_pipeline = None
-
-        # get visits that were in at the time of day in question and preprocess the training, validation and test sets
+        # Prepare datasets
         X_train, y_train = get_snapshots_at_prediction_time(
-            df=train_visits,
-            prediction_time=_prediction_time,
-            exclude_columns=exclude_from_training_data,
-            visit_col=visit_col,
+            train_visits, prediction_time, exclude_from_training_data, visit_col
         )
         X_valid, y_valid = get_snapshots_at_prediction_time(
-            df=valid_visits,
-            prediction_time=_prediction_time,
-            exclude_columns=exclude_from_training_data,
-            visit_col=visit_col,
+            valid_visits, prediction_time, exclude_from_training_data, visit_col
         )
         X_test, y_test = get_snapshots_at_prediction_time(
-            df=test_visits,
-            prediction_time=_prediction_time,
-            exclude_columns=exclude_from_training_data,
-            visit_col=visit_col,
+            test_visits, prediction_time, exclude_from_training_data, visit_col
         )
 
-        y_train_class_balance = calculate_class_balance(y_train)
-        y_valid_class_balance = calculate_class_balance(y_valid)
-        y_test_class_balance = calculate_class_balance(y_test)
-
-        # save size of each set
-        model_metadata[MODEL__ED_ADMISSIONS__NAME]["train_valid_test_set_no"] = {
-            "train_set_no": len(X_train),
-            "valid_set_no": len(X_valid),
-            "test_set_no": len(X_test),
-        }
-
-        # save class balance of each set
-        model_metadata[MODEL__ED_ADMISSIONS__NAME]["train_valid_test_class_balance"] = {
-            "y_train_class_balance": y_train_class_balance,
-            "y_valid_class_balance": y_valid_class_balance,
-            "y_test_class_balance": y_test_class_balance,
-        }
-
-        # iterate through the grid of hyperparameters
-        for g in ParameterGrid(grid):
-            model = initialise_xgb(g)
-
-            # define a column transformer for the ordinal and categorical variables
-            column_transformer = create_column_transformer(X_test, ordinal_mappings)
-
-            # create a pipeline with the feature transformer and the model
-            pipeline = Pipeline(
-                [("feature_transformer", column_transformer), ("classifier", model)]
+        if verbose:
+            log_if_verbose(
+                f"Train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
+                verbose,
+            )
+            log_if_verbose(
+                f"Valid set size: {len(X_valid)}, Positive rate: {y_valid.mean():.3f}",
+                verbose,
+            )
+            log_if_verbose(
+                f"Test set size: {len(X_test)}, Positive rate: {y_test.mean():.3f}",
+                verbose,
             )
 
-            # cross-validate on training set using the function created earlier
-            cv_results = chronological_cross_validation(
-                pipeline, X_train, y_train, n_splits=5
-            )
+        # Initialize metadata for this model
+        model_metadata[model_key] = get_dataset_metadata(
+            X_train, X_valid, X_test, y_train, y_valid, y_test
+        )
 
-            # Store results for this set of parameters in the results dictionary
-            results_dict[str(g)] = {
-                "train_auc": cv_results["train_auc"],
-                "valid_auc": cv_results["valid_auc"],
-                "train_logloss": cv_results["train_logloss"],
-                "valid_logloss": cv_results["valid_logloss"],
-            }
+        # Train model for this prediction time
+        best_model = train_single_model(
+            X_train,
+            X_valid,
+            X_test,
+            y_train,
+            y_valid,
+            y_test,
+            grid,
+            ordinal_mappings,
+            verbose=verbose,
+        )
 
-            # Update best model if current model is better on validation set
-            if cv_results["valid_logloss"] < best_valid_logloss:
-                best_valid_logloss = cv_results["valid_logloss"]
-                best_pipeline = pipeline
-
-                # save the best model params
-                model_metadata[MODEL__ED_ADMISSIONS__NAME]["best_params"] = str(g)
-
-                # save the model metrics on training and validation set
-                model_metadata[MODEL__ED_ADMISSIONS__NAME][
+        # Store results
+        model_metadata[model_key].update(
+            {
+                "best_params": best_model.metrics["params"],
+                "train_valid_set_results": best_model.metrics[
                     "train_valid_set_results"
-                ] = results_dict
+                ],
+                "test_set_results": best_model.metrics["test_set_results"],
+                "best_model_features": {
+                    "feature_names": best_model.feature_names,
+                    "feature_importances": best_model.feature_importances,
+                },
+            }
+        )
 
-                # score the model's performance on the test set
-                y_test_pred_proba = pipeline.predict_proba(X_test)[:, 1]
-                test_auc = roc_auc_score(y_test, y_test_pred_proba)
-                test_logloss = log_loss(y_test, y_test_pred_proba)
+        trained_models[model_key] = best_model.pipeline
 
-                model_metadata[MODEL__ED_ADMISSIONS__NAME]["test_set_results"] = {
-                    "test_auc": test_auc,
-                    "test_logloss": test_logloss,
-                }
-
-                # save the best features
-                transformed_cols = pipeline.named_steps[
-                    "feature_transformer"
-                ].get_feature_names_out()
-                transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-                model_metadata[MODEL__ED_ADMISSIONS__NAME]["best_model_features"] = {
-                    "feature_names": transformed_cols,
-                    "feature_importances": pipeline.named_steps[
-                        "classifier"
-                    ].feature_importances_.tolist(),
-                }
-
-        # Store the best model for this prediction time
-        trained_models[MODEL__ED_ADMISSIONS__NAME] = best_pipeline
+        if verbose:
+            test_metrics = best_model.metrics["test_set_results"]
+            log_if_verbose(f"\nFinal model performance for {prediction_time}:", verbose)
+            log_if_verbose(f"Test AUPRC: {test_metrics['test_auprc']:.4f}", verbose)
+            log_if_verbose(f"Test AUC: {test_metrics['test_auc']:.4f}", verbose)
+            log_if_verbose(f"Test LogLoss: {test_metrics['test_logloss']:.4f}", verbose)
 
     return model_metadata, trained_models
 
@@ -844,7 +953,7 @@ def train_all_models(
     return model_metadata
 
 
-def main(data_folder_name=None, uclh=None):
+def main(data_folder_name=None):
     """
     Main entry point for training patient flow models.
 
@@ -853,28 +962,23 @@ def main(data_folder_name=None, uclh=None):
         uclh (bool, optional): Flag indicating if using UCLH dataset
     """
     # Parse arguments if not provided
-    if data_folder_name is None or uclh is None:
+    if data_folder_name is None:
         args = parse_args()
         data_folder_name = (
             data_folder_name if data_folder_name is not None else args.data_folder_name
         )
-        uclh = uclh if uclh is not None else args.uclh
-
     print(f"Loading data from folder: {data_folder_name}")
-    print(
-        "Training models using UCLH dataset"
-        if uclh
-        else "Training models using public dataset"
-    )
 
     train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    project_root = set_project_root()
 
     # Set file locations
     data_file_path, _, model_file_path, config_path = set_file_paths(
+        project_root=project_root,
         inference_time=False,
-        train_dttm=train_dttm,
+        train_dttm=None,
         data_folder_name=data_folder_name,
-        uclh=uclh,
+        config_file="config.yaml",
     )
 
     # Load parameters
@@ -892,29 +996,19 @@ def main(data_folder_name=None, uclh=None):
     x1, y1, x2, y2 = config["x1"], config["y1"], config["x2"], config["y2"]
 
     # Load data
-    if uclh:
-        _, visits_csv_path, _, yta_csv_path = set_data_file_names(
-            uclh, data_file_path, config_path
-        )
-    else:
-        visits_csv_path, yta_csv_path = set_data_file_names(uclh, data_file_path)
-
-    visits = data_from_csv(
-        visits_csv_path,
+    ed_visits = load_data(
+        data_file_path=data_file_path,
+        file_name="ed_visits.csv",
         index_column="snapshot_id",
         sort_columns=["visit_number", "snapshot_date", "prediction_time"],
         eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
     )
-    yta = pd.read_csv(yta_csv_path)
+    inpatient_arrivals = load_data(
+        data_file_path=data_file_path, file_name="inpatient_arrivals.csv"
+    )
 
     # Create snapshot date
-    visits["snapshot_date"] = pd.to_datetime(visits["snapshot_date"]).dt.date
-
-    # Verify data alignment
-    print("\nTimes of day at which predictions will be made")
-    print(prediction_times)
-    print("\nNumber of rows in dataset that are not in these times of day")
-    print(len(visits[~visits.prediction_time.isin(prediction_times)]))
+    ed_visits["snapshot_date"] = pd.to_datetime(ed_visits["snapshot_date"]).dt.date
 
     # Set up model parameters
     grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}
@@ -969,12 +1063,12 @@ def main(data_folder_name=None, uclh=None):
 
     # Call train_all_models with prepared parameters
     model_metadata = train_all_models(
-        visits=visits,
+        visits=ed_visits,
         start_training_set=start_training_set,
         start_validation_set=start_validation_set,
         start_test_set=start_test_set,
         end_test_set=end_test_set,
-        yta=yta,
+        yta=inpatient_arrivals,
         model_file_path=model_file_path,
         prediction_times=prediction_times,
         prediction_window=prediction_window,
@@ -988,14 +1082,14 @@ def main(data_folder_name=None, uclh=None):
         specialties=specialties,
         cdf_cut_points=cdf_cut_points,
         random_seed=random_seed,
-        uclh=uclh,
+        uclh=False,
     )
 
     # Add additional metadata
     model_metadata.update(
         {
             "data_folder_name": data_folder_name,
-            "uclh": uclh,
+            "uclh": False,
             "train_dttm": train_dttm,
             "config": create_json_safe_params(config),
         }

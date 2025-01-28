@@ -23,8 +23,8 @@ set_data_file_names:
     Set file locations based on UCLH-specific or default data sources.
 safe_literal_eval:
     Safely evaluate string literals into Python objects when loading from csv.
-data_from_csv:
-    Load and preprocess data from a CSV file.
+load_data:
+    Load and preprocess data from a CSV or pickle file.
 get_model_name:
     Generate a model name based on the time of day.
 load_saved_model:
@@ -70,41 +70,66 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-def set_project_root(env_var="PROJECT_ROOT"):
+
+def set_project_root(env_var=None):
     """
-    Validates project root path from specified environment variable.
-    
+    Sets project root path from environment variable or infers it from current path.
+
+    First checks specified environment variable for project root path.
+    If not found, searches current path hierarchy for highest-level 'patientflow' directory.
+
     Args:
-        env_var (str): Name of environment variable containing project root path
-        
+        env_var (str, optional): Name of environment variable containing project root path
+
     Returns:
         pathlib.Path: Validated project root path
-        
+
     Raises:
-        ValueError: If environment variable is not set
+        ValueError: If environment variable not set and 'patientflow' not found in path
         NotADirectoryError: If path doesn't exist
+        TypeError: If env_var is not None and not a string
     """
-    from pathlib import Path
-    import os
-    
-    try:
-        project_root = Path(os.getenv(env_var))
-        if project_root is None:
-            raise ValueError(f"{env_var} environment variable not set")
-        # if not project_root.exists():
-        #     raise NotADirectoryError(f"Path {project_root} does not exist")
-        print(f"Project root is {project_root}")
+    # Only try to get env path if env_var is provided
+    env_path = os.getenv(env_var) if env_var is not None else None
+
+    # Try getting from environment variable first
+    if env_path is not None:
+        try:
+            project_root = Path(env_path)
+            if not project_root.is_dir():
+                raise NotADirectoryError(f"Path does not exist: {project_root}")
+            print(f"Project root from environment: {project_root}")
+            return project_root
+        except (TypeError, ValueError) as e:
+            print(f"Error converting {env_path} to Path: {e}")
+            raise
+
+    # If not in env var, try to infer from current path
+    current = Path().absolute()
+    project_root = None
+
+    # Search through parents to find highest-level 'patientflow' directory
+    for parent in [current, *current.parents]:
+        if parent.name == "patientflow" and parent.is_dir():
+            project_root = parent
+            # Continue searching to find highest level
+
+    if project_root:
+        print(f"Inferred project root: {project_root}")
         return project_root
-        
-    except Exception as e:
-        print(f"Error setting project root: {e}")
-        print(f"\nCurrent directory: {Path().absolute()}")
+
+    print(
+        f"Could not find project root - {env_var} not set and 'patientflow' not found in path"
+    )
+    print(f"\nCurrent directory: {Path().absolute()}")
+    if env_var:
         print(f"\nRun one of these commands in a new cell to set {env_var}:")
         print("# Linux/Mac:")
         print(f"%env {env_var}=/path/to/project")
         print("\n# Windows:")
         print(f"%env {env_var}=C:\\path\\to\\project")
-        raise
+    raise ValueError("Project root not found")
+
 
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
@@ -192,10 +217,10 @@ def load_config_file(
 def set_file_paths(
     project_root: Path,
     data_folder_name: str,
-    train_dttm: str = None,
+    train_dttm: Optional[str] = None,
     inference_time: bool = False,
     config_file: str = "config.yaml",
-    prefix: str = None,
+    prefix: Optional[str] = None,
     verbose: bool = True,
 ) -> Tuple[Path, Path, Path, Path]:
     """
@@ -204,15 +229,16 @@ def set_file_paths(
     Args:
         project_root (Path): Root path of the project
         data_folder_name (str): Name of the folder where data files are located
-        train_dttm (str, optional): A string representation of the datetime at which training commenced. Defaults to None
+        train_dttm (Optional[str], optional): A string representation of the datetime at which training commenced. Defaults to None
         inference_time (bool, optional): A flag indicating whether it is inference time or not. Defaults to False
         config_file (str, optional): Name of config file. Defaults to "config.yaml"
-        prefix (str, optional): String to prefix model folder names. Defaults to None
+        prefix (Optional[str], optional): String to prefix model folder names. Defaults to None
         verbose (bool, optional): Whether to print path information. Defaults to True
 
     Returns:
         tuple: Contains (data_file_path, media_file_path, model_file_path, config_path)
     """
+
     config_path = Path(project_root) / config_file
     if verbose:
         print(f"Configuration will be loaded from: {config_path}")
@@ -240,6 +266,63 @@ def set_file_paths(
             print(f"Images will be saved to: {media_file_path}")
 
     return data_file_path, media_file_path, model_file_path, config_path
+
+
+def set_data_file_names(uclh, data_file_path, config_file_path=None):
+    """
+    Set file locations based on UCLH or default data source.
+
+    Parameters
+    ----------
+    uclh : bool
+        If True, use UCLH-specific file locations. If False, use default file locations.
+    data_file_path : Path
+        The base path to the data directory.
+    config_file_path : str, optional
+        The path to the configuration file, required if `uclh` is True.
+
+    Returns
+    -------
+    tuple
+        Paths to the required files (visits, arrivals) based on the configuration.
+    """
+    if not isinstance(data_file_path, Path):
+        data_file_path = Path(data_file_path)
+
+    if not uclh:
+        csv_filename = "ed_visits.csv"
+        yta_csv_filename = "inpatient_arrivals.csv"
+
+        visits_csv_path = data_file_path / csv_filename
+        yta_csv_path = data_file_path / yta_csv_filename
+
+        return visits_csv_path, yta_csv_path
+
+    else:
+        start_date, end_date = load_config_file(
+            config_file_path, return_start_end_dates=True
+        )
+        data_filename = (
+            "uclh_visits_exc_beds_inc_minority_"
+            + str(start_date)
+            + "_"
+            + str(end_date)
+            + ".pickle"
+        )
+        csv_filename = "uclh_ed_visits.csv"
+        yta_filename = (
+            "uclh_yet_to_arrive_" + str(start_date) + "_" + str(end_date) + ".pickle"
+        )
+        yta_csv_filename = "uclh_inpatient_arrivals.csv"
+
+        visits_path = data_file_path / data_filename
+        yta_path = data_file_path / yta_filename
+
+        visits_csv_path = data_file_path / csv_filename
+        yta_csv_path = data_file_path / yta_csv_filename
+
+    return visits_path, visits_csv_path, yta_path, yta_csv_path
+
 
 def safe_literal_eval(s):
     """
@@ -278,10 +361,90 @@ def safe_literal_eval(s):
         # If ast.literal_eval fails, return the original string
         return s
 
-def load_data(data_file_path, file_name, index_column=None, sort_columns=None, eval_columns=None):
+
+def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
+    """
+    Loads data from a CSV file, with optional transformations. LEGACY!
+
+    This function loads a CSV file into a pandas DataFrame and provides the following optional features:
+    - Setting a specified column as the index.
+    - Sorting the DataFrame by one or more specified columns.
+    - Applying safe literal evaluation to specified columns to handle string representations of Python objects.
+
+    Parameters
+    ----------
+    csv_path : str
+        The relative or absolute path to the CSV file.
+    index_column : str, optional
+        The column to set as the index of the DataFrame. If not provided, no index column is set.
+    sort_columns : list of str, optional
+        A list of columns by which to sort the DataFrame. If not provided, the DataFrame is not sorted.
+    eval_columns : list of str, optional
+        A list of columns to which `safe_literal_eval` should be applied. This is useful for columns containing
+        string representations of Python data structures (e.g., lists, dictionaries).
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas DataFrame containing the loaded data with any specified transformations applied.
+
+    Raises
+    ------
+    SystemExit
+        If the file cannot be found or another error occurs during loading or processing.
+
+    Notes
+    -----
+    The function will terminate the program with a message if the file is not found or if any errors
+    occur while loading the data. If sorting columns or applying `safe_literal_eval` fails,
+    a warning message is printed, but execution continues.
+
+    """
+    path = os.path.join(Path().home(), csv_path)
+
+    if not os.path.exists(path):
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)
+
+    try:
+        df = pd.read_csv(path, parse_dates=True)
+    except FileNotFoundError:
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        sys.exit(1)
+
+    if index_column:
+        try:
+            if df.index.name != index_column:
+                df = df.set_index(index_column)
+        except KeyError:
+            print(f"Index column '{index_column}' not found in dataframe")
+
+    if sort_columns:
+        try:
+            df.sort_values(sort_columns, inplace=True)
+        except KeyError:
+            print("One or more sort columns not found in dataframe")
+
+    if eval_columns:
+        for column in eval_columns:
+            if column in df.columns:
+                try:
+                    df[column] = df[column].apply(safe_literal_eval)
+                except Exception as e:
+                    print(f"Error applying safe_literal_eval to column '{column}': {e}")
+
+    return df
+
+
+def load_data(
+    data_file_path, file_name, index_column=None, sort_columns=None, eval_columns=None
+):
     """
     Loads data from CSV or pickle file with optional transformations.
-    
+
     Parameters
     ----------
     data_file_path : str
@@ -294,30 +457,30 @@ def load_data(data_file_path, file_name, index_column=None, sort_columns=None, e
         Columns to sort DataFrame by
     eval_columns : list of str, optional
         Columns to apply safe_literal_eval to
-        
+
     Returns
     -------
     pd.DataFrame
         Loaded and transformed DataFrame
-        
+
     Raises
     ------
     SystemExit
         If file not found or error occurs during processing
     """
     path = os.path.join(Path().home(), data_file_path, file_name)
-    
+
     if not os.path.exists(path):
         print(f"Data file not found at path: {path}")
         sys.exit(1)
-        
+
     try:
-        if file_name.endswith('.csv'):
+        if file_name.endswith(".csv"):
             df = pd.read_csv(path, parse_dates=True)
-        elif file_name.endswith('.pkl'):
+        elif file_name.endswith(".pkl"):
             df = pd.read_pickle(path)
         else:
-            print(f"Unsupported file format. Must be CSV or pickle")
+            print("Unsupported file format. Must be CSV or pickle")
             sys.exit(1)
     except Exception as e:
         print(f"Error loading data: {e}")

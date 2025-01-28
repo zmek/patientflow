@@ -3,6 +3,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 
+
 def plot_distributions(
     df,
     col_name,
@@ -52,7 +53,7 @@ def plot_distributions(
     g.set_axis_labels(
         col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
     )
-    
+
     # Set facet titles with smaller font
     g.set_titles(col_template="{col_name}", size=11)
 
@@ -70,6 +71,8 @@ def plot_distributions(
     if title:
         g.figure.suptitle(title, fontsize=14)
     else:
-        g.figure.suptitle(f"Distribution of {col_name} grouped by {grouping_var_name}", fontsize=14)
+        g.figure.suptitle(
+            f"Distribution of {col_name} grouped by {grouping_var_name}", fontsize=14
+        )
 
     plt.show()
