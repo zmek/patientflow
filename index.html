@@ -774,7 +774,7 @@
 -->
 
 <!-- prettier-ignore-start -->
-<p><a href="https://orcid.org/0000-0001-7389-1527"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0000-0001-7389-1527-brightgreen" /></a></p>
+<p><a href="https://orcid.org/0000-0001-7389-1527"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg" /></a></p>
 <!-- [pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
@@ -786,7 +786,7 @@
 <ol>
 <li>Develop code that was originally written for University College London Hospital (UCLH) into a reusable resource following the principles of <a href="https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/">Reproducible Analytical Pipelines</a></li>
 <li>Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems</li>
-<li>Provide training materials to inform and educate anyone who wishes to adopt a similar approach</li>
+<li>Provide explanatory materials to inform and educate anyone who wishes to adopt a similar approach</li>
 </ol>
 <h2 id="main-features-of-our-modelling-approach">Main Features of our modelling approach</h2>
 <ul>
@@ -839,17 +839,17 @@ pip install -e &quot;.[test]&quot; #this will install the code in test mode
 <li>run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the <code>data_folder_name</code> parameter if you have the real data in <code>data-public</code>)</li>
 </ul>
 <pre><code class="language-sh">cd src
-python -m patientflow.train --data_folder_name=data-synthetic --uclh=False
+python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </code></pre>
 <p>There are two arguments</p>
 <ul>
 <li>data_folder_name - specifies where to find the data. This should be in a folder named data-xxx directly below the root of the repository</li>
-<li>uclh - tells the package whether the data is the original UCLH data (in which case certain additional features available, including the patient's age in years) or not</li>
+<li>uclh - tells the package whether the data is the original UCLH implementation (in which case certain additional features, including the patient's age in years are included)</li>
 </ul>
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Minimum viable product &lt;-- You are Here</li>
+<li class="task-list-item"><input type="checkbox" disabled checked/> Minimum viable product &lt;-- You are Here</li>
 <li class="task-list-item"><input type="checkbox" disabled/> Alpha Release</li>
 <li class="task-list-item"><input type="checkbox" disabled/> Feature-Complete Release</li>
 </ul>
