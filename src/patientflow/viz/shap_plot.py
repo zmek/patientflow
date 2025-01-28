@@ -47,9 +47,7 @@ def plot_shap_individually(
         plt.tight_layout()
 
         model_name = get_model_name(model_name, _prediction_time)
-        shap_plot_path = (
-            str(media_file_path / "shap_plot_") + model_name + ".png"
-        )
+        shap_plot_path = str(media_file_path / "shap_plot_") + model_name + ".png"
 
         plt.savefig(shap_plot_path)
         plt.show()

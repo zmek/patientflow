@@ -37,9 +37,7 @@ def plot_feature_importances_individually(
         plt.tight_layout()
 
         model_name = get_model_name("ed_admission", _prediction_time)
-        feature_plot_path = (
-            str(media_file_path / "feature_plot_") + model_name + ".png"
-        )
+        feature_plot_path = str(media_file_path / "feature_plot_") + model_name + ".png"
 
         plt.savefig(feature_plot_path)
         plt.show()
