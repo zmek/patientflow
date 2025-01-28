@@ -233,15 +233,45 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, filters=None):
+    def __init__(self, filters=None, verbose=False):
         """
         Initialize the WeightedPoissonPredictor with optional filters.
 
         Args:
             filters (dict, optional): A dictionary defining filters for different categories or specialties.
-                                      If None or empty, no filtering will be applied.
-
+                                    If None or empty, no filtering will be applied.
+            verbose (bool, optional): If True, enable info-level logging. Defaults to False.
         """
+        self.filters = filters if filters else {}
+        self.verbose = verbose
+
+        if verbose:
+            # Configure logging for Jupyter notebook compatibility
+            import logging
+            import sys
+
+            # Create logger
+            self.logger = logging.getLogger(f"{__name__}.WeightedPoissonPredictor")
+
+            # Only set up handlers if they don't exist
+            if not self.logger.handlers:
+                self.logger.setLevel(logging.INFO if verbose else logging.WARNING)
+
+                # Create handler that writes to sys.stdout
+                handler = logging.StreamHandler(sys.stdout)
+                handler.setLevel(logging.INFO if verbose else logging.WARNING)
+
+                # Create a formatting configuration
+                formatter = logging.Formatter("%(message)s")
+                handler.setFormatter(formatter)
+
+                # Add the handler to the logger
+                self.logger.addHandler(handler)
+
+                # Prevent propagation to root logger
+                self.logger.propagate = False
+
+        # Apply filters
         self.filters = filters if filters else {}
 
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
@@ -265,7 +295,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         return filtered_df
 
     def _calculate_parameters(
-        self, df, prediction_window, yta_time_interval, prediction_times
+        self, df, prediction_window, yta_time_interval, prediction_times, num_days
     ):
         """
         Calculate parameters required for the model.
@@ -275,13 +305,16 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             prediction_window (int): The total prediction window for prediction.
             yta_time_interval (int): The interval for splitting the prediction window.
             prediction_times (list): Times of day at which predictions are made.
+            num_days (int): Number of days over which to calculate time-varying arrival rates
 
         Returns:
             dict: Calculated lambda_t parameters organized by time of day.
 
         """
         Ntimes = int(prediction_window / yta_time_interval)
-        arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval)
+        arrival_rates_dict = time_varying_arrival_rates(
+            df, yta_time_interval, num_days, verbose=self.verbose
+        )
         prediction_time_dict = {}
 
         for prediction_time_ in prediction_times:
@@ -313,6 +346,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         prediction_times: List[float],
         epsilon: float = 10**-7,
         y: Optional[None] = None,
+        num_days: Optional[int] = None,
     ) -> "WeightedPoissonPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
@@ -330,6 +364,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
             y (None, optional):
                 Ignored, present for compatibility with scikit-learn's fit method.
+            num_days (int, optional):
+                 The number of days that the train_df spans
 
         Returns:
             WeightedPoissonPredictor: The instance itself, fitted with the training data.
@@ -339,7 +375,14 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         self.prediction_window = prediction_window
         self.yta_time_interval = yta_time_interval
         self.epsilon = epsilon
-        self.prediction_times = prediction_times
+        self.prediction_times = [
+            tuple(x)
+            if isinstance(x, (list, np.ndarray))
+            else (x, 0)
+            if isinstance(x, (int, float))
+            else x
+            for x in prediction_times
+        ]
 
         # Initialize yet_to_arrive_dict
         self.weights = {}
@@ -352,22 +395,32 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                     prediction_window,
                     yta_time_interval,
                     prediction_times,
+                    num_days,
                 )
         else:
             # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'
             self.weights["default"] = self._calculate_parameters(
-                train_df, prediction_window, yta_time_interval, prediction_times
+                train_df,
+                prediction_window,
+                yta_time_interval,
+                prediction_times,
+                num_days,
             )
 
-        print(f"Poisson Binomial Predictor trained for these times: {prediction_times}")
-        print(
-            f"using prediction window of {prediction_window} minutes after the time of prediction"
-        )
-        print(
-            f"and time interval of {yta_time_interval} minutes within the prediction window."
-        )
-        print(f"The error value for prediction will be {epsilon}")
-        print("To see the weights saved by this model, used the get_weights() method")
+        if self.verbose:
+            self.logger.info(
+                f"Poisson Binomial Predictor trained for these times: {prediction_times}"
+            )
+            self.logger.info(
+                f"using prediction window of {prediction_window} minutes after the time of prediction"
+            )
+            self.logger.info(
+                f"and time interval of {yta_time_interval} minutes within the prediction window."
+            )
+            self.logger.info(f"The error value for prediction will be {epsilon}")
+            self.logger.info(
+                "To see the weights saved by this model, used the get_weights() method"
+            )
 
         return self
 

@@ -1,9 +1,9 @@
-from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from patientflow.prepare import prepare_for_inference, validate_special_category_objects
+from patientflow.load import get_model_name
+from patientflow.prepare import validate_special_category_objects
 
 from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
@@ -16,6 +16,8 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
 )
 
+
+from patientflow.errors import ModelLoadError
 import warnings
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
@@ -75,8 +77,25 @@ def index_of_sum(sequence: List[float], max_sum: float) -> int:
     return len(sequence) - 1  # Return the last index if the sum doesn't exceed max_sum
 
 
+def validate_model_names(models: Dict[str, Any], model_names: Dict[str, str]) -> None:
+    """
+    Validates that all model types specified in model_names exist in models.
+
+    Args:
+        models: Dictionary containing all required models
+        model_names: Dictionary mapping model types to their names
+
+    Raises:
+        ModelLoadError: If a required model name is not found in models
+    """
+    missing_models = [name for name in model_names.values() if name not in models]
+    if missing_models:
+        raise ModelLoadError(f"Missing required models: {missing_models}")
+
+
 def create_predictions(
-    model_file_path: Path,
+    models: Dict[str, Any],
+    model_names: Dict[str, str],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
@@ -92,70 +111,18 @@ def create_predictions(
     Create predictions for emergency demand for a single prediction moment.
 
     Parameters:
-    - model_file_path (str): Path to the model files.
-    - prediction_moment (Tuple): Hour and minute of time for which model to be used for inference was trained
-    - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots.
-    - specialties (List[str]): List of specialty names for which predictions are required.
-    - prediction_window_hrs (float): Prediction window in hours.
-    - x1, y1, x2, y2 (float): Parameters for calculating probability of admission within prediction window.
-    - cdf_cut_points (List[float]): List of cumulative distribution function cut points.
-    - special_params (Optional[Dict[str, Any]]): Dictionary containing 'special_category_func', 'special_category_dict', and 'special_func_map'.
-      - special_category_func (Callable[[Any], Any]): Function identifying patients whose specialty predictions are handled outside the get_specialty_probs() function.
-      - special_category_dict (Dict[str, Any]): Dictionary of probabilities applied to those patients.
-      - special_func_map (Dict[str, Callable[[pd.Series], bool]]): A dictionary mapping specialties to specific functions that are applied to each row of the prediction snapshots to filter indices.
-
-    Returns:
-    - Dict[str, Dict[str, List[int]]]: Predictions for each specialty.
-
-    Example:
-    ```python
-    from datetime import datetime
-    import pandas as pd
-
-    special_category_dict = {
-        'medical': 0.0,
-        'surgical': 0.0,
-        'haem/onc': 0.0,
-        'paediatric': 1.0
-    }
-
-    # Function to determine if the patient is a child
-    special_category_func = lambda row: row['age_on_arrival'] < 18
-
-    special_func_map = {
-        'paediatric': special_category_func,
-        'default': lambda row: True  # Default function for other specialties
-    }
-
-    prediction_time = (15,30)
-    prediction_snapshots = pd.DataFrame([
-        {'age_on_arrival': 15, 'elapsed_los': 3600},
-        {'age_on_arrival': 45, 'elapsed_los': 7200}
-    ])
-    specialties = ['paediatric', 'medical']
-    prediction_window_hrs = 4.0
-    cdf_cut_points = [0.7, 0.9]
-    x1, y1, x2, y2 = 4.0, 0.76, 12.0, 0.99
-
-    predictions = create_predictions(
-        model_file_path='path/to/model/file',
-        prediction_time=prediction_time,
-        prediction_snapshots=prediction_snapshots,
-        specialties=specialties,
-        prediction_window_hrs=prediction_window_hrs,
-        cdf_cut_points=cdf_cut_points,
-        x1=x1,
-        y1=y1,
-        x2=x2,
-        y2=y2,
-        special_func_map=special_func_map,
-        special_category_dict=special_category_dict,
-        special_category_func=special_category_func
-
-
-    )
-    ```
+    - models (Dict[str, Any]): Dictionary containing all required models
+    - model_names (Dict[str, str]): Dictionary mapping model types to their names
+    - prediction_time (Tuple): Hour and minute of time for model inference
+    - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots
+    - specialties (List[str]): List of specialty names for predictions
+    - prediction_window_hrs (float): Prediction window in hours
+    - x1, y1, x2, y2 (float): Parameters for calculating admission probability
+    - cdf_cut_points (List[float]): List of CDF cut points
+    - special_params (Optional[Dict[str, Any]]): Special handling parameters
     """
+
+    validate_model_names(models, model_names)
 
     if special_params:
         validate_special_category_objects(special_params)
@@ -169,25 +136,17 @@ def create_predictions(
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
 
-    # Load models
-    admissions_model = prepare_for_inference(
-        model_file_path=model_file_path,
-        model_name="admissions",
-        prediction_time=prediction_time,
-        model_only=True,
+    # Get appropriate model for prediction time
+    model_for_prediction_time = get_model_name(
+        model_names["admissions"], prediction_time
     )
+    admissions_model = models[model_names["admissions"]][model_for_prediction_time]
 
-    # add missing columns to predictions_snapshots that are expected by the model
+    # Add missing columns expected by the model
     prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
 
-    yet_to_arrive_model_name = (
-        f"ed_yet_to_arrive_by_spec_{int(prediction_window_hrs)}_hours"
-    )
-    yet_to_arrive_model = prepare_for_inference(
-        model_file_path=model_file_path,
-        model_name=yet_to_arrive_model_name,
-        model_only=True,
-    )
+    # Get yet to arrive model
+    yet_to_arrive_model = models[model_names["yet_to_arrive"]]
 
     # Get predictions of admissions for ED patients
     prob_admission_after_ed = model_input_to_pred_proba(
@@ -197,7 +156,7 @@ def create_predictions(
     # Get predictions of admission to specialty
     prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
         specialties,
-        model_file_path,
+        models[model_names["specialty"]],
         prediction_snapshots,
         special_category_func=special_category_func,
         special_category_dict=special_category_dict,

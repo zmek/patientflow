@@ -129,7 +129,7 @@ class TestArrivalRates(unittest.TestCase):
         self.assertGreaterEqual(result, 0)
 
     def test_true_demand_by_hour(self):
-        """Test the true demand calculation."""
+        """Test the undelayed demand calculation."""
         demand = true_demand_by_hour(
             self.test_df, self.x1, self.y1, self.x2, self.y2, self.yta_time_interval
         )

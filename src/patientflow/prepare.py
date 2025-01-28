@@ -18,7 +18,7 @@ prepare_for_inference(model_file_path, model_name, prediction_time=None,
 select_one_snapshot_per_visit(df, visit_col, seed=42)
     Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
 
-get_snapshots_at_prediction_time(df, prediction_time_, exclude_columns, single_snapshot_per_visit=True)
+get_snapshots_at_prediction_time(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
     Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
 
 prepare_snapshots_dict(df, start_dt=None, end_dt=None)
@@ -31,12 +31,12 @@ calculate_time_varying_arrival_rates(df, yta_time_interval)
 import pandas as pd
 import numpy as np
 import random
-from patientflow.load import data_from_csv, load_saved_model, get_dict_cols
-from datetime import datetime
-from functools import reduce
+from patientflow.load import load_saved_model, get_dict_cols, data_from_csv
+from datetime import datetime, date
 
 
-from typing import Dict, Any
+from typing import Tuple, List, Set, Dict, Any
+
 from patientflow.errors import MissingKeysError
 
 
@@ -83,8 +83,7 @@ def convert_dict_to_values(df, column, prefix):
     return dict_df
 
 
-# function that will assign each mrn to one of training, validation, making a random choice that is weighted by the proportion of visits occuring in each set
-def apply_set(row):
+def apply_set(row: pd.Series) -> str:
     return random.choices(
         ["train", "valid", "test"],
         weights=[row.training_set, row.validation_set, row.test_set],
@@ -92,350 +91,137 @@ def apply_set(row):
 
 
 def assign_mrns(
-    df,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name="arrival_datetime",
-):
-    # assign each mrn to only one of the three sets to ensure no visit appears in more than one set
-    mrns = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
-    mrns["training_set"] = mrns[col_name].dt.date < start_validation_set
+    df: pd.DataFrame,
+    start_training_set: date,
+    start_validation_set: date,
+    start_test_set: date,
+    end_test_set: date,
+    col_name: str = "arrival_datetime",
+) -> pd.DataFrame:
+    """Probabilistically assign MRNs to train/validation/test sets.
+
+    Args:
+        df: DataFrame with mrn, encounter, and temporal columns
+        start_training_set: Start date for training period
+        start_validation_set: Start date for validation period
+        start_test_set: Start date for test period
+        end_test_set: End date for test period
+        col_name: Column name for temporal splitting
+
+    Returns:
+        DataFrame with MRN assignments based on weighted random sampling
+
+    Notes:
+        - Counts encounters in each time period per MRN
+        - Randomly assigns each MRN to one set, weighted by their temporal distribution
+        - MRN with 70% encounters in training, 30% in validation has 70% chance of training assignment
+    """
+    mrns: pd.DataFrame = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
+
+    # Filter out MRNs outside temporal bounds
+    pre_training_mrns = mrns[mrns[col_name].dt.date < start_training_set]
+    post_test_mrns = mrns[mrns[col_name].dt.date >= end_test_set]
+
+    if len(pre_training_mrns) > 0:
+        print(
+            f"Filtered out {len(pre_training_mrns)} MRNs with only pre-training visits"
+        )
+    if len(post_test_mrns) > 0:
+        print(f"Filtered out {len(post_test_mrns)} MRNs with only post-test visits")
+
+    valid_mrns = mrns[
+        (mrns[col_name].dt.date >= start_training_set)
+        & (mrns[col_name].dt.date < end_test_set)
+    ]
+    mrns = valid_mrns
+
+    mrns["training_set"] = (mrns[col_name].dt.date >= start_training_set) & (
+        mrns[col_name].dt.date < start_validation_set
+    )
     mrns["validation_set"] = (mrns[col_name].dt.date >= start_validation_set) & (
         mrns[col_name].dt.date < start_test_set
     )
-    mrns["test_set"] = mrns[col_name].dt.date >= start_test_set
+    mrns["test_set"] = (mrns[col_name].dt.date >= start_test_set) & (
+        mrns[col_name].dt.date < end_test_set
+    )
+
     mrns = mrns.groupby("mrn")[["training_set", "validation_set", "test_set"]].sum()
     mrns["training_validation_test"] = mrns.apply(apply_set, axis=1)
+
     print(
-        "\n" + f"{mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} "
-        f"mrns are in both training and validation sets, of a total of "
-        f"{mrns[mrns.training_set + mrns.validation_set > 0].shape[0]} "
-        "mrns in one or other set"
+        f"\nMRN Set Overlaps (before random assignment):"
+        f"\nTrain-Valid: {mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.validation_set > 0].shape[0]}"
+        f"\nValid-Test: {mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.validation_set + mrns.test_set > 0].shape[0]}"
+        f"\nTrain-Test: {mrns[mrns.training_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.test_set > 0].shape[0]}"
+        f"\nAll Sets: {mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns.shape[0]} total MRNs"
     )
-    print(
-        f"{mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in both validation and test sets, of a total of "
-        f"{mrns[mrns.validation_set + mrns.test_set > 0].shape[0]} "
-        "mrns in one or other set"
-    )
-    print(
-        f"{mrns[mrns.training_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in both training and test sets, of a total of "
-        f"{mrns[mrns.training_set + mrns.test_set > 0].shape[0]} "
-        "mrns in one or other set"
-    )
-    print(
-        f"{mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} "
-        f"mrns are in all three sets, of a total of "
-        f"{mrns.shape[0]} mrns"
-    )
+
     return mrns
 
 
-def assign_mrn_to_training_validation_test_set(
-    df,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    yta=None,
-    col_name="arrival_datetime",
-):
-    if "snapshot_date" not in df.columns:
-        df["snapshot_date"] = df["snapshot_datetime"].dt.date
+def create_temporal_splits(
+    df: pd.DataFrame,
+    start_train: date,
+    start_valid: date,
+    start_test: date,
+    end_test: date,
+    col_name: str = "arrival_datetime",
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Split dataset into temporal train/validation/test sets.
 
-    set_assignment = assign_mrns(
-        df,
-        start_training_set,
-        start_validation_set,
-        start_test_set,
-        end_test_set,
-        col_name,
-    ).reset_index()
+    Creates temporal data splits using primary datetime column and optional snapshot dates.
+    Handles MRN (patient ID) grouping if present to prevent data leakage.
 
-    print(
-        "\nNumber of rows before assigning mrn to a single set - training, validation or test"
-    )
-    print(df.shape)
+    Args:
+        df: Input dataframe
+        start_train: Training start (inclusive)
+        start_valid: Validation start (inclusive)
+        start_test: Test start (inclusive)
+        end_test: Test end (exclusive)
+        col_name: Primary datetime column for splitting
 
-    df.loc["training_validation_test"] = None
+    Returns:
+        tuple: (train_df, valid_df, test_df) Split dataframes
+    """
 
-    # Define the criteria for each set
+    def get_date_value(series: pd.Series) -> pd.Series:
+        """Convert timestamp or date column to date, handling both types"""
+        try:
+            return pd.to_datetime(series).dt.date
+        except (AttributeError, TypeError):
+            return series
 
-    training_mrns = set_assignment[set_assignment.training_validation_test == "train"][
-        "mrn"
-    ]
-    validation_mrns = set_assignment[
-        set_assignment.training_validation_test == "valid"
-    ]["mrn"]
-    test_mrns = set_assignment[set_assignment.training_validation_test == "test"]["mrn"]
-
-    # Assign relevant set
-    df.loc[
-        (df[col_name].dt.date < start_validation_set) & (df.mrn.isin(training_mrns)),
-        "training_validation_test",
-    ] = "train"
-    df.loc[
-        (df[col_name].dt.date >= start_validation_set)
-        & (df[col_name].dt.date < start_test_set)
-        & (df.mrn.isin(validation_mrns)),
-        "training_validation_test",
-    ] = "valid"
-    df.loc[
-        (df[col_name].dt.date >= start_test_set)
-        & (df[col_name].dt.date < end_test_set)
-        & (df.mrn.isin(test_mrns)),
-        "training_validation_test",
-    ] = "test"
-
-    # Filter to include only the rows that were assigned to a set
-    df = df[df["training_validation_test"].notnull()]
-
-    # Remove any snapshots that fall outside the start and end dates for the relevant set
-    df = df[
-        (
-            (df.training_validation_test == "train")
-            & (df.snapshot_date < start_validation_set)
+    if "mrn" in df.columns:
+        set_assignment: pd.DataFrame = assign_mrns(
+            df, start_train, start_valid, start_test, end_test, col_name
         )
-        | (
-            (df.training_validation_test == "valid")
-            & (df.snapshot_date >= start_validation_set)
-            & (df.snapshot_date < start_test_set)
-        )
-        | (
-            (df.training_validation_test == "test")
-            & (df.snapshot_date >= start_test_set)
-            & (df.snapshot_date < end_test_set)
-        )
-    ]
-
-    print("Number of rows after assigning mrn to a set")
-    print(df.shape)
-
-    if yta is not None:
-        yta.loc[:, "training_validation_test"] = None
-        # Assign relevant set to yta
-        yta.loc[
-            (yta[col_name].dt.date < start_validation_set), "training_validation_test"
-        ] = "train"
-        yta.loc[
-            (yta[col_name].dt.date >= start_validation_set)
-            & (yta[col_name].dt.date < start_test_set),
-            "training_validation_test",
-        ] = "valid"
-        yta.loc[
-            (yta[col_name].dt.date >= start_test_set)
-            & (yta[col_name].dt.date < end_test_set),
-            "training_validation_test",
-        ] = "test"
-
-        # Remove any snapshots that fall outside the start and end dates for the relevant set
-        yta = yta[
-            (
-                (yta.training_validation_test == "train")
-                & (yta[col_name].dt.date < start_validation_set)
-            )
-            | (
-                (yta.training_validation_test == "valid")
-                & (yta[col_name].dt.date >= start_validation_set)
-                & (yta[col_name].dt.date < start_test_set)
-            )
-            | (
-                (yta.training_validation_test == "test")
-                & (yta[col_name].dt.date >= start_test_set)
-                & (yta[col_name].dt.date < end_test_set)
-            )
-        ]
-
-        return (df, yta)
-
-    return df
-
-
-def prep_uclh_dataset_for_inference(
-    df,
-    uclh,
-    remove_bed_requests=False,
-    exclude_minority_categories=False,
-    inference_time=True,
-):
-    pd.set_option("future.no_silent_downcasting", True)
-
-    if exclude_minority_categories:
-        df = df[~df.sex.isin(["U", "I"])].copy()  # Ensure it's a copy
-
-    if remove_bed_requests:
-        df["has_bed_request"] = df["has_bed_request"].fillna(False)
-        df["has_bed_request"] = df["has_bed_request"].astype(bool)
-        df = df[~df.has_bed_request].copy()  # Ensure it's a copy
-
-    # Convert locations from set to dummy variables
-    visited = convert_set_to_dummies(df, "visited_location_types", "visited")
-
-    # Convert number of observations dictionary to values
-    num_obs = convert_dict_to_values(df, "observation_counts", "num_obs")
-
-    # Convert obs and set missing values
-    latest_obs = convert_dict_to_values(df, "latest_observation_values", "latest_obs")
-    latest_obs.loc[
-        latest_obs.latest_obs_RESPIRATIONS == 0, "latest_obs_RESPIRATIONS"
-    ] = pd.NA
-    latest_obs.loc[
-        latest_obs.latest_obs_TEMPERATURE > 110, "latest_obs_TEMPERATURE"
-    ] = pd.NA
-    latest_obs["latest_obs_R NEWS SCORE RESULT - DISPLAYED"] = latest_obs[
-        "latest_obs_R NEWS SCORE RESULT - DISPLAYED"
-    ].astype("float")
-    latest_obs.loc[
-        latest_obs["latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE"].isin(
-            [r"Severe\E\Very Severe", r"Severe\Very Severe"]
-        ),
-        "latest_obs_R UCLH ED MANCHESTER TRIAGE OBJECTIVE PAIN SCORE",
-    ] = "Severe_Very Severe"
-
-    # Convert lab orders from set to dummies
-    lab_orders = convert_set_to_dummies(df, "requested_lab_batteries", "lab_orders")
-
-    # Convert lab results from dict to values
-    lab_results = convert_dict_to_values(df, "latest_lab_results", "latest_lab_results")
-
-    # Create dummy variable for consultations (used in prob admission model, in which consultations data is otherwise not used)
-    df["has_consultation"] = df.consultations.map(len) > 0
-
-    if inference_time:
-        df["visit_number"] = df.index
-
-    dfs_to_join = (
-        [
-            df[
-                [
-                    "snapshot_date",
-                    "prediction_time",
-                    "visit_number",
-                    "elapsed_los",
-                    "sex",
-                    "age_on_arrival",
-                    "arrival_method",
-                    "current_location_type",
-                    "total_locations_visited",
-                    "num_obs",
-                    "num_obs_events",
-                    "num_obs_types",
-                    "num_lab_batteries_ordered",
-                    "has_consultation",
-                    "has_bed_request",
-                    "consultations",
-                ]
-            ],
-            visited,
-            num_obs,
-            latest_obs,
-            lab_orders,
-            lab_results,
-        ]
-        if uclh
-        else [
-            df[
-                [
-                    "snapshot_date",
-                    "prediction_time",
-                    "visit_number",
-                    "elapsed_los",
-                    "sex",
-                    "age_group",
-                    "arrival_method",
-                    "current_location_type",
-                    "total_locations_visited",
-                    "num_obs",
-                    "num_obs_events",
-                    "num_obs_types",
-                    "num_lab_batteries_ordered",
-                    "has_consultation",
-                    "has_bed_request",
-                    "consultations",
-                ]
-            ],
-            visited,
-            num_obs,
-            latest_obs,
-            lab_orders,
-            lab_results,
-        ]
-    )
-
-    if not inference_time:
-        dfs_to_join.append(
-            df[
-                [
-                    "training_validation_test",
-                    "all_consultations",
-                    "specialty",
-                    "destination",
-                ]
-            ]
-        )
-
-    new = reduce(lambda left, right: left.join(right, how="left"), dfs_to_join)
-
-    for col in new.select_dtypes(include="object").columns:
-        if new[col].dropna().isin([True, False]).all():
-            new[col] = new[col].fillna(False)
-            new[col] = new[col].astype("bool")
-
-    bool_cols = new.select_dtypes(include="bool").columns
-    new[bool_cols] = new[bool_cols].fillna(False)
-
-    if exclude_minority_categories:
-        new = new[~(new.current_location_type == "taf")].copy()
-        new = new[~(new.visited_taf)].copy()
-        new.drop(columns="visited_taf", inplace=True)
-
-    float_cols = [
-        col
-        for col in new.select_dtypes(include="float").columns
-        if col.startswith("num_obs")
-    ]
-    new[float_cols] = new[float_cols].fillna(0)
-
-    new.columns = (
-        new.columns.str.lower()
-        .str.replace(" - displayed", "")
-        .str.replace(" ", "_")
-        .str.replace("_r_", "_")
-    )
-    new = new.drop(columns="latest_lab_results_hco3", errors="ignore")
-
-    new = new.rename(
-        columns={
-            "num_obs_uclh_ed_manchester_triage_subjective_pain_score": "num_obs_subjective_pain_score",
-            "num_obs_uclh_ed_manchester_triage_objective_pain_score": "num_obs_objective_pain_score",
-            "num_obs_uclh_ed_manchester_triage_calculated_acuity": "num_obs_manchester_triage_acuity",
-            "latest_obs_uclh_ed_manchester_triage_objective_pain_score": "latest_obs_objective_pain_score",
-            "latest_obs_uclh_ed_manchester_triage_calculated_acuity": "latest_obs_manchester_triage_acuity",
+        mrn_sets: Dict[str, Set] = {
+            k: set(set_assignment[set_assignment.training_validation_test == v].index)
+            for k, v in {"train": "train", "valid": "valid", "test": "test"}.items()
         }
-    )
 
-    if inference_time:
-        new = new.rename(columns={"consultations": "consultation_sequence"})
-        new["consultation_sequence"] = new["consultation_sequence"].apply(
-            lambda x: tuple(x) if x else ()
+    splits: List[pd.DataFrame] = []
+    for start, end, mrn_key in [
+        (start_train, start_valid, "train"),
+        (start_valid, start_test, "valid"),
+        (start_test, end_test, "test"),
+    ]:
+        mask = (get_date_value(df[col_name]) >= start) & (
+            get_date_value(df[col_name]) < end
         )
 
-    if not inference_time:
-        new["is_admitted"] = df.destination == 2
-        new.drop(columns="destination", inplace=True)
-        np.random.seed(seed=42)
-        new["random_number"] = np.random.randint(0, len(new), new.shape[0])
+        if "snapshot_date" in df.columns:
+            mask &= (get_date_value(df.snapshot_date) >= start) & (
+                get_date_value(df.snapshot_date) < end
+            )
 
-    if remove_bed_requests:
-        new = new.drop(columns="has_bed_request")
+        if "mrn" in df.columns:
+            mask &= df.mrn.isin(mrn_sets[mrn_key])
 
-    new = new.reset_index(drop=True)
-    new.index.name = "snapshot_id"
+        splits.append(df[mask].copy())
 
-    return new
+    print(f"Split sizes: {[len(split) for split in splits]}")
+    return tuple(splits)
 
 
 def create_special_category_objects(uclh):
@@ -522,31 +308,53 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
 
 
 def get_snapshots_at_prediction_time(
-    df, prediction_time_, exclude_columns, single_snapshot_per_visit=True
+    df,
+    prediction_time,
+    exclude_columns,
+    single_snapshot_per_visit=True,
+    visit_col="visit_number",
+    label_col="is_admitted",
 ):
+    """
+    Get snapshots of data at a specific prediction time with configurable visit and label columns.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        Input DataFrame containing the data
+    prediction_time : str or datetime
+        The specific prediction time to filter for
+    exclude_columns : list
+        List of columns to exclude from the final DataFrame
+    single_snapshot_per_visit : bool, default=True
+        Whether to select only one snapshot per visit
+    visit_col : str, default="visit_number"
+        Name of the column containing visit identifiers
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels
+
+    Returns:
+    --------
+    tuple(pandas.DataFrame, pandas.Series)
+        Processed DataFrame and corresponding labels
+    """
+
     # Filter by the time of day while keeping the original index
-    df_tod = df[df["prediction_time"] == prediction_time_].copy()
+    df_tod = df[df["prediction_time"] == prediction_time].copy()
 
     if single_snapshot_per_visit:
-        # Group by 'visit_number' and get the row with the maximum 'random_number'
-        df_single = select_one_snapshot_per_visit(df_tod, visit_col="visit_number")
-
+        # Group by visit_col and get the row with the maximum 'random_number'
+        df_single = select_one_snapshot_per_visit(df_tod, visit_col)
         # Create label array with the same index
-        y = df_single.pop("is_admitted").astype(int)
-
+        y = df_single.pop(label_col).astype(int)
         # Drop specified columns and ensure we do not reset the index
         df_single.drop(columns=exclude_columns, inplace=True)
-
         return df_single, y
-
     else:
         # Directly modify df_tod without resetting the index
         df_tod.drop(columns=["random_number"] + exclude_columns, inplace=True)
-        y = df_tod.pop("is_admitted").astype(int)
-
+        y = df_tod.pop(label_col).astype(int)
         return df_tod, y
-
-    # include one one snapshot per visit and drop the random number
 
 
 def prepare_for_inference(

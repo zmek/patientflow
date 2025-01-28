@@ -13,6 +13,8 @@ Functions
 ---------
 parse_args:
     Parses command-line arguments for training models.
+set_project_root:
+    Validates project root path from specified environment variable.
 load_config_file:
     Load a YAML configuration file and extract key parameters.
 set_file_paths:
@@ -21,8 +23,8 @@ set_data_file_names:
     Set file locations based on UCLH-specific or default data sources.
 safe_literal_eval:
     Safely evaluate string literals into Python objects when loading from csv.
-data_from_csv:
-    Load and preprocess data from a CSV file.
+load_data:
+    Load and preprocess data from a CSV or pickle file.
 get_model_name:
     Generate a model name based on the time of day.
 load_saved_model:
@@ -67,6 +69,66 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     return args
+
+
+def set_project_root(env_var: Optional[str] = None) -> Path:
+    """
+    Sets project root path from environment variable or infers it from current path.
+
+    First checks specified environment variable for project root path.
+    If not found, searches current path hierarchy for highest-level 'patientflow' directory.
+
+    Args:
+        env_var (Optional[str]): Name of environment variable containing project root path
+
+    Returns:
+        Path: Validated project root path
+
+    Raises:
+        ValueError: If environment variable not set and 'patientflow' not found in path
+        NotADirectoryError: If path doesn't exist
+        TypeError: If env_var is not None and not a string
+    """
+    # Only try to get env path if env_var is provided
+    env_path: Optional[str] = os.getenv(env_var) if env_var is not None else None
+    project_root: Optional[Path] = None
+
+    # Try getting from environment variable first
+    if env_path is not None:
+        try:
+            project_root = Path(env_path)
+            if not project_root.is_dir():
+                raise NotADirectoryError(f"Path does not exist: {project_root}")
+            print(f"Project root from environment: {project_root}")
+            return project_root
+        except (TypeError, ValueError) as e:
+            print(f"Error converting {env_path} to Path: {e}")
+            raise
+    else:
+        # If not in env var, try to infer from current path
+        current: Path = Path().absolute()
+
+        # Search through parents to find highest-level 'patientflow' directory
+        for parent in [current, *current.parents]:
+            if parent.name == "patientflow" and parent.is_dir():
+                project_root = parent
+                # Continue searching to find highest level
+
+        if project_root:
+            print(f"Inferred project root: {project_root}")
+            return project_root
+
+        print(
+            f"Could not find project root - {env_var} not set and 'patientflow' not found in path"
+        )
+        print(f"\nCurrent directory: {Path().absolute()}")
+        if env_var:
+            print(f"\nRun one of these commands in a new cell to set {env_var}:")
+            print("# Linux/Mac:")
+            print(f"%env {env_var}=/path/to/project")
+            print("\n# Windows:")
+            print(f"%env {env_var}=C:\\path\\to\\project")
+        raise ValueError("Project root not found")
 
 
 def load_config_file(
@@ -153,98 +215,56 @@ def load_config_file(
 
 
 def set_file_paths(
-    inference_time: bool,
-    train_dttm: str,
+    project_root: Path,
     data_folder_name: str,
-    uclh: bool = False,
-    from_notebook: bool = False,
-    prefix: str = "admissions",
+    train_dttm: Optional[str] = None,
+    inference_time: bool = False,
+    config_file: str = "config.yaml",
+    prefix: Optional[str] = None,
+    verbose: bool = True,
 ) -> Tuple[Path, Path, Path, Path]:
     """
     Sets up the file paths
 
     Args:
-        inference_time (bool): A flag indicating whether it is inference time or not
-        train_dttm (str): A string representation of the datetime at which training commenced
-        data_folder_name (str): Name of the folder where data files are located.
-        uclh (bool): A flag indicating whether to use UCLH-specific configuration files and data paths.
-                     Default is False.
-        prefix: A string to include at the beginning of the folder name in which the models will be saved
+        project_root (Path): Root path of the project
+        data_folder_name (str): Name of the folder where data files are located
+        train_dttm (Optional[str], optional): A string representation of the datetime at which training commenced. Defaults to None
+        inference_time (bool, optional): A flag indicating whether it is inference time or not. Defaults to False
+        config_file (str, optional): Name of config file. Defaults to "config.yaml"
+        prefix (Optional[str], optional): String to prefix model folder names. Defaults to None
+        verbose (bool, optional): Whether to print path information. Defaults to True
 
     Returns:
-        tuple: A tuple containing the following elements:
-            - data_file_path (Path): Path to the data folder.
-            - media_file_path (Path): Path to the media folder (created if not already existing).
-            - model_file_path (Path): Path to the trained models folder (created if not already existing).
-            - config_path (Path): Path to the configuration file used.
+        tuple: Contains (data_file_path, media_file_path, model_file_path, config_path)
     """
-    # Get the current path and root
-    if from_notebook:
-        root = Path().resolve().parent
-    else:
-        current_path = Path(__file__)
-        root = current_path.parents[2]
 
-    # Set config file based on the `uclh` flag
-    if uclh:
-        config_path = Path(root) / "config-uclh.yaml"
-    else:
-        config_path = Path(root) / "config.yaml"
-    print(f"Configuration will be loaded from: {config_path}")
+    config_path = Path(project_root) / config_file
+    if verbose:
+        print(f"Configuration will be loaded from: {config_path}")
 
-    # Set data and media file paths
-    data_file_path = Path(root) / data_folder_name
-    print(f"Data files will be loaded from: {data_file_path}")
+    data_file_path = Path(project_root) / data_folder_name
+    if verbose:
+        print(f"Data files will be loaded from: {data_file_path}")
 
-    # Create model ID from current date, data_folder_name
-    model_id = prefix + "_" + data_folder_name.lstrip("data-")
+    model_id = data_folder_name.lstrip("data-")
+    if prefix:
+        model_id = f"{prefix}_{model_id}"
+    if train_dttm:
+        model_id = f"{model_id}_{train_dttm}"
 
-    if inference_time:
-        if uclh:
-            # at inference time, if uclh, require a train_dttm in order to identify the correct model
-            if train_dttm:
-                model_id = model_id + "_" + train_dttm
-                model_file_path = Path(root) / "trained-models" / model_id
-            else:
-                raise ModelLoadError(
-                    "Please specify train_dttm of required model so that it can be loaded"
-                )
-        else:
-            # use a train_dttm if provided; if not use any model
-            if train_dttm:
-                model_id = model_id + "_" + train_dttm
-            if from_notebook:
-                model_file_path = Path(root) / "trained-models"
-            else:
-                model_file_path = Path(root) / "trained-models" / model_id
-        if from_notebook:
-            media_file_path = Path(root) / "notebooks" / "img"
-        else:
-            media_file_path = model_file_path / "media"
+    model_file_path = Path(project_root) / "trained-models" / model_id
+    media_file_path = model_file_path / "media"
 
-    else:  # not inference time
-        if train_dttm:
-            model_id = model_id + "_" + train_dttm
-
-        if from_notebook:
-            model_file_path = Path(root) / "trained-models"
-        else:
-            model_file_path = Path(root) / "trained-models" / model_id
-
-        print(f"Trained models will be saved to: {model_file_path}")
+    if not inference_time:
+        if verbose:
+            print(f"Trained models will be saved to: {model_file_path}")
         model_file_path.mkdir(parents=True, exist_ok=True)
-
-        filename_results_dict_path = model_file_path / "model-output"
-        filename_results_dict_path.mkdir(parents=False, exist_ok=True)
-
-        if from_notebook:
-            media_file_path = Path(root) / "notebooks" / "img"
-        else:
-            media_file_path = model_file_path / "media"
+        (model_file_path / "model-output").mkdir(parents=False, exist_ok=True)
         media_file_path.mkdir(parents=False, exist_ok=True)
-        print(f"Images will be saved to: {media_file_path}")
+        if verbose:
+            print(f"Images will be saved to: {media_file_path}")
 
-    # Return paths and parameters
     return data_file_path, media_file_path, model_file_path, config_path
 
 
@@ -344,7 +364,7 @@ def safe_literal_eval(s):
 
 def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=None):
     """
-    Loads data from a CSV file, with optional transformations.
+    Loads data from a CSV file, with optional transformations. LEGACY!
 
     This function loads a CSV file into a pandas DataFrame and provides the following optional features:
     - Setting a specified column as the index.
@@ -399,6 +419,76 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
         try:
             if df.index.name != index_column:
                 df = df.set_index(index_column)
+        except KeyError:
+            print(f"Index column '{index_column}' not found in dataframe")
+
+    if sort_columns:
+        try:
+            df.sort_values(sort_columns, inplace=True)
+        except KeyError:
+            print("One or more sort columns not found in dataframe")
+
+    if eval_columns:
+        for column in eval_columns:
+            if column in df.columns:
+                try:
+                    df[column] = df[column].apply(safe_literal_eval)
+                except Exception as e:
+                    print(f"Error applying safe_literal_eval to column '{column}': {e}")
+
+    return df
+
+
+def load_data(
+    data_file_path, file_name, index_column=None, sort_columns=None, eval_columns=None
+):
+    """
+    Loads data from CSV or pickle file with optional transformations.
+
+    Parameters
+    ----------
+    data_file_path : str
+        Directory path containing the data file
+    file_name : str
+        Name of the CSV or pickle file to load
+    index_column : str, optional
+        Column to set as DataFrame index
+    sort_columns : list of str, optional
+        Columns to sort DataFrame by
+    eval_columns : list of str, optional
+        Columns to apply safe_literal_eval to
+
+    Returns
+    -------
+    pd.DataFrame
+        Loaded and transformed DataFrame
+
+    Raises
+    ------
+    SystemExit
+        If file not found or error occurs during processing
+    """
+    path = os.path.join(Path().home(), data_file_path, file_name)
+
+    if not os.path.exists(path):
+        print(f"Data file not found at path: {path}")
+        sys.exit(1)
+
+    try:
+        if file_name.endswith(".csv"):
+            df = pd.read_csv(path, parse_dates=True)
+        elif file_name.endswith(".pkl"):
+            df = pd.read_pickle(path)
+        else:
+            print("Unsupported file format. Must be CSV or pickle")
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        sys.exit(1)
+
+    if index_column and df.index.name != index_column:
+        try:
+            df = df.set_index(index_column)
         except KeyError:
             print(f"Index column '{index_column}' not found in dataframe")
 
