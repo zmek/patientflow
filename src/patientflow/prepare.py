@@ -31,7 +31,7 @@ calculate_time_varying_arrival_rates(df, yta_time_interval)
 import pandas as pd
 import numpy as np
 import random
-from patientflow.load import data_from_csv, load_saved_model, get_dict_cols
+from patientflow.load import load_saved_model, get_dict_cols, data_from_csv
 from datetime import datetime, date
 
 

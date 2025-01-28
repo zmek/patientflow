@@ -1,54 +1,46 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
 
 
 def plot_distributions(
     df,
     col_name,
     grouping_var,
+    grouping_var_name,
     plot_type="both",
     title=None,
     rotate_x_labels=False,
     is_discrete=False,
     ordinal_order=None,
 ):
-    """
-    Creates side-by-side plots comparing the distributions of a variable
-    for each value of a grouping variable. Option to plot kde, which is useful for visualizing the distribution of data points in a smooth curve.
-
-    Parameters
-    df (pandas.DataFrame): The dataframe containing the data.
-    col_name (str): The name of the variable column to plot.
-    grouping_var (str): The name of the grouping variable column.
-    plot_type (str): The type of plot to display ('both', 'hist', 'kde').
-                     'both' displays both histogram and KDE,
-                     'hist' displays only the histogram,
-                     'kde' displays only the KDE plot.
-    title (str): The overall title for the plot.
-    rotate_x_labels (bool): Whether to rotate x-axis labels.
-    is_discrete (bool): Whether the variable is discrete. If True, sets number of bins to max value.
-    ordinal_order (list): The order of categories for ordinal data. If None, the original order is maintained.
-    """
-    # Set the aesthetic style of the plots
     sns.set_theme(style="whitegrid")
 
-    # If ordinal_order is provided, convert the column to ordered categorical
     if ordinal_order is not None:
         df[col_name] = pd.Categorical(
             df[col_name], categories=ordinal_order, ordered=True
         )
 
-    # Create a FacetGrid for side-by-side plots
     g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)
 
-    # Determine the number of bins if discrete
     if is_discrete:
-        bins = int(df[col_name].max()) + 1
+        valid_values = sorted([x for x in df[col_name].unique() if pd.notna(x)])
+        min_val = min(valid_values)
+        max_val = max(valid_values)
+        bins = np.arange(min_val - 0.5, max_val + 1.5, 1)
     else:
-        bins = "auto"
+        # Handle numeric data
+        values = df[col_name].dropna()
+        if pd.api.types.is_numeric_dtype(values):
+            if np.allclose(values, values.round()):
+                bins = np.arange(values.min() - 0.5, values.max() + 1.5, 1)
+            else:
+                n_bins = min(100, max(10, int(np.sqrt(len(values)))))
+                bins = n_bins
+        else:
+            bins = "auto"
 
-    # Map the appropriate plot type to each facet
     if plot_type == "both":
         g.map(sns.histplot, col_name, kde=True, bins=bins)
     elif plot_type == "hist":
@@ -59,26 +51,28 @@ def plot_distributions(
         raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
 
     g.set_axis_labels(
-        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=9
+        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
     )
+
+    # Set facet titles with smaller font
+    g.set_titles(col_template="{col_name}", size=11)
 
     if rotate_x_labels:
         for ax in g.axes.flat:
             for label in ax.get_xticklabels():
                 label.set_rotation(90)
 
-    # Force integer x-axis if discrete
     if is_discrete:
         for ax in g.axes.flat:
             ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-            ax.set_xlim(df[col_name].min() - 0.5, df[col_name].max() + 0.5)
+            ax.set_xlim(min_val - 0.5, max_val + 0.5)
 
-    # Set the overall title
     plt.subplots_adjust(top=0.85)
     if title:
-        g.figure.suptitle(title, fontsize=12)
+        g.figure.suptitle(title, fontsize=14)
     else:
-        g.figure.suptitle(f"Distribution of {col_name} by {grouping_var}", fontsize=12)
+        g.figure.suptitle(
+            f"Distribution of {col_name} grouped by {grouping_var_name}", fontsize=14
+        )
 
-    # Show the plot
     plt.show()

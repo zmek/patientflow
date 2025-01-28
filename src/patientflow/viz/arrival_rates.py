@@ -138,8 +138,8 @@ def annotate_hour_line(
 def plot_arrival_rates(
     inpatient_arrivals,
     title,
-    inpatient_arrivals_2=None,  # Optional second dataset
-    labels=None,  # Optional tuple of labels for dual plots
+    inpatient_arrivals_2=None,
+    labels=None,
     lagged_by=None,
     curve_params=None,
     time_interval=60,
@@ -229,7 +229,7 @@ def plot_arrival_rates(
                 "arrival_rates_spread": arrival_rates_spread,
                 "color": color,
                 "marker": marker,
-                "label": labels[len(processed_data)] if is_dual_plot else None,
+                "dataset_label": labels[len(processed_data)] if is_dual_plot else None,
             }
         )
 
@@ -243,71 +243,44 @@ def plot_arrival_rates(
 
     # Plot data for each dataset
     for data in processed_data:
-        label_suffix = f" ({data['label']})" if data["label"] else ""
+        dataset_suffix = f" ({data['dataset_label']})" if data["dataset_label"] else ""
 
-        if curve_params is not None and data["arrival_rates_spread"] is not None:
-            # Base arrival rates
-            plt.plot(
-                x_values,
-                get_cyclic_data(data["arrival_rates"]),
-                marker="x",
-                color=data["color"],
-                markersize=4,
-                linestyle=":",
-                linewidth=1,
-                label=f"Arrival rates of admitted patients{label_suffix}",
-            )
+        # Base arrival rates
+        base_label = f"Arrival rates of admitted patients{dataset_suffix}"
+        plt.plot(
+            x_values,
+            get_cyclic_data(data["arrival_rates"]),
+            marker="x",
+            color=data["color"],
+            markersize=4,
+            linestyle=":" if (curve_params or lagged_by) else "-",
+            linewidth=1 if (curve_params or lagged_by) else None,
+            label=base_label,
+        )
 
-            if lagged_by is not None:
-                # Lagged arrival rates
-                plt.plot(
-                    x_values,
-                    get_cyclic_data(data["arrival_rates_lagged"]),
-                    marker="o",
-                    markersize=4,
-                    color=data["color"],
-                    linestyle="--",
-                    linewidth=1,
-                    label=f"Average number of beds needed {lagged_by} hours after arrival{label_suffix}",
-                )
-
-            # Spread arrival rates
-            plt.plot(
-                x_values,
-                get_cyclic_data(data["arrival_rates_spread"]),
-                marker=data["marker"],
-                color=data["color"],
-                label=f"Average number of beds applying ED targets of {int(y1*100)}% in {int(x1)} hours{label_suffix}",
-            )
-
-        elif lagged_by is not None:
-            # Base arrival rates
-            plt.plot(
-                x_values,
-                get_cyclic_data(data["arrival_rates"]),
-                marker=data["marker"],
-                linestyle=":",
-                color=data["color"],
-                label=f"Arrival rates of admitted patients{label_suffix}",
-            )
-
+        if lagged_by is not None:
             # Lagged arrival rates
+            lagged_label = f"Average number of beds needed assuming admission\nexactly {lagged_by} hours after arrival{dataset_suffix}"
             plt.plot(
                 x_values,
                 get_cyclic_data(data["arrival_rates_lagged"]),
-                marker=data["marker"],
+                marker="o",
+                markersize=4,
                 color=data["color"],
-                label=f"Average number of beds needed {lagged_by} hours after arrival{label_suffix}",
+                linestyle="--",
+                linewidth=1,
+                label=lagged_label,
             )
 
-        else:
-            # Only base arrival rates
+        if curve_params is not None and data["arrival_rates_spread"] is not None:
+            # Spread arrival rates
+            spread_label = f"Average number of beds applying ED targets of {int(y1*100)}% in {int(x1)} hours{dataset_suffix}"
             plt.plot(
                 x_values,
-                get_cyclic_data(data["arrival_rates"]),
-                marker=data["marker"],
-                color=data["color"],
-                label=data["label"] if data["label"] else None,
+                get_cyclic_data(data["arrival_rates_spread"]),
+                marker=data["marker"],  # Keep original dataset marker
+                color=data["color"],  # Keep original dataset color
+                label=spread_label,
             )
 
     # Set plot limits and labels
@@ -318,8 +291,11 @@ def plot_arrival_rates(
     plt.ylabel("Arrival Rate (patients per hour)")
     plt.title(title)
     plt.grid(True, alpha=0.3)
-    if any(d["label"] for d in processed_data):
+
+    # Always show legend if there are multiple datasets or multiple rate types
+    if is_dual_plot or lagged_by is not None or curve_params is not None:
         plt.legend()
+
     plt.tight_layout()
 
     # Save if path provided
