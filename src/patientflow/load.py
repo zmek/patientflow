@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def set_project_root(env_var=None):
+def set_project_root(env_var: Optional[str] = None) -> Path:
     """
     Sets project root path from environment variable or infers it from current path.
 
@@ -79,10 +79,10 @@ def set_project_root(env_var=None):
     If not found, searches current path hierarchy for highest-level 'patientflow' directory.
 
     Args:
-        env_var (str, optional): Name of environment variable containing project root path
+        env_var (Optional[str]): Name of environment variable containing project root path
 
     Returns:
-        pathlib.Path: Validated project root path
+        Path: Validated project root path
 
     Raises:
         ValueError: If environment variable not set and 'patientflow' not found in path
@@ -90,7 +90,8 @@ def set_project_root(env_var=None):
         TypeError: If env_var is not None and not a string
     """
     # Only try to get env path if env_var is provided
-    env_path = os.getenv(env_var) if env_var is not None else None
+    env_path: Optional[str] = os.getenv(env_var) if env_var is not None else None
+    project_root: Optional[Path] = None
 
     # Try getting from environment variable first
     if env_path is not None:
@@ -103,32 +104,31 @@ def set_project_root(env_var=None):
         except (TypeError, ValueError) as e:
             print(f"Error converting {env_path} to Path: {e}")
             raise
+    else:
+        # If not in env var, try to infer from current path
+        current: Path = Path().absolute()
 
-    # If not in env var, try to infer from current path
-    current = Path().absolute()
-    project_root = None
+        # Search through parents to find highest-level 'patientflow' directory
+        for parent in [current, *current.parents]:
+            if parent.name == "patientflow" and parent.is_dir():
+                project_root = parent
+                # Continue searching to find highest level
 
-    # Search through parents to find highest-level 'patientflow' directory
-    for parent in [current, *current.parents]:
-        if parent.name == "patientflow" and parent.is_dir():
-            project_root = parent
-            # Continue searching to find highest level
+        if project_root:
+            print(f"Inferred project root: {project_root}")
+            return project_root
 
-    if project_root:
-        print(f"Inferred project root: {project_root}")
-        return project_root
-
-    print(
-        f"Could not find project root - {env_var} not set and 'patientflow' not found in path"
-    )
-    print(f"\nCurrent directory: {Path().absolute()}")
-    if env_var:
-        print(f"\nRun one of these commands in a new cell to set {env_var}:")
-        print("# Linux/Mac:")
-        print(f"%env {env_var}=/path/to/project")
-        print("\n# Windows:")
-        print(f"%env {env_var}=C:\\path\\to\\project")
-    raise ValueError("Project root not found")
+        print(
+            f"Could not find project root - {env_var} not set and 'patientflow' not found in path"
+        )
+        print(f"\nCurrent directory: {Path().absolute()}")
+        if env_var:
+            print(f"\nRun one of these commands in a new cell to set {env_var}:")
+            print("# Linux/Mac:")
+            print(f"%env {env_var}=/path/to/project")
+            print("\n# Windows:")
+            print(f"%env {env_var}=C:\\path\\to\\project")
+        raise ValueError("Project root not found")
 
 
 def load_config_file(

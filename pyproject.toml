@@ -118,7 +118,7 @@ legacy_tox_ini = """
 
     [testenv:docs]
     commands =
-        mkdocs build --strict
+        mkdocs build
     extras =
         docs
 

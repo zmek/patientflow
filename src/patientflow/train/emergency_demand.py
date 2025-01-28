@@ -1,19 +1,19 @@
+from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict
 import numpy as np
+import numpy.typing as npt
 from xgboost import XGBClassifier
 import pandas as pd
+from pandas import DataFrame, Series
 from joblib import dump
 import json
 from datetime import datetime, date
 from collections import Counter
 import sys
 
-# import argparse
-
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import TimeSeriesSplit, ParameterGrid
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
-from sklearn.model_selection import ParameterGrid
 from sklearn.pipeline import Pipeline
 from dataclasses import dataclass
 
@@ -38,19 +38,18 @@ from patientflow.predict.emergency_demand import create_predictions
 
 
 def split_and_check_sets(
-    df,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    date_column="snapshot_date",
-    print_dates=True,
-):
+    df: DataFrame,
+    start_training_set: date,
+    start_validation_set: date,
+    start_test_set: date,
+    end_test_set: date,
+    date_column: str = "snapshot_date",
+    print_dates: bool = True,
+) -> None:
     _df = df.copy()
     _df[date_column] = pd.to_datetime(_df[date_column]).dt.date
 
     if print_dates:
-        # Separate into training, validation and test sets and print summary for each set
         for value in _df.training_validation_test.unique():
             subset = _df[_df.training_validation_test == value]
             counts = subset.training_validation_test.value_counts().values[0]
@@ -60,7 +59,6 @@ def split_and_check_sets(
                 f"Set: {value}\nNumber of rows: {counts}\nMin Date: {min_date}\nMax Date: {max_date}\n"
             )
 
-    # Split df into training, validation, and test sets
     train_df = _df[_df.training_validation_test == "train"].drop(
         columns="training_validation_test"
     )
@@ -71,7 +69,6 @@ def split_and_check_sets(
         columns="training_validation_test"
     )
 
-    # Assertions with try-except for better error handling
     try:
         assert train_df[date_column].min() == start_training_set
     except AssertionError:
@@ -114,8 +111,6 @@ def split_and_check_sets(
             f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
         )
 
-    return
-
 
 @dataclass
 class MetricResults:
@@ -126,17 +121,10 @@ class MetricResults:
     auprc: float
 
 
-def evaluate_predictions(y_true, y_pred):
-    """
-    Calculate multiple metrics for given predictions.
-
-    Args:
-        y_true: True labels
-        y_pred: Predicted probabilities
-
-    Returns:
-        MetricResults object containing all metrics
-    """
+def evaluate_predictions(
+    y_true: npt.NDArray[np.int_], y_pred: npt.NDArray[np.float64]
+) -> MetricResults:
+    """Calculate multiple metrics for given predictions."""
     return MetricResults(
         auc=roc_auc_score(y_true, y_pred),
         logloss=log_loss(y_true, y_pred),
@@ -144,41 +132,27 @@ def evaluate_predictions(y_true, y_pred):
     )
 
 
-def chronological_cross_validation(pipeline, X, y, n_splits=5):
-    """
-    Perform time series cross-validation with multiple metrics.
-
-    Args:
-        pipeline: The machine learning pipeline (preprocessing + model)
-        X: Input features
-        y: Target variable
-        n_splits: Number of splits for cross-validation
-
-    Returns:
-        Dictionary with averaged metrics across all folds
-    """
+def chronological_cross_validation(
+    pipeline: Pipeline, X: DataFrame, y: Series, n_splits: int = 5
+) -> Dict[str, float]:
+    """Perform time series cross-validation with multiple metrics."""
     tscv = TimeSeriesSplit(n_splits=n_splits)
 
-    # Calculate metrics for each fold
-    train_metrics = []
-    valid_metrics = []
+    train_metrics: List[MetricResults] = []
+    valid_metrics: List[MetricResults] = []
 
     for train_idx, valid_idx in tscv.split(X):
-        # Split data
         X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
         y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
 
-        # Fit and predict
         pipeline.fit(X_train, y_train)
         train_preds = pipeline.predict_proba(X_train)[:, 1]
         valid_preds = pipeline.predict_proba(X_valid)[:, 1]
 
-        # Calculate metrics
         train_metrics.append(evaluate_predictions(y_train, train_preds))
         valid_metrics.append(evaluate_predictions(y_valid, valid_preds))
 
-    # Calculate means across folds
-    def aggregate_metrics(metrics_list):
+    def aggregate_metrics(metrics_list: List[MetricResults]) -> Dict[str, float]:
         return {
             field: np.mean([getattr(m, field) for m in metrics_list])
             for field in MetricResults.__dataclass_fields__
@@ -187,42 +161,35 @@ def chronological_cross_validation(pipeline, X, y, n_splits=5):
     train_means = aggregate_metrics(train_metrics)
     valid_means = aggregate_metrics(valid_metrics)
 
-    # Format final results
     return {f"train_{metric}": value for metric, value in train_means.items()} | {
         f"valid_{metric}": value for metric, value in valid_means.items()
     }
 
 
-# Initialise the model with given hyperparameters
-def initialise_xgb(params):
+def initialise_xgb(params: Dict[str, Any]) -> XGBClassifier:
+    """Initialize the model with given hyperparameters."""
     model = XGBClassifier(
         n_jobs=-1,
         eval_metric="logloss",
-        # use_label_encoder=False,
         enable_categorical=True,
-        # scikit_learn=True,  # Add this parameter
     )
     model.set_params(**params)
     return model
 
 
-def create_column_transformer(df, ordinal_mappings=None):
-    """
-    Create a column transformer for a dataframe with dynamic column handling.
+def create_column_transformer(
+    df: DataFrame, ordinal_mappings: Optional[Dict[str, List[Any]]] = None
+) -> ColumnTransformer:
+    """Create a column transformer for a dataframe with dynamic column handling."""
+    transformers: List[
+        Tuple[str, Union[OrdinalEncoder, OneHotEncoder, StandardScaler], List[str]]
+    ] = []
 
-    :param df: Input dataframe.
-    :param ordinal_mappings: A dictionary specifying the ordinal mappings for specific columns.
-    :return: A configured ColumnTransformer object.
-    """
-    transformers = []
-
-    # Default to an empty dict if no ordinal mappings are provided
     if ordinal_mappings is None:
         ordinal_mappings = {}
 
     for col in df.columns:
         if col in ordinal_mappings:
-            # Ordinal encoding for specified columns with a predefined ordering
             transformers.append(
                 (
                     col,
@@ -237,26 +204,21 @@ def create_column_transformer(df, ordinal_mappings=None):
         elif df[col].dtype == "object" or (
             df[col].dtype == "bool" or df[col].nunique() == 2
         ):
-            # OneHotEncoding for categorical or boolean columns
             transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
         else:
-            # Scaling for numerical columns
             transformers.append((col, StandardScaler(), [col]))
 
     return ColumnTransformer(transformers)
 
 
-def calculate_class_balance(y):
+def calculate_class_balance(y: Series) -> Dict[Any, float]:
     counter = Counter(y)
     total = len(y)
     return {cls: count / total for cls, count in counter.items()}
 
 
-def create_json_safe_params(params):
-    # Create a shallow copy of the original params
+def create_json_safe_params(params: Dict[str, Any]) -> Dict[str, Any]:
     new_params = params.copy()
-
-    # List of keys to check for date objects
     date_keys = [
         "start_training_set",
         "start_validation_set",
@@ -264,7 +226,6 @@ def create_json_safe_params(params):
         "end_test_set",
     ]
 
-    # Convert dates to ISO format for the specified keys
     for key in date_keys:
         if key in new_params and isinstance(new_params[key], date):
             new_params[key] = new_params[key].isoformat()
@@ -272,23 +233,16 @@ def create_json_safe_params(params):
     return new_params
 
 
-def get_default_visits(admitted, uclh):
-    # Get the special category objects based on the uclh flag
+def get_default_visits(admitted: DataFrame, uclh: bool) -> DataFrame:
     special_params = create_special_category_objects(uclh)
-
-    # Extract the function from special_params that will be used to identify the visits falling into the default category
-    # ie visits that do not require special functionality (in our case, the non-paediatric patients
     opposite_special_category_func = special_params["special_func_map"]["default"]
 
-    # Get the special handling category (e.g., "paediatric") from the dictionary
     special_category_key = next(
         key
         for key, value in special_params["special_category_dict"].items()
         if value == 1.0
     )
 
-    # Apply the function to filter out rows where the default handling (non-paediatric) applies
-    # Also, filter out rows where the 'specialty' matches the special handling category
     filtered_admitted = admitted[
         admitted.apply(opposite_special_category_func, axis=1)
         & (admitted["specialty"] != special_category_key)
@@ -303,18 +257,25 @@ class ModelResults:
 
     pipeline: Pipeline
     valid_logloss: float
-    feature_names: list
-    feature_importances: list
-    metrics: dict
+    feature_names: Union[List[str], List[float]]  # Allow both types
+    feature_importances: List[float]
+    metrics: Dict[str, Any]
 
 
-def log_if_verbose(message, verbose=False):
+def log_if_verbose(message: str, verbose: bool = False) -> None:
     """Helper function to handle verbose logging."""
     if verbose:
         print(message)
 
 
-def get_dataset_metadata(X_train, X_valid, X_test, y_train, y_valid, y_test):
+def get_dataset_metadata(
+    X_train: DataFrame,
+    X_valid: DataFrame,
+    X_test: DataFrame,
+    y_train: Series,
+    y_valid: Series,
+    y_test: Series,
+) -> Dict[str, Dict[str, Any]]:
     """Get dataset sizes and class balances."""
     return {
         "train_valid_test_set_no": {
@@ -330,7 +291,9 @@ def get_dataset_metadata(X_train, X_valid, X_test, y_train, y_valid, y_test):
     }
 
 
-def evaluate_model(pipeline, X_test, y_test):
+def evaluate_model(
+    pipeline: Pipeline, X_test: DataFrame, y_test: Series
+) -> Dict[str, float]:
     """Evaluate model on test set."""
     y_test_pred = pipeline.predict_proba(X_test)[:, 1]
     return {
@@ -340,7 +303,14 @@ def evaluate_model(pipeline, X_test, y_test):
     }
 
 
-def get_feature_metadata(pipeline):
+class FeatureMetadata(TypedDict):
+    feature_names: List[str]
+    feature_importances: List[float]
+
+
+def get_feature_metadata(
+    pipeline: Pipeline,
+) -> FeatureMetadata:
     """Extract feature names and importances from pipeline."""
     transformed_cols = pipeline.named_steps[
         "feature_transformer"
@@ -354,16 +324,16 @@ def get_feature_metadata(pipeline):
 
 
 def train_single_model(
-    X_train,
-    X_valid,
-    X_test,
-    y_train,
-    y_valid,
-    y_test,
-    grid,
-    ordinal_mappings,
-    verbose=False,
-):
+    X_train: DataFrame,
+    X_valid: DataFrame,
+    X_test: DataFrame,
+    y_train: Series,
+    y_valid: Series,
+    y_test: Series,
+    grid: Dict[str, List[Any]],
+    ordinal_mappings: Dict[str, List[Any]],
+    verbose: bool = False,
+) -> ModelResults:
     """Train a single model for one prediction time."""
     best_model = ModelResults(
         pipeline=None,
@@ -372,23 +342,20 @@ def train_single_model(
         feature_importances=[],
         metrics={},
     )
-    results_dict = {}
+    results_dict: Dict[str, Dict[str, float]] = {}
 
     for params in ParameterGrid(grid):
-        # Initialize model and pipeline
         model = initialise_xgb(params)
         column_transformer = create_column_transformer(X_test, ordinal_mappings)
         pipeline = Pipeline(
             [("feature_transformer", column_transformer), ("classifier", model)]
         )
 
-        # Cross-validate
         cv_results = chronological_cross_validation(
             pipeline, X_train, y_train, n_splits=5
         )
         results_dict[str(params)] = cv_results
 
-        # Update best model if better
         if cv_results["valid_logloss"] < best_model.valid_logloss:
             best_model.pipeline = pipeline
             best_model.valid_logloss = cv_results["valid_logloss"]
@@ -414,18 +381,18 @@ def train_single_model(
 
 
 def train_admissions_models(
-    train_visits,
-    valid_visits,
-    test_visits,
-    grid,
-    exclude_from_training_data,
-    ordinal_mappings,
-    prediction_times,
-    model_name,
-    model_metadata,
-    visit_col,
-    verbose=False,
-):
+    train_visits: DataFrame,
+    valid_visits: DataFrame,
+    test_visits: DataFrame,
+    grid: Dict[str, List[Any]],
+    exclude_from_training_data: List[str],
+    ordinal_mappings: Dict[str, List[Any]],
+    prediction_times: List[str],
+    model_name: str,
+    model_metadata: Dict[str, Any],
+    visit_col: str,
+    verbose: bool = False,
+) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
     """
     Train admission prediction models for different prediction times.
 
@@ -445,7 +412,7 @@ def train_admissions_models(
     Returns:
         Tuple of (model_metadata, trained_models)
     """
-    trained_models = {}
+    trained_models: Dict[str, Pipeline] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
@@ -522,31 +489,30 @@ def train_admissions_models(
 
 
 def train_specialty_model(
-    train_visits,
-    model_name,
-    model_metadata,
-    uclh,
-    visit_col,
-    input_var,
-    grouping_var,
-    outcome_var,
-) -> tuple[dict, SequencePredictor]:
+    train_visits: DataFrame,
+    model_name: str,
+    model_metadata: Dict[str, Any],
+    uclh: bool,
+    visit_col: str,
+    input_var: str,
+    grouping_var: str,
+    outcome_var: str,
+) -> Tuple[Dict[str, Any], SequencePredictor]:
     """Train a specialty prediction model.
 
     Args:
-        train_visits (pd.DataFrame): Training data containing visit information
-        model_name (str): Name identifier for the model
-        model_metadata (dict): Dictionary to store model metadata
-        uclh (bool): Flag for UCLH specific processing
-        visit_col (str): Column name containing visit identifiers
-        input_var (str, optional): Column name for input sequence. Defaults to "consultation_sequence"
-        grouping_var (str, optional): Column name for grouping sequence. Defaults to "final_sequence"
-        outcome_var (str, optional): Column name for target variable. Defaults to "specialty"
+        train_visits: Training data containing visit information
+        model_name: Name identifier for the model
+        model_metadata: Dictionary to store model metadata
+        uclh: Flag for UCLH specific processing
+        visit_col: Column name containing visit identifiers
+        input_var: Column name for input sequence
+        grouping_var: Column name for grouping sequence
+        outcome_var: Column name for target variable
 
     Returns:
-       tuple[dict, SequencePredictor]: Updated model metadata dictionary and trained SequencePredictor model
+        Tuple of updated model metadata dictionary and trained SequencePredictor model
     """
-
     visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
     admitted = visits_single[
         (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
@@ -574,17 +540,34 @@ def train_specialty_model(
 
 
 def train_yet_to_arrive_model(
-    train_yta,
-    prediction_window,
-    yta_time_interval,
-    prediction_times,
-    epsilon,
-    model_name,
-    model_metadata,
-    uclh,
-    specialty_filters,
-    num_days,
-):
+    train_yta: DataFrame,
+    prediction_window: int,
+    yta_time_interval: int,
+    prediction_times: List[float],
+    epsilon: float,
+    model_name: str,
+    model_metadata: Dict[str, Any],
+    uclh: bool,
+    specialty_filters: Dict[str, Any],
+    num_days: int,
+) -> Tuple[Dict[str, Any], WeightedPoissonPredictor]:
+    """Train a yet-to-arrive prediction model.
+
+    Args:
+        train_yta: Training data for yet-to-arrive predictions
+        prediction_window: Time window for predictions
+        yta_time_interval: Time interval for predictions
+        prediction_times: List of prediction times
+        epsilon: Epsilon parameter for model
+        model_name: Name identifier for the model
+        model_metadata: Dictionary to store model metadata
+        uclh: Flag for UCLH specific processing
+        specialty_filters: Filters for specialties
+        num_days: Number of days to consider
+
+    Returns:
+        Tuple of updated model metadata dictionary and trained WeightedPoissonPredictor model
+    """
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
             train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
@@ -959,7 +942,6 @@ def main(data_folder_name=None):
 
     Args:
         data_folder_name (str, optional): Name of data folder
-        uclh (bool, optional): Flag indicating if using UCLH dataset
     """
     # Parse arguments if not provided
     if data_folder_name is None:
