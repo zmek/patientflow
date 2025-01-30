@@ -3,7 +3,7 @@
 This folder contains a series of notebooks that demonstrate the process of modeling emergency demand in healthcare through a structured approach. Notebooks combine commentary with code and the results produced by that code. Here’s how different audiences can benefit from these notebooks:
 
 - **For non-programmers seeking to understand the approach:** If you're not familiar with programming, you can read the narrative sections of the notebooks as if it were a blog post to understand the strategies employed, and skip the code snippets.
-- **For those new to Python or looking to learn:** If you have some coding experience but are new to Python, the code snippets, combined with the narrative, provide insights into how Python is applied in modelling emergency bed demand. They show how tasks such as data exploration, model fitting, and result evaluation can be done in Python. Observing the output will help you see the practical outcomes of the modeling.
+- **For those new to Python or looking to learn:** If you have some coding experience but are new to Python, the code snippets, combined with the narrative, provide insights into how Python is applied in modelling emergency bed demand. They show how tasks such as data exploration, model fitting, and result evaluation can be done in Python. Observing the output will help you see the practical outcomes of the modelling.
 - **For those interested in using the 'patientflow' package:** These notebooks serve as a guide on how to use the 'patientflow' package. Through walkthroughs of the functions and their applications, you can learn how to integrate this package into your own projects.
 
 ## Outline of the notebooks
@@ -33,7 +33,7 @@ A set of notebooks that shows how you might being to evaluate the performance of
 
 Other notebooks showing analysis we have done for our users.
 
-- **[7_Visualise_undelayed_demand](/notebooks/7_Visualise_undelayed_demand.ipynb):** Create charts showing when in the day beds are needed, if ED targets for admitted patients are met and no one has to wait for a bed.
+- **[7_Visualise_un-delayed_demand](/notebooks/7_Visualise_un-delayed_demand.ipynb):** Create charts showing when in the day beds are needed, if ED targets for admitted patients are met and no one has to wait for a bed.
 
 ## Preparing your notebook environment
 

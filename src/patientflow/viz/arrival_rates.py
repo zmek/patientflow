@@ -147,6 +147,8 @@ def plot_arrival_rates(
     x_margin=0.5,
     file_prefix="",
     media_file_path=None,
+    num_days=None,
+    num_days_2=None,
 ):
     """
     Plot arrival rates for one or two datasets with optional lagged and spread rates.
@@ -185,17 +187,19 @@ def plot_arrival_rates(
     if is_dual_plot and labels is None:
         labels = ("Dataset 1", "Dataset 2")
 
-    datasets = [(inpatient_arrivals, "C0", "o")]
+    datasets = [(inpatient_arrivals, "C0", "o", num_days)]
     if is_dual_plot:
-        datasets.append((inpatient_arrivals_2, "C1", "s"))
+        datasets.append((inpatient_arrivals_2, "C1", "s", num_days_2))
 
     # Calculate and process arrival rates for all datasets
     processed_data = []
     max_y_values = []
 
-    for dataset, color, marker in datasets:
+    for dataset, color, marker, num_days in datasets:
         # Calculate base arrival rates
-        arrival_rates_dict = time_varying_arrival_rates(dataset, time_interval)
+        arrival_rates_dict = time_varying_arrival_rates(
+            dataset, time_interval, num_days=num_days
+        )
         arrival_rates, hour_labels, hour_values = process_arrival_rates(
             arrival_rates_dict
         )
@@ -205,7 +209,7 @@ def plot_arrival_rates(
         arrival_rates_lagged = None
         if lagged_by is not None:
             arrival_rates_lagged_dict = time_varying_arrival_rates_lagged(
-                dataset, lagged_by, time_interval
+                dataset, lagged_by, yta_time_interval=time_interval, num_days=num_days
             )
             arrival_rates_lagged, _, _ = process_arrival_rates(
                 arrival_rates_lagged_dict
@@ -216,7 +220,9 @@ def plot_arrival_rates(
         arrival_rates_spread = None
         if curve_params is not None:
             x1, y1, x2, y2 = curve_params
-            arrival_rates_spread_dict = true_demand_by_hour(dataset, x1, y1, x2, y2)
+            arrival_rates_spread_dict = true_demand_by_hour(
+                dataset, x1, y1, x2, y2, num_days=num_days
+            )
             arrival_rates_spread, _, _ = process_arrival_rates(
                 arrival_rates_spread_dict
             )
@@ -329,6 +335,7 @@ def plot_cumulative_arrival_rates(
     line_styles_centiles=["-.", "--", ":", "-", "-"],
     bed_type_spec="",
     text_y_offset=1,
+    num_days=None,
 ):
     """
     Plot cumulative arrival rates with optional statistical distributions.
@@ -389,14 +396,16 @@ def plot_cumulative_arrival_rates(
     # Data processing
     if curve_params is not None:
         x1, y1, x2, y2 = curve_params
-        arrival_rates_dict = true_demand_by_hour(inpatient_arrivals, x1, y1, x2, y2)
+        arrival_rates_dict = true_demand_by_hour(
+            inpatient_arrivals, x1, y1, x2, y2, num_days=num_days
+        )
     elif lagged_by is not None:
         arrival_rates_dict = time_varying_arrival_rates_lagged(
-            inpatient_arrivals, lagged_by, time_interval
+            inpatient_arrivals, lagged_by, time_interval, num_days=num_days
         )
     else:
         arrival_rates_dict = time_varying_arrival_rates(
-            inpatient_arrivals, time_interval
+            inpatient_arrivals, time_interval, num_days=num_days
         )
 
     # Process arrival rates
