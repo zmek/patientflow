@@ -5266,7 +5266,7 @@ admission probabilities based on an aspirational approach, and undelayed demand 
               <td><code><a class="autorefs autorefs-internal" title="patientflow.calculate.time_varying_arrival_rates" href="#patientflow.calculate.time_varying_arrival_rates">time_varying_arrival_rates</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>DataFrame, yta_time_interval: int) -&gt; OrderedDict[time, float]:
+                  <p>DataFrame, yta_time_interval: int, num_days: Optional[int]) -&gt; OrderedDict[time, float]:
 Calculate arrival rates for each time interval across the dataset's date range.</p>
                 </div>
               </td>
@@ -5275,7 +5275,7 @@ Calculate arrival rates for each time interval across the dataset's date range.<
               <td><code><a class="autorefs autorefs-internal" title="patientflow.calculate.time_varying_arrival_rates_lagged" href="#patientflow.calculate.time_varying_arrival_rates_lagged">time_varying_arrival_rates_lagged</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>DataFrame, lagged_by: int, yta_time_interval: int) -&gt; OrderedDict[time, float]:
+                  <p>DataFrame, lagged_by: int, yta_time_interval: int, num_days: Optional[int]) -&gt; OrderedDict[time, float]:
 Create lagged arrival rates based on time intervals.</p>
                 </div>
               </td>
@@ -5302,7 +5302,7 @@ Aggregate weighted arrival rates for specific time intervals.</p>
               <td><code><a class="autorefs autorefs-internal" title="patientflow.calculate.true_demand_by_hour" href="#patientflow.calculate.true_demand_by_hour">true_demand_by_hour</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int) -&gt; OrderedDict[time, float]:
+                  <p>DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int, num_days: Optional[int]) -&gt; OrderedDict[time, float]:
 Estimate inpatient demand by hour using historical data and aspirational curves.</p>
                 </div>
               </td>
@@ -5520,12 +5520,7 @@ demand = true_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/calculate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">277</span>
 <span class="normal">278</span>
 <span class="normal">279</span>
 <span class="normal">280</span>
@@ -5546,7 +5541,12 @@ demand = true_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)</p>
 <span class="normal">295</span>
 <span class="normal">296</span>
 <span class="normal">297</span>
-<span class="normal">298</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">admission_probabilities</span><span class="p">(</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">admission_probabilities</span><span class="p">(</span>
     <span class="n">hours_since_arrival</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y2</span><span class="p">:</span> <span class="nb">float</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -5605,12 +5605,7 @@ Returns:
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/calculate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">246</span>
 <span class="normal">247</span>
 <span class="normal">248</span>
 <span class="normal">249</span>
@@ -5633,7 +5628,12 @@ Returns:
 <span class="normal">266</span>
 <span class="normal">267</span>
 <span class="normal">268</span>
-<span class="normal">269</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">process_arrival_rates</span><span class="p">(</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">process_arrival_rates</span><span class="p">(</span>
     <span class="n">arrival_rates_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">time</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -6013,7 +6013,7 @@ Returns:
 
 
 <h3 id="patientflow.calculate.time_varying_arrival_rates_lagged" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">time_varying_arrival_rates_lagged</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">lagged_by</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">time_varying_arrival_rates_lagged</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">lagged_by</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span></code>
 
 </h3>
 
@@ -6208,8 +6208,16 @@ or DataFrame index is not DatetimeIndex.</p>
 <span class="normal">235</span>
 <span class="normal">236</span>
 <span class="normal">237</span>
-<span class="normal">238</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">time_varying_arrival_rates_lagged</span><span class="p">(</span>
-    <span class="n">df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">lagged_by</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">time_varying_arrival_rates_lagged</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">lagged_by</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">yta_time_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="n">time</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate lagged time-varying arrival rates for a dataset indexed by datetime.</span>
@@ -6253,7 +6261,9 @@ or DataFrame index is not DatetimeIndex.</p>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The parameter &#39;yta_time_interval&#39; must be positive.&quot;</span><span class="p">)</span>
 
     <span class="c1"># Calculate base arrival rates</span>
-    <span class="n">arrival_rates_dict</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">)</span>
+    <span class="n">arrival_rates_dict</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="n">num_days</span>
+    <span class="p">)</span>
 
     <span class="c1"># Apply lag to the times</span>
     <span class="n">lagged_dict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
@@ -6278,7 +6288,7 @@ or DataFrame index is not DatetimeIndex.</p>
 
 
 <h3 id="patientflow.calculate.true_demand_by_hour" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">true_demand_by_hour</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">max_hours_since_arrival</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">true_demand_by_hour</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">max_hours_since_arrival</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -6480,12 +6490,7 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/calculate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">327</span>
 <span class="normal">328</span>
 <span class="normal">329</span>
 <span class="normal">330</span>
@@ -6586,7 +6591,15 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
 <span class="normal">425</span>
 <span class="normal">426</span>
 <span class="normal">427</span>
-<span class="normal">428</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">true_demand_by_hour</span><span class="p">(</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">true_demand_by_hour</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">x1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">y1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -6594,6 +6607,7 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
     <span class="n">y2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">yta_time_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span>
     <span class="n">max_hours_since_arrival</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="n">time</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate true inpatient demand by hour based on historical arrival data.</span>
@@ -6667,7 +6681,9 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
     <span class="p">)</span>
 
     <span class="c1"># Calculate base arrival rates from historical data</span>
-    <span class="n">arrival_rates_dict</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">)</span>
+    <span class="n">arrival_rates_dict</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="n">num_days</span>
+    <span class="p">)</span>
 
     <span class="c1"># Convert dict to arrays while preserving order</span>
     <span class="n">hour_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">arrival_rates_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
@@ -6816,12 +6832,7 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/calculate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">306</span>
 <span class="normal">307</span>
 <span class="normal">308</span>
 <span class="normal">309</span>
@@ -6834,7 +6845,12 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
 <span class="normal">316</span>
 <span class="normal">317</span>
 <span class="normal">318</span>
-<span class="normal">319</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">weighted_arrival_rates</span><span class="p">(</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">weighted_arrival_rates</span><span class="p">(</span>
     <span class="n">weighted_rates</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">elapsed_hours</span><span class="p">:</span> <span class="nb">range</span><span class="p">,</span> <span class="n">hour_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_intervals</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate sum of weighted arrival rates for a specific time interval.</span>

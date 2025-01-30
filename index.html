@@ -841,11 +841,7 @@ pip install -e &quot;.[test]&quot; #this will install the code in test mode
 <pre><code class="language-sh">cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </code></pre>
-<p>There are two arguments</p>
-<ul>
-<li>data_folder_name - specifies where to find the data. This should be in a folder named data-xxx directly below the root of the repository</li>
-<li>uclh - tells the package whether the data is the original UCLH implementation (in which case certain additional features, including the patient's age in years are included)</li>
-</ul>
+<p>The data_folder_name specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository</p>
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
