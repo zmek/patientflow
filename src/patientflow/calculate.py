@@ -3,10 +3,10 @@ This module provides functions to calculate and process time-varying arrival rat
 admission probabilities based on an aspirational approach, and undelayed demand rates for inpatient arrivals.
 
 Functions:
-    time_varying_arrival_rates(df: DataFrame, yta_time_interval: int) -> OrderedDict[time, float]:
+    time_varying_arrival_rates(df: DataFrame, yta_time_interval: int, num_days: Optional[int]) -> OrderedDict[time, float]:
         Calculate arrival rates for each time interval across the dataset's date range.
 
-    time_varying_arrival_rates_lagged(df: DataFrame, lagged_by: int, yta_time_interval: int) -> OrderedDict[time, float]:
+    time_varying_arrival_rates_lagged(df: DataFrame, lagged_by: int, yta_time_interval: int, num_days: Optional[int]) -> OrderedDict[time, float]:
         Create lagged arrival rates based on time intervals.
 
     admission_probabilities(hours_since_arrival: np.ndarray, x1: float, y1: float, x2: float, y2: float) -> Tuple[np.ndarray, np.ndarray]:
@@ -15,7 +15,7 @@ Functions:
     weighted_arrival_rates(weighted_rates: np.ndarray, elapsed_hours: range, hour_idx: int, num_intervals: int) -> float:
         Aggregate weighted arrival rates for specific time intervals.
 
-    true_demand_by_hour(df: DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int) -> OrderedDict[time, float]:
+    true_demand_by_hour(df: DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int, num_days: Optional[int]) -> OrderedDict[time, float]:
         Estimate inpatient demand by hour using historical data and aspirational curves.
 
 Key Concepts:
@@ -177,7 +177,10 @@ def time_varying_arrival_rates(
 
 
 def time_varying_arrival_rates_lagged(
-    df: DataFrame, lagged_by: int, yta_time_interval: int = 60
+    df: DataFrame,
+    lagged_by: int,
+    num_days: Optional[int] = None,
+    yta_time_interval: int = 60,
 ) -> OrderedDict[time, float]:
     """
     Calculate lagged time-varying arrival rates for a dataset indexed by datetime.
@@ -221,7 +224,9 @@ def time_varying_arrival_rates_lagged(
         raise ValueError("The parameter 'yta_time_interval' must be positive.")
 
     # Calculate base arrival rates
-    arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval)
+    arrival_rates_dict = time_varying_arrival_rates(
+        df, yta_time_interval, num_days=num_days
+    )
 
     # Apply lag to the times
     lagged_dict = OrderedDict()
@@ -327,6 +332,7 @@ def true_demand_by_hour(
     y2: float,
     yta_time_interval: int = 60,
     max_hours_since_arrival: int = 10,
+    num_days: Optional[int] = None,
 ) -> OrderedDict[time, float]:
     """
     Calculate true inpatient demand by hour based on historical arrival data.
@@ -400,7 +406,9 @@ def true_demand_by_hour(
     )
 
     # Calculate base arrival rates from historical data
-    arrival_rates_dict = time_varying_arrival_rates(df, yta_time_interval)
+    arrival_rates_dict = time_varying_arrival_rates(
+        df, yta_time_interval, num_days=num_days
+    )
 
     # Convert dict to arrays while preserving order
     hour_keys = list(arrival_rates_dict.keys())

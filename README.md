@@ -111,10 +111,7 @@ cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 ```
 
-There are two arguments
-
-- data_folder_name - specifies where to find the data. This should be in a folder named data-xxx directly below the root of the repository
-- uclh - tells the package whether the data is the original UCLH implementation (in which case certain additional features, including the patient's age in years are included)
+The data_folder_name specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository
 
 ## Roadmap
 
