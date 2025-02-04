@@ -6,6 +6,8 @@ def plot_features(
     trained_models,
     media_file_path,
     prediction_times,
+    model_group_name = 'admissions'
+    
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -22,7 +24,7 @@ def plot_features(
 
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name('admissions_minimal', prediction_time)
+        model_name = get_model_name(model_group_name, prediction_time)
         pipeline = trained_models[model_name]
 
         # Get feature names from the pipeline

@@ -15,6 +15,7 @@ def plot_calibration(
     test_visits,
     exclude_from_training_data,
     strategy="uniform",
+    model_group_name='admssions'
 ):
     
     # Sort prediction times by converting to minutes since midnight
@@ -31,7 +32,7 @@ def plot_calibration(
 
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name('admissions_minimal', prediction_time)
+        model_name = get_model_name(model_group_name, prediction_time)
         pipeline = trained_models[model_name]
 
         # Get test data for this prediction time

@@ -11,7 +11,8 @@ def plot_shap(
     media_file_path,
     test_visits,
     prediction_times,
-    exclude_from_training_data
+    exclude_from_training_data,
+    model_group_name = 'admissions'
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -23,7 +24,7 @@ def plot_shap(
         fig, ax = plt.subplots(figsize=(8, 12))
 
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name('admissions_minimal', prediction_time)
+        model_name = get_model_name(model_group_name, prediction_time)
         pipeline = trained_models[model_name]
 
         # Get test data for this prediction time
@@ -55,7 +56,7 @@ def plot_shap(
 
         # Print prediction distribution
         predictions = pipeline.named_steps["classifier"].predict(X_test)
-        print("Prediction distribution:", np.bincount(predictions))
+        print("Predicted classification (not admitted, admitted): ", np.bincount(predictions))
         
         # Print mean SHAP values for each class
         if isinstance(shap_values, list):
