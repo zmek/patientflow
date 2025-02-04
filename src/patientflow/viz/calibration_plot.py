@@ -1,40 +1,58 @@
-from patientflow.prepare import prepare_for_inference
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
+from patientflow.predict.emergency_demand import add_missing_columns
+from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.load import get_model_name
 
 # Define the color scheme
 primary_color = "#1f77b4"
 secondary_color = "#aec7e8"
 
-
 def plot_calibration(
     prediction_times,
     media_file_path,
-    model_file_path,
-    visits_csv_path,
-    model_name,
+    trained_models,
+    test_visits,
+    exclude_from_training_data,
     strategy="uniform",
 ):
-    num_plots = len(prediction_times)
+    
+    # Sort prediction times by converting to minutes since midnight
+    prediction_times_sorted = sorted(
+        prediction_times,
+        key=lambda x: x[0] * 60 + x[1]  # Convert (hour, minute) to minutes since midnight
+    )
+    num_plots = len(prediction_times_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))
+    
+    # Handle case of single prediction time
+    if num_plots == 1:
+        axs = [axs]
 
-    for i, _prediction_time in enumerate(prediction_times):
-        X_test, y_test, pipeline = prepare_for_inference(
-            model_file_path=model_file_path,
-            model_name=model_name,
-            prediction_time=_prediction_time,
-            data_path=visits_csv_path,
+    for i, prediction_time in enumerate(prediction_times_sorted):
+        # Get model name and pipeline for this prediction time
+        model_name = get_model_name('admissions_minimal', prediction_time)
+        pipeline = trained_models[model_name]
+
+        # Get test data for this prediction time
+        X_test, y_test = get_snapshots_at_prediction_time(
+            df=test_visits,
+            prediction_time=prediction_time,
+            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
-            model_only=False,
         )
 
+        X_test = add_missing_columns(pipeline, X_test)
+
         prob_true, prob_pred = calibration_curve(
-            y_test, pipeline.predict_proba(X_test)[:, 1], n_bins=10, strategy=strategy
+            y_test, 
+            pipeline.predict_proba(X_test)[:, 1], 
+            n_bins=10, 
+            strategy=strategy
         )
 
         ax = axs[i]
-
-        hour, minutes = _prediction_time
+        hour, minutes = prediction_time
 
         ax.plot(
             prob_pred,
