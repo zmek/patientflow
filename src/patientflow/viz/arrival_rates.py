@@ -149,6 +149,8 @@ def plot_arrival_rates(
     media_file_path=None,
     num_days=None,
     num_days_2=None,
+    return_figure=False  
+
 ):
     """
     Plot arrival rates for one or two datasets with optional lagged and spread rates.
@@ -177,11 +179,13 @@ def plot_arrival_rates(
         Prefix for the saved file name (default is "").
     media_file_path : str or Path, optional
         Directory path to save the plot (default is None).
+    return_figure : bool, optional
+        If True, returns the matplotlib figure instead of displaying it (default is False)
 
     Returns
     -------
-    None
-        Displays or saves the matplotlib plot.
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot
     """
     is_dual_plot = inpatient_arrivals_2 is not None
     if is_dual_plot and labels is None:
@@ -244,7 +248,7 @@ def plot_arrival_rates(
         return data[start_plot_index:] + data[0:start_plot_index]
 
     # Plot setup
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
     x_values = get_cyclic_data(hour_labels)
 
     # Plot data for each dataset
@@ -309,8 +313,10 @@ def plot_arrival_rates(
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
 
-    plt.show()
-
+    if return_figure:
+        return fig
+    else:
+        plt.show()
 
 def plot_cumulative_arrival_rates(
     inpatient_arrivals,
@@ -336,6 +342,7 @@ def plot_cumulative_arrival_rates(
     bed_type_spec="",
     text_y_offset=1,
     num_days=None,
+    return_figure=False
 ):
     """
     Plot cumulative arrival rates with optional statistical distributions.
@@ -387,10 +394,13 @@ def plot_cumulative_arrival_rates(
     text_y_offset : float, optional
         Vertical offset for text annotations (default is 1).
 
+    return_figure : bool, optional
+        If True, returns the matplotlib figure instead of displaying it (default is False)
+
     Returns
     -------
-    None
-        Displays or saves the matplotlib plot.
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot
     """
 
     # Data processing
@@ -430,7 +440,7 @@ def plot_cumulative_arrival_rates(
             percentiles[i].append(value_at_centile)
 
     # Set up plot
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
 
     # Plot mean line with appropriate label
     label_suffix = f" {bed_type_spec} beds needed" if bed_type_spec else " beds needed"
@@ -577,4 +587,8 @@ def plot_cumulative_arrival_rates(
     if media_file_path:
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
-    plt.show()
+        
+    if return_figure:
+        return fig
+    else:
+        plt.show()

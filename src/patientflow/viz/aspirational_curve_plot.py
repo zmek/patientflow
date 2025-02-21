@@ -14,18 +14,20 @@ def plot_curve(
     y1,
     x2,
     y2,
-    figsize=(6, 3),
+    figsize=(10, 5),
     include_titles=False,
-    text_size=None,
+    text_size=14,
     media_file_path=None,
     file_name=None,
+    return_figure=False  
+
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
         x1, y1, x2, y2, generate_values=True
     )
 
     # Plot the curve
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
 
     if not file_name:
         file_name = (
@@ -57,4 +59,7 @@ def plot_curve(
         os.makedirs(media_file_path, exist_ok=True)
         plt.savefig(media_file_path / clean_title_for_filename(title), dpi=300)
 
-    plt.show()
+    if return_figure:
+        return fig
+    else:
+        plt.show()
