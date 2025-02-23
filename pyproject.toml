@@ -33,11 +33,12 @@ optional-dependencies = {dev = [
     "tox",
     "twine",
 ], docs = [
+    "griffe==0.36.2",
     "mkdocs",
     "mkdocs-include-markdown-plugin",
     "mkdocs-material",
-    "mkdocstrings",
-    "mkdocstrings-python",
+    "mkdocstrings-python==1.7.0",
+    "mkdocstrings==0.24.0",
 ], test = [
     "pytest",
     "pytest-cov",
