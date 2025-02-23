@@ -149,6 +149,7 @@ def plot_arrival_rates(
     media_file_path=None,
     num_days=None,
     num_days_2=None,
+    return_figure=False,
 ):
     """
     Plot arrival rates for one or two datasets with optional lagged and spread rates.
@@ -177,11 +178,13 @@ def plot_arrival_rates(
         Prefix for the saved file name (default is "").
     media_file_path : str or Path, optional
         Directory path to save the plot (default is None).
+    return_figure : bool, optional
+        If True, returns the matplotlib figure instead of displaying it (default is False)
 
     Returns
     -------
-    None
-        Displays or saves the matplotlib plot.
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot
     """
     is_dual_plot = inpatient_arrivals_2 is not None
     if is_dual_plot and labels is None:
@@ -244,7 +247,7 @@ def plot_arrival_rates(
         return data[start_plot_index:] + data[0:start_plot_index]
 
     # Plot setup
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
     x_values = get_cyclic_data(hour_labels)
 
     # Plot data for each dataset
@@ -309,7 +312,73 @@ def plot_arrival_rates(
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
 
-    plt.show()
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+
+
+def get_window_parameters(data, start_window, end_window, hour_values):
+    """
+    Parameters
+    ----------
+    data : array-like
+        Reindexed cumulative data
+    start_window : int
+        Start position in reindexed space
+    end_window : int
+        End position in reindexed space
+    hour_values : array-like
+        Original hour values for display
+    """
+    y1 = data[start_window]
+    y2 = data[-1]
+    x1 = hour_values[start_window]  # Get display hour
+    x2 = hour_values[end_window]  # Get display hour
+    slope = (y2 - y1) / (x2 - x1)
+
+    return slope, x1, y1, x2, y2
+
+
+def draw_window_visualization(
+    ax, hour_values, window_params, annotation_prefix, start_window, end_window
+):
+    """Draw the window visualization with annotations.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to draw on
+    hour_values : array-like
+        Hour labels for x-axis
+    window_params : tuple
+        (slope, x1, y1, y2) from get_window_parameters
+    annotation_prefix : str
+        Prefix for annotations
+    start_window : int
+        Start hour for window
+    end_window : int
+        End hour for window
+    """
+    slope, x1, y1, x2, y2 = window_params
+
+    # Draw horizontal line
+    ax.hlines(y=y2, xmin=x2, xmax=hour_values[-1], color="blue", linestyle="--")
+
+    # Draw diagonal line
+    ax.plot([x1, x2], [y1, y2], color="blue", linestyle="--")
+
+    # Add annotation
+    ax.annotate(
+        f"{annotation_prefix}, {slope:.0f} beds need to be vacated\n"
+        f"each hour between {start_window}:00 and {end_window}:00\n"
+        f"to create capacity for all overnight arrivals\n"
+        f"by {end_window}:00",
+        xy=(hour_values[-1], y2 * 0.25),
+        xytext=(hour_values[-1], y2 * 0.25),
+        va="top",
+        ha="right",
+    )
 
 
 def plot_cumulative_arrival_rates(
@@ -336,6 +405,7 @@ def plot_cumulative_arrival_rates(
     bed_type_spec="",
     text_y_offset=1,
     num_days=None,
+    return_figure=False,
 ):
     """
     Plot cumulative arrival rates with optional statistical distributions.
@@ -387,10 +457,13 @@ def plot_cumulative_arrival_rates(
     text_y_offset : float, optional
         Vertical offset for text annotations (default is 1).
 
+    return_figure : bool, optional
+        If True, returns the matplotlib figure instead of displaying it (default is False)
+
     Returns
     -------
-    None
-        Displays or saves the matplotlib plot.
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot
     """
 
     # Data processing
@@ -430,12 +503,13 @@ def plot_cumulative_arrival_rates(
             percentiles[i].append(value_at_centile)
 
     # Set up plot
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
+    ax = plt.gca()
 
-    # Plot mean line with appropriate label
+    # Plot mean line
     label_suffix = f" {bed_type_spec} beds needed" if bed_type_spec else " beds needed"
-
     cumsum_rates = np.cumsum(rates_reindexed)
+
     plt.plot(
         labels_reindexed,
         cumsum_rates,
@@ -447,18 +521,23 @@ def plot_cumulative_arrival_rates(
         label=f"Average number of{label_suffix}",
     )
 
+    # set max y value assuming centiles not plotted
     max_y = cumsum_rates[-1]
 
     if plot_centiles:
         # Calculate and plot percentiles
         percentiles = [[] for _ in range(len(centiles))]
         cumulative_value_at_centile = np.zeros(len(centiles))
+        highlight_percentile_data = None
 
         for hour in range(len(rates_reindexed)):
             for i, centile in enumerate(centiles):
                 value_at_centile = stats.poisson.ppf(centile, rates_reindexed[hour])
                 cumulative_value_at_centile[i] += value_at_centile
                 percentiles[i].append(value_at_centile)
+
+                if centile == highlight_centile:
+                    highlight_percentile_data = np.cumsum(percentiles[i])
 
         # Plot percentile lines
         for i, centile in enumerate(centiles):
@@ -479,64 +558,30 @@ def plot_cumulative_arrival_rates(
                 alpha=alpha,
                 label=f"{centile*100:.0f}% probability",
             )
-
-            if centile == highlight_centile:
-                for hour_line in hour_lines:
-                    cumsum_at_hour = sum(
-                        percentiles[i][0 : hour_line + 1 - start_plot_index]
-                    )
-
-                    annotate_hour_line(
-                        hour_line=hour_line,
-                        y_value=cumsum_at_hour,
-                        hour_values=hour_values,
-                        start_plot_index=start_plot_index,
-                        line_styles=line_styles,
-                        x_margin=x_margin,
-                        annotation_prefix=annotation_prefix,
-                        text_y_offset=text_y_offset,
-                        # No slope/x1/y1 needed since we're using the simpler case
-                    )
-
+        # update max y
         max_y = max(cumulative_value_at_centile)
 
-        # Reverse legend order
-        handles, labels = plt.gca().get_legend_handles_labels()
-        plt.legend(handles[::-1], labels[::-1], loc="upper left")
-    else:
-        plt.legend(loc="upper left")
-
-    # Handle draw window if specified
-    if not plot_centiles:
+        # Draw window visualization if requested
         if draw_window:
             start_window, end_window = draw_window
-
-            plt.hlines(
-                y=cumsum_rates[-1],
-                xmin=hour_values[end_window - start_plot_index],
-                xmax=hour_values[-1],
-                color="blue",
-                linestyle="--",
+            reindexed_start = (start_window - start_plot_index) % len(
+                highlight_percentile_data
             )
-
-            x1 = hour_values[start_window - start_plot_index]
-            y1 = cumsum_rates[start_window - start_plot_index]
-            x2 = hour_values[end_window - start_plot_index]
-            y2 = cumsum_rates[-1]
-
-            plt.plot([x1, x2], [y1, y2], color="blue", linestyle="--")
-
-            slope = (y2 - y1) / (x2 - x1)
-            plt.annotate(
-                f"{annotation_prefix}, {int(slope)} beds need to be vacated\n"
-                f"each hour between {start_window}:00 and {end_window}:00\n"
-                f"to create capacity for all overnight arrivals\n"
-                f"by {end_window}:00",
-                xy=(hour_values[-1], y2 * 0.25),
-                xytext=(hour_values[-1], y2 * 0.25),
-                va="top",
-                ha="right",
+            reindexed_end = (end_window - start_plot_index) % len(
+                highlight_percentile_data
             )
+            window_params = get_window_parameters(
+                highlight_percentile_data, reindexed_start, reindexed_end, hour_values
+            )
+            draw_window_visualization(
+                ax,
+                hour_values,
+                window_params,
+                annotation_prefix,
+                start_window,
+                end_window,
+            )
+            slope, x1, y1, x2, y2 = window_params
             for hour_line in hour_lines:
                 annotate_hour_line(
                     hour_line=hour_line,
@@ -552,6 +597,57 @@ def plot_cumulative_arrival_rates(
                 )
 
         else:
+            # Regular percentile annotations
+            for hour_line in hour_lines:
+                cumsum_at_hour = highlight_percentile_data[hour_line - start_plot_index]
+                annotate_hour_line(
+                    hour_line=hour_line,
+                    y_value=cumsum_at_hour,
+                    hour_values=hour_values,
+                    start_plot_index=start_plot_index,
+                    line_styles=line_styles,
+                    x_margin=x_margin,
+                    annotation_prefix=annotation_prefix,
+                    text_y_offset=text_y_offset,
+                )
+
+        # Reverse legend order
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend(handles[::-1], labels[::-1], loc="upper left")
+    else:
+        plt.legend(loc="upper left")
+
+        if draw_window:
+            start_window, end_window = draw_window
+            reindexed_start = (start_window - start_plot_index) % len(cumsum_rates)
+            reindexed_end = (end_window - start_plot_index) % len(cumsum_rates)
+            window_params = get_window_parameters(
+                cumsum_rates, reindexed_start, reindexed_end, hour_values
+            )
+            draw_window_visualization(
+                ax,
+                hour_values,
+                window_params,
+                annotation_prefix,
+                start_window,
+                end_window,
+            )
+            slope, x1, y1, x2, y2 = window_params
+            for hour_line in hour_lines:
+                annotate_hour_line(
+                    hour_line=hour_line,
+                    y_value=y1,
+                    hour_values=hour_values,
+                    start_plot_index=start_plot_index,
+                    line_styles=line_styles,
+                    x_margin=x_margin,
+                    annotation_prefix=annotation_prefix,
+                    slope=slope,
+                    x1=x1,
+                    y1=y1,
+                )
+        else:
+            # Regular mean line annotations
             for hour_line in hour_lines:
                 annotate_hour_line(
                     hour_line=hour_line,
@@ -563,11 +659,10 @@ def plot_cumulative_arrival_rates(
                     annotation_prefix=annotation_prefix,
                 )
 
-    # Final plot formatting
     plt.xlabel("Hour of day")
     plt.ylabel("Cumulative number of beds needed")
     plt.xlim(hour_values[0] - x_margin, hour_values[-1] + x_margin)
-    plt.ylim(0, set_y_lim if set_y_lim else max_y + 2)
+    plt.ylim(0, set_y_lim if set_y_lim else max(max_y + 2, max_y * 1.2))
     plt.minorticks_on()
     plt.gca().yaxis.set_minor_locator(plt.MultipleLocator(5))
 
@@ -577,4 +672,8 @@ def plot_cumulative_arrival_rates(
     if media_file_path:
         filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
-    plt.show()
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
