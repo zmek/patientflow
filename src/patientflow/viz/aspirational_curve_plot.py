@@ -19,8 +19,7 @@ def plot_curve(
     text_size=14,
     media_file_path=None,
     file_name=None,
-    return_figure=False  
-
+    return_figure=False,
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
         x1, y1, x2, y2, generate_values=True
