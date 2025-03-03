@@ -29,52 +29,34 @@
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
 <!-- prettier-ignore-end -->
 
-Welcome to the PatientFlow repo, which is designed to support hospital bed management through predictive modelling. The repository shows methods for forecasting short-term bed capacity, a crucial aspect of hospital operations that impacts patient care and resource allocation.
+Welcome to the PatientFlow repository, which is designed to support hospital bed management through predictive modelling. I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) NHS Trust on practical tools to improve patient flow through the hospital.
 
-Please note that you are looking at this repo prior to its first release. It is incomplete.
+My most important contribution is a software application that [Jon Gillham](https://github.com/jongillham) and I developed, which is now in daily use by bed managers at the hospital. That application generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system, and sends the predictions to the bed managers. I created the predictive models that are used in the application. Jon created the software that runs my modelling code five times a day, and sends the predictions by email to the bed managers.
 
-## Objectives
+I developed the code I wrote for UCLH into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). I did this because I want to:
 
-1. Develop code that was originally written for University College London Hospital (UCLH) into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/)
-2. Share the resource with analysts, bed managers and other interested parties in the NHS and other hospital systems
-3. Provide explanatory materials to inform and educate anyone who wishes to adopt a similar approach
+1. Share the code with researchers and NHS analysts who are work on similar models
+2. Make it easier for others to make use of the mathemetics involved in making these predictions
+3. Inform and educate anyone who wishes to adopt a similar approach
 
-## Main Features of our modelling approach
+## Main features of my modelling approach
 
-- **User led:** This work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), over four years. What is modelled directly reflects how they work and what is most useful to them.
-- **Focused on short-term predictions:** We demonstrate the creation and evaluation of predictive models. The output from these models is a prediction of how many beds with be needed by patients within a short time horizon of (say) 8 hours. (Later we plan to add modules that also predict supply and net bed position over the same period.)
-- **Assumes real-time data is available:** Our focus is on how hospitals can make use of real-time data to make informed decisions on the ground. All the modelling here assumes that a hospital has some capacity to run models using real-time (or near to real-time) data in its electronic health record, even if this data is minimal.
+- **Led by what users need:** My work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), since 2020. What is modelled directly reflects how they work and what is most useful to them.
+- **Focused on short-term predictions:** I am expert in predicting demand within a short time horizon eg 8 or 12 hours. Here I show models that predict how many beds will be needed emergency patients. (Later I plan to add modules that also predict elective demand, discharge and transfers between specialties.)
+- **Assumes real-time data is available:** Hospital bed managers have to deal with rapidly changing situations. My focus is on the use of real-time data (or near to real-time) to help them make informed decisions. The modelling shown here assumes that a hospital has some capacity to make use of real-time data in its electronic health record, even if this data is minimal.
 
 ## Main Features of this repository
 
-- **Reproducible** - We follow the principles of Reproducible Analytical Pipelines, with the aim that the code can be easily adopted in other settings
-- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. The narrative in the notebooks is intended to be accessible to someone without any knowledge of programming; it should still be possible to follow the approach. We intend that anyone with some knowledge of Python could understand and adapt the code for their use.
-- **Practical:** A synthetic dataset, derived from real patient data, is included within this repo in the `data-synthetic` folder. This can be used to step through the modelling process if you want to run the notebooks yourself. So even if your hospital is not set up to do real-time prediction yet, you can still follow the same steps we took. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.) UCLH have agreed we can release an anomymised version of real patient data, but not within the repo. To gain access to this, please contact Dr Zella King, contact details below.
-- **Interactive:** The repository includes an accompanying set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment within which to run Jupyter notebooks, you will be able to interact with the code and see it running.
+- **Reproducible** - I follow the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). The repository can be installed as a Python package, and imported into your own code.
+- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. I intend that anyone with some knowledge of Python could understand and adapt the code for their use.
+- **Practical:** - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anomymised version of real patient data, which you can request access to on [Zenodo](https://zenodo.org/records/14866057), or you can use the synthetic dataset, derived from real patient data, in the `data-synthetic` folder. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.)
+- **Interactive:** The repository includes a set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the notebooks, and read the [patientflow README](src/patientflow/README.md) to understand our intentions for the Python package
+- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the notebooks, and read the [patientflow README](src/patientflow/README.md) to understand my intentions for the Python package
 - Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
 - Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
-
-## About
-
-This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is developed in collaboration with the
-[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University
-College London.
-
-### Project Team
-
-Dr Zella King, Clinical Operational Research Unit (CORU), UCL ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
-Jon Gillham, Institute of Health Informatics, UCL
-Professor Sonya Crowe, CORU
-Professor Martin Utley, CORU
-
-### Research Software Engineering Contact
-
-Centre for Advanced Research Computing, University College London
-([arc.collaborations@ucl.ac.uk](mailto:arc.collaborations@ucl.ac.uk))
 
 ### Prerequisites
 
@@ -119,6 +101,19 @@ The data_folder_name specifies the name of the folder containing data. The funct
 - [x] Minimum viable product <-- You are Here
 - [ ] Alpha Release
 - [ ] Feature-Complete Release
+
+## About
+
+This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is developed in collaboration with the
+[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University
+College London.
+
+### Project Team
+
+Dr Zella King, Clinical Operational Research Unit (CORU), UCL ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+Jon Gillham, Institute of Health Informatics, UCL
+Professor Sonya Crowe, CORU
+Professor Martin Utley, CORU
 
 ## Acknowledgements
 
