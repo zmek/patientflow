@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.7">
     
     
       
@@ -374,6 +374,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      Background
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-the-notebooks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      About the notebooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#outline-of-the-notebooks" class="md-nav__link">
     <span class="md-ellipsis">
       Outline of the notebooks
@@ -574,6 +592,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      Background
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-the-notebooks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      About the notebooks
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#outline-of-the-notebooks" class="md-nav__link">
     <span class="md-ellipsis">
       Outline of the notebooks
@@ -649,37 +685,42 @@
 
 
 <h1 id="about-the-notebooks">About the notebooks</h1>
-<p>This folder contains a series of notebooks that demonstrate the process of modeling emergency demand in healthcare through a structured approach. Notebooks combine commentary with code and the results produced by that code. Here’s how different audiences can benefit from these notebooks:</p>
+<h2 id="background">Background</h2>
+<p>I'm Zella King, a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) NHS Trust on practical tools to improve patient flow through the hospital.</p>
+<p>One of these tools is now in daily use by bed managers at UCLH. It generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system, and sends the predictions to bed managers.</p>
+<p>This PatientFlow repository contains the code I use to explore the data, train the models, make predictions and evaluate the results. I have made my code public to share my approach with other researchers and NHS analysts.</p>
+<h2 id="about-the-notebooks_1">About the notebooks</h2>
+<p>The notebooks in this folder demonstrate how you can use the PatientFlow repository. Notebooks combine commentary, code and the results produced by that code. Here's how different audiences can use the notebooks:</p>
 <ul>
-<li><strong>For non-programmers seeking to understand the approach:</strong> If you're not familiar with programming, you can read the narrative sections of the notebooks as if it were a blog post to understand the strategies employed, and skip the code snippets.</li>
-<li><strong>For those new to Python or looking to learn:</strong> If you have some coding experience but are new to Python, the code snippets, combined with the narrative, provide insights into how Python is applied in modelling emergency bed demand. They show how tasks such as data exploration, model fitting, and result evaluation can be done in Python. Observing the output will help you see the practical outcomes of the modelling.</li>
-<li><strong>For those interested in using the 'patientflow' package:</strong> These notebooks serve as a guide on how to use the 'patientflow' package. Through walkthroughs of the functions and their applications, you can learn how to integrate this package into your own projects.</li>
+<li><strong>As a non-programmer seeking to understand the approach:</strong> The narrative sections introduce my approach to creating predictive models of emergency demand for a hospital. Read them like a blog post.</li>
+<li><strong>As a programmer interested in how to model emergency demand:</strong> The code snippets, combined with the narrative, show how I trained, tested and applied my models in Python. The output of each notebook cell shows the outcomes of the modelling.</li>
+<li><strong>As a programmer interested in using the PatientFlow package:</strong> The repository contains a Python package that can be installed using an import statement in your code, so that you can use the functions I have developed. The notebooks demonstrate use of the functions in the PatientFlow package.</li>
 </ul>
 <h2 id="outline-of-the-notebooks">Outline of the notebooks</h2>
 <p>I begin with two introductory notebooks to explain who these predictions were for, and what is useful to them.</p>
 <ul>
 <li><strong><a href="/notebooks/1_Meet_the_users_of_our_predictions.ipynb">1_Meet_the_users_of_our_predictions</a>:</strong> Talks about the users of emergency demand predictions in acute hospitals.</li>
-<li><strong><a href="/notebooks/2_Consider_what_makes_a_useful_model_for_our_users.ipynb">2_Consider_what_makes_a_useful_model_for_our_users</a>:</strong> Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.</li>
+<li><strong><a href="/notebooks/2_Specify_emergency_demand_model.ipynb">2_Specify_emergency_demand_model</a>:</strong> Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.</li>
 </ul>
-<p>A set of notebooks show how to get start with this repository</p>
+<p>A set of notebooks show how to get started with this repository:</p>
 <ul>
 <li><strong><a href="/notebooks/3a_Set_up_your_environment.ipynb">3a_Set_up_your_environment</a>:</strong> Shows how to set things up if you want to run these notebooks in a Jupyter environment</li>
 <li><strong><a href="/notebooks/3b_Explore_the_datasets.ipynb">3b_Explore_the_datasets</a>:</strong> Introduces the two synthetic datasets created to accompany this repository</li>
-<li><strong><a href="/notebooks/3c_Convert_your_EHR_data_to_snapshots.ipynb">3c_Convert_your_EHR_data_to_snapshots</a>:</strong> Shows an example of how you could convert Electronic Health Record data from a relational database into the snapshot-based data structure used here.</li>
+<li><strong><a href="/notebooks/3c_Convert_your_EHR_data_to_snapshots.ipynb">3c_Convert_your_EHR_data_to_snapshots</a>:</strong> Shows an example of how you could convert Electronic Health Record data from a relational database into the data structure used here.</li>
 </ul>
-<p>A set of notebooks showing how the modelling has been done at UCLH. These can be run using the synthetic data.</p>
+<p>A set of notebooks show three models I have developed for predicting number of beds needed for emergency demand.</p>
 <ul>
 <li><strong><a href="/notebooks/4a_Predict_probability_of_admission_from_ED.ipynb">4a_Predict_probability_of_admission_from_ED</a>:</strong> Shows how to train a machine learning model to predict a patient's probability of admission using patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.</li>
-<li><strong><a href="/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb">4b_Predict_demand_from_patients_in_ED</a></strong> Illustrates how to convert individual admission probabilities into a prediction of overall bed demand</li>
+<li><strong><a href="/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb">4b_Predict_demand_from_patients_in_ED</a></strong> Shows how to convert patient-level admission probabilities into a predictions of overall bed demand</li>
 <li><strong><a href="/notebooks/4c_Predict_probability_of_admission_to_specialty.ipynb">4c_Predict_probablity_of_admission_to_specialty</a>:</strong> Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently</li>
-<li><strong><a href="/notebooks/4d_Predict_demand_from_patients_yet_to_arrive.ipynb">4d_Predict_demand_from_patients_yet_to_arrive</a>:</strong> Show the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours) of the time of prediction, by specialty. Demonstrates the use of a function that will take ED performance targets into account when predicting the number admitted by the end of the prediction window</li>
+<li><strong><a href="/notebooks/4d_Predict_demand_from_patients_yet_to_arrive.ipynb">4d_Predict_demand_from_patients_yet_to_arrive</a>:</strong> Shows the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours). Demonstrates the use of a function that will assume ED performance targets are met when predicting the number admitted by the end of the prediction window</li>
 </ul>
-<p>A set of notebooks that shows how you might being to evaluate the performance of your models, and how you could use them for real-time prediction.</p>
+<p>Two notebooks show how I evaluate the performance of the models, and how they are usedfor real-time prediction.</p>
 <ul>
 <li><strong><a href="/notebooks/5_Evaluate_model_performance.ipynb">5_Evaluate_model_performance</a></strong>: Discusses how to evaluate the models' predictions</li>
 <li><strong><a href="/notebooks/6_Bring_it_all_together.ipynb">6_Bring_it_all_together</a>:</strong> Shows an example of doing live inference using the models trained in the previous steps</li>
 </ul>
-<p>Other notebooks showing analysis we have done for our users.</p>
+<p>One notebook shows additional analysis we have done for our users.</p>
 <ul>
 <li><strong><a href="/notebooks/7_Visualise_un-delayed_demand.ipynb">7_Visualise_un-delayed_demand</a>:</strong> Create charts showing when in the day beds are needed, if ED targets for admitted patients are met and no one has to wait for a bed.</li>
 </ul>
@@ -687,8 +728,8 @@
 <p>The <code>PATH_TO_PATIENTFLOW</code> environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:</p>
 <ul>
 <li>use a virtual enviromment and set PATH_TO_PATIENTFLOW up within that</li>
-<li>set PATH_TO_PATIENTFLOW temporarily within each notebook</li>
 <li>set PATH_TO_PATIENTFLOW globally on your computer</li>
+<li>let each notebook infer PATH_TO_PATIENTFLOW from the location of the notebook file, or specify it within the notebook</li>
 </ul>
 <h3 id="to-set-the-path_to_patientflow-environment-variable-within-your-virtual-environment">To set the PATH_TO_PATIENTFLOW environment variable within your virtual environment</h3>
 <p><strong>Conda environments</strong></p>
@@ -802,7 +843,7 @@ Click OK
     <script id="__config" type="application/json">{"base": "..", "features": ["content.action.edit"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.f1b6f286.min.js"></script>
+      <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
       
     
   </body>
