@@ -878,9 +878,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#patientflow.calculate.true_demand_by_hour" class="md-nav__link">
+  <a href="#patientflow.calculate.unfettered_demand_by_hour" class="md-nav__link">
     <span class="md-ellipsis">
-      true_demand_by_hour()
+      unfettered_demand_by_hour()
     </span>
   </a>
   
@@ -2955,9 +2955,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#patientflow.calculate.true_demand_by_hour" class="md-nav__link">
+  <a href="#patientflow.calculate.unfettered_demand_by_hour" class="md-nav__link">
     <span class="md-ellipsis">
-      true_demand_by_hour()
+      unfettered_demand_by_hour()
     </span>
   </a>
   
@@ -5709,7 +5709,7 @@ i : int
   <div class="doc doc-contents ">
   
       <p>This module provides functions to calculate and process time-varying arrival rates,
-admission probabilities based on an aspirational approach, and undelayed demand rates for inpatient arrivals.</p>
+admission probabilities based on an aspirational approach, and unfettered demand rates for inpatient arrivals.</p>
 
 
 
@@ -5759,7 +5759,7 @@ Aggregate weighted arrival rates for specific time intervals.</p>
             </td>
           </tr>
           <tr>
-            <td><code>true_demand_by_hour</code></td>
+            <td><code>unfettered_demand_by_hour</code></td>
             <td>
               <div class="doc-md-description">
                 <p>DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int, num_days: Optional[int]) -&gt; OrderedDict[time, float]:
@@ -5813,7 +5813,7 @@ df = pd.DataFrame(index=sorted(random_times))</p>
 <h3 id="patientflow.calculate--calculate-various-rates-and-demand">Calculate various rates and demand</h3>
 <p>rates = time_varying_arrival_rates(df, yta_time_interval=60)
 lagged_rates = time_varying_arrival_rates_lagged(df, lagged_by=4)
-demand = true_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)</p>
+demand = unfettered_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)</p>
 </details>
 <details class="notes" open>
   <summary>Notes</summary>
@@ -6735,8 +6735,8 @@ or DataFrame index is not DatetimeIndex.</p>
 
 
 
-<h3 id="patientflow.calculate.true_demand_by_hour" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">true_demand_by_hour</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">max_hours_since_arrival</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+<h3 id="patientflow.calculate.unfettered_demand_by_hour" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">unfettered_demand_by_hour</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">max_hours_since_arrival</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -7036,7 +7036,7 @@ is not positive, or doesn't divide evenly into 24 hours.</p>
 <span class="normal">433</span>
 <span class="normal">434</span>
 <span class="normal">435</span>
-<span class="normal">436</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">true_demand_by_hour</span><span class="p">(</span>
+<span class="normal">436</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">unfettered_demand_by_hour</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">x1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">y1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
