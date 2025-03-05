@@ -1,6 +1,6 @@
 """
 This module provides functions to calculate and process time-varying arrival rates,
-admission probabilities based on an aspirational approach, and undelayed demand rates for inpatient arrivals.
+admission probabilities based on an aspirational approach, and unfettered demand rates for inpatient arrivals.
 
 Functions:
     time_varying_arrival_rates(df: DataFrame, yta_time_interval: int, num_days: Optional[int]) -> OrderedDict[time, float]:
@@ -15,7 +15,7 @@ Functions:
     weighted_arrival_rates(weighted_rates: np.ndarray, elapsed_hours: range, hour_idx: int, num_intervals: int) -> float:
         Aggregate weighted arrival rates for specific time intervals.
 
-    true_demand_by_hour(df: DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int, num_days: Optional[int]) -> OrderedDict[time, float]:
+    unfettered_demand_by_hour(df: DataFrame, x1: float, y1: float, x2: float, y2: float, yta_time_interval: int, max_hours_since_arrival: int, num_days: Optional[int]) -> OrderedDict[time, float]:
         Estimate inpatient demand by hour using historical data and aspirational curves.
 
 Key Concepts:
@@ -52,7 +52,7 @@ Example Usage:
     # Calculate various rates and demand
     rates = time_varying_arrival_rates(df, yta_time_interval=60)
     lagged_rates = time_varying_arrival_rates_lagged(df, lagged_by=4)
-    demand = true_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)
+    demand = unfettered_demand_by_hour(df, x1=4, y1=0.8, x2=8, y2=0.95)
 
 Notes:
     - All times are handled in local timezone
@@ -324,7 +324,7 @@ def weighted_arrival_rates(
     return total
 
 
-def true_demand_by_hour(
+def unfettered_demand_by_hour(
     df: DataFrame,
     x1: float,
     y1: float,

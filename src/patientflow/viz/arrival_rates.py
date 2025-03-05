@@ -25,7 +25,7 @@ from patientflow.calculate import (
     time_varying_arrival_rates,
     time_varying_arrival_rates_lagged,
     process_arrival_rates,
-    true_demand_by_hour,
+    unfettered_demand_by_hour,
 )
 
 from patientflow.viz.utils import clean_title_for_filename
@@ -223,7 +223,7 @@ def plot_arrival_rates(
         arrival_rates_spread = None
         if curve_params is not None:
             x1, y1, x2, y2 = curve_params
-            arrival_rates_spread_dict = true_demand_by_hour(
+            arrival_rates_spread_dict = unfettered_demand_by_hour(
                 dataset, x1, y1, x2, y2, num_days=num_days
             )
             arrival_rates_spread, _, _ = process_arrival_rates(
@@ -445,7 +445,7 @@ def plot_cumulative_arrival_rates(
     plot_centiles : bool, optional
         Whether to include percentile visualization (default is False).
     highlight_centile : float, optional
-        Percentile to emphasize (default is 0.9).
+        Percentile to emphasize (default is 0.9). If 1.0 is provided, will use 0.9999 instead.
     centiles : list of float, optional
         List of percentiles to calculate (default is [0.3, 0.5, 0.7, 0.9, 0.99]).
     markers : list of str, optional
@@ -466,10 +466,18 @@ def plot_cumulative_arrival_rates(
         Returns the figure if return_figure is True, otherwise displays the plot
     """
 
+    # Handle edge case for highlight_centile = 1.0
+    original_highlight_centile = highlight_centile
+    if highlight_centile >= 1.0:
+        highlight_centile = 0.9999  # Use a very high but not exactly 1.0 value
+
+    # Ensure centiles are all valid (no 1.0 values)
+    processed_centiles = [min(c, 0.9999) if c >= 1.0 else c for c in centiles]
+
     # Data processing
     if curve_params is not None:
         x1, y1, x2, y2 = curve_params
-        arrival_rates_dict = true_demand_by_hour(
+        arrival_rates_dict = unfettered_demand_by_hour(
             inpatient_arrivals, x1, y1, x2, y2, num_days=num_days
         )
     elif lagged_by is not None:
@@ -493,11 +501,11 @@ def plot_cumulative_arrival_rates(
     )
 
     # Calculate percentiles
-    percentiles = [[] for _ in range(len(centiles))]
-    cumulative_value_at_centile = np.zeros(len(centiles))
+    percentiles = [[] for _ in range(len(processed_centiles))]
+    cumulative_value_at_centile = np.zeros(len(processed_centiles))
 
     for hour in range(len(rates_reindexed)):
-        for i, centile in enumerate(centiles):
+        for i, centile in enumerate(processed_centiles):
             value_at_centile = stats.poisson.ppf(centile, rates_reindexed[hour])
             cumulative_value_at_centile[i] += value_at_centile
             percentiles[i].append(value_at_centile)
@@ -526,25 +534,73 @@ def plot_cumulative_arrival_rates(
 
     if plot_centiles:
         # Calculate and plot percentiles
-        percentiles = [[] for _ in range(len(centiles))]
-        cumulative_value_at_centile = np.zeros(len(centiles))
+        percentiles = [[] for _ in range(len(processed_centiles))]
+        cumulative_value_at_centile = np.zeros(len(processed_centiles))
         highlight_percentile_data = None
 
-        for hour in range(len(rates_reindexed)):
-            for i, centile in enumerate(centiles):
-                value_at_centile = stats.poisson.ppf(centile, rates_reindexed[hour])
-                cumulative_value_at_centile[i] += value_at_centile
-                percentiles[i].append(value_at_centile)
+        # Find the index of highlight_centile in processed_centiles
+        highlight_index = -1
+        for i, c in enumerate(processed_centiles):
+            if (
+                abs(c - highlight_centile) < 0.0001
+            ):  # Use small epsilon for float comparison
+                highlight_index = i
+                break
 
-                if centile == highlight_centile:
+        # If highlight_centile is not in processed_centiles, add it
+        if highlight_index == -1:
+            processed_centiles.append(highlight_centile)
+            percentiles.append([])
+            cumulative_value_at_centile = np.append(cumulative_value_at_centile, 0)
+
+        for hour in range(len(rates_reindexed)):
+            for i, centile in enumerate(processed_centiles):
+                try:
+                    # Add error handling for ppf calculation
+                    value_at_centile = stats.poisson.ppf(centile, rates_reindexed[hour])
+
+                    # Apply a reasonable upper limit if the value is extremely large
+                    if (
+                        np.isinf(value_at_centile)
+                        or value_at_centile > 1000 * rates_reindexed[hour]
+                    ):
+                        value_at_centile = 10 * rates_reindexed[hour]
+
+                    cumulative_value_at_centile[i] += value_at_centile
+                    percentiles[i].append(value_at_centile)
+                except (ValueError, OverflowError, RuntimeError):
+                    # Fallback if calculation fails
+                    fallback_value = 10 * rates_reindexed[hour]
+                    cumulative_value_at_centile[i] += fallback_value
+                    percentiles[i].append(fallback_value)
+
+                # Match the highlight centile to the processed value
+                if (
+                    abs(centile - highlight_centile) < 0.0001
+                ):  # Use a small epsilon for floating point comparison
                     highlight_percentile_data = np.cumsum(percentiles[i])
 
         # Plot percentile lines
-        for i, centile in enumerate(centiles):
+        for i, centile in enumerate(processed_centiles):
             marker = markers[i % len(markers)]
             line_style = line_styles_centiles[i % len(line_styles_centiles)]
             linewidth = 2 if centile == highlight_centile else 1
             alpha = 1.0 if centile == highlight_centile else 0.7
+
+            # If the user requested 1.0, display as 99.99% since a Poisson distribution
+            # cannot provide exact 100% probability with any finite value
+            display_centile = processed_centiles[i]
+            if centile == highlight_centile and original_highlight_centile >= 1.0:
+                display_centile = (
+                    0.9999  # Use 99.99% as the highest displayable probability
+                )
+
+            # Format the label text with appropriate precision
+            if display_centile >= 0.999:
+                # For very high probabilities, show as 99.9% or 99.99% to avoid implying exact 100%
+                label_text = f"{display_centile*100:.2f}% probability"
+            else:
+                label_text = f"{display_centile*100:.0f}% probability"
 
             cumsum_percentile = np.cumsum(percentiles[i])
             plt.plot(
@@ -556,7 +612,7 @@ def plot_cumulative_arrival_rates(
                 color="C0",
                 linewidth=linewidth,
                 alpha=alpha,
-                label=f"{centile*100:.0f}% probability",
+                label=label_text,
             )
         # update max y
         max_y = max(cumulative_value_at_centile)
@@ -599,7 +655,14 @@ def plot_cumulative_arrival_rates(
         else:
             # Regular percentile annotations
             for hour_line in hour_lines:
-                cumsum_at_hour = highlight_percentile_data[hour_line - start_plot_index]
+                # Check if highlight_percentile_data is available
+                if highlight_percentile_data is None:
+                    # Fall back to mean line if no highlight data
+                    cumsum_at_hour = cumsum_rates[hour_line - start_plot_index]
+                else:
+                    cumsum_at_hour = highlight_percentile_data[
+                        hour_line - start_plot_index
+                    ]
                 annotate_hour_line(
                     hour_line=hour_line,
                     y_value=cumsum_at_hour,

@@ -16,6 +16,7 @@ The package is intended to serve as a wrapper of the functions typically used fo
 - `load`: A module for loading configuration files, saved data and trained models
 - `prepare`: A module for preparing saved data prior to input into model training
 - `train`: A module and submodules for training predictive models
+- `calculate`: A module for calculating time-varying arrival rates, used in one of the custom predictors and in some of the visualisation functions
 - `predictors`: A module and submodules containing custom predictors developed for the `patientflow` package
 - `predict`: A module using trained models for predicting various aspects of bed demand and discharges
 - `aggregate`: A module that turns patient-level probabilities into aggregate distributions of bed numbers

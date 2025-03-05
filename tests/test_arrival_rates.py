@@ -9,7 +9,7 @@ from patientflow.calculate import (
     time_varying_arrival_rates_lagged,
     admission_probabilities,
     weighted_arrival_rates,
-    true_demand_by_hour,
+    unfettered_demand_by_hour,
 )
 
 
@@ -128,9 +128,9 @@ class TestArrivalRates(unittest.TestCase):
         self.assertIsInstance(result, float)
         self.assertGreaterEqual(result, 0)
 
-    def test_true_demand_by_hour(self):
+    def test_unfettered_demand_by_hour(self):
         """Test the undelayed demand calculation."""
-        demand = true_demand_by_hour(
+        demand = unfettered_demand_by_hour(
             self.test_df, self.x1, self.y1, self.x2, self.y2, self.yta_time_interval
         )
 
@@ -147,19 +147,19 @@ class TestArrivalRates(unittest.TestCase):
         times = list(demand.keys())
         self.assertEqual(times, sorted(times))
 
-    def test_true_demand_by_hour_input_validation(self):
-        """Test input validation for true_demand_by_hour function."""
+    def test_unfettered_demand_by_hour_input_validation(self):
+        """Test input validation for unfettered_demand_by_hour function."""
         # Test invalid y coordinates
         with self.assertRaises(ValueError):
-            true_demand_by_hour(self.test_df, self.x1, 1.5, self.x2, self.y2)
+            unfettered_demand_by_hour(self.test_df, self.x1, 1.5, self.x2, self.y2)
 
         # Test invalid x coordinates
         with self.assertRaises(ValueError):
-            true_demand_by_hour(self.test_df, 8, self.y1, 4, self.y2)
+            unfettered_demand_by_hour(self.test_df, 8, self.y1, 4, self.y2)
 
         # Test invalid time interval
         with self.assertRaises(ValueError):
-            true_demand_by_hour(
+            unfettered_demand_by_hour(
                 self.test_df, self.x1, self.y1, self.x2, self.y2, yta_time_interval=43
             )
 
