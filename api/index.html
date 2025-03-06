@@ -17554,13 +17554,13 @@ random_seed : int
 
         <span class="c1"># Prepare datasets</span>
         <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">get_snapshots_at_prediction_time</span><span class="p">(</span>
-            <span class="n">train_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span>
+            <span class="n">train_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span>
         <span class="p">)</span>
         <span class="n">X_valid</span><span class="p">,</span> <span class="n">y_valid</span> <span class="o">=</span> <span class="n">get_snapshots_at_prediction_time</span><span class="p">(</span>
-            <span class="n">valid_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span>
+            <span class="n">valid_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span>
         <span class="p">)</span>
         <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">get_snapshots_at_prediction_time</span><span class="p">(</span>
-            <span class="n">test_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span>
+            <span class="n">test_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
