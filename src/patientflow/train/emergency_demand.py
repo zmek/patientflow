@@ -103,7 +103,6 @@ def split_and_check_sets(
             f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
         )
 
-
 def test_real_time_predictions(
     visits,
     models: Tuple[
