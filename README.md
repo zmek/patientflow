@@ -109,10 +109,10 @@ This project was inspired by the [py-pi template](https://github.com/health-data
 
 ### Project Team
 
-Dr Zella King, Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))  
-Jon Gillham, Institute of Health Informatics, UCL  
-Professor Sonya Crowe, CORU  
-Professor Martin Utley, CORU  
+Dr Zella King, Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+Jon Gillham, Institute of Health Informatics, UCL
+Professor Sonya Crowe, CORU
+Professor Martin Utley, CORU
 
 ## Acknowledgements
 

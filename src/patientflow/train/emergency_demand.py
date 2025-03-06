@@ -944,8 +944,9 @@ def train_all_models(
     # Return both models and metadata if not saving to disk
     if not save_models:
         return model_metadata, models
-    
+
     return model_metadata
+
 
 def main(data_folder_name=None):
     """

@@ -6,18 +6,20 @@ import shap
 import scipy.sparse
 import numpy as np
 
+
 def plot_shap(
     trained_models,
     media_file_path,
     test_visits,
     prediction_times,
     exclude_from_training_data,
-    model_group_name = 'admissions'
+    model_group_name="admissions",
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
         prediction_times,
-        key=lambda x: x[0] * 60 + x[1]  # Convert (hour, minute) to minutes since midnight
+        key=lambda x: x[0] * 60
+        + x[1],  # Convert (hour, minute) to minutes since midnight
     )
 
     for i, prediction_time in enumerate(prediction_times_sorted):
@@ -56,8 +58,11 @@ def plot_shap(
 
         # Print prediction distribution
         predictions = pipeline.named_steps["classifier"].predict(X_test)
-        print("Predicted classification (not admitted, admitted): ", np.bincount(predictions))
-        
+        print(
+            "Predicted classification (not admitted, admitted): ",
+            np.bincount(predictions),
+        )
+
         # Print mean SHAP values for each class
         if isinstance(shap_values, list):
             print("SHAP values shape:", [arr.shape for arr in shap_values])
@@ -78,7 +83,7 @@ def plot_shap(
         plt.tight_layout()
 
         # Save plot
-        model_name = get_model_name('admissions_minimal', prediction_time)
+        model_name = get_model_name("admissions_minimal", prediction_time)
         shap_plot_path = str(media_file_path / "shap_plot_") + model_name + ".png"
 
         plt.savefig(shap_plot_path)

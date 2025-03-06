@@ -352,7 +352,9 @@ def get_snapshots_at_prediction_time(
         return df_single, y
     else:
         # Directly modify df_tod without resetting the index
-        df_tod.drop(columns=["random_number"] + exclude_columns, inplace=True, errors='ignore')
+        df_tod.drop(
+            columns=["random_number"] + exclude_columns, inplace=True, errors="ignore"
+        )
         y = df_tod.pop(label_col).astype(int)
         return df_tod, y
 

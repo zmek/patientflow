@@ -8,6 +8,7 @@ from patientflow.load import get_model_name
 primary_color = "#1f77b4"
 secondary_color = "#aec7e8"
 
+
 def plot_calibration(
     prediction_times,
     media_file_path,
@@ -15,17 +16,17 @@ def plot_calibration(
     test_visits,
     exclude_from_training_data,
     strategy="uniform",
-    model_group_name='admssions'
+    model_group_name="admssions",
 ):
-    
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
         prediction_times,
-        key=lambda x: x[0] * 60 + x[1]  # Convert (hour, minute) to minutes since midnight
+        key=lambda x: x[0] * 60
+        + x[1],  # Convert (hour, minute) to minutes since midnight
     )
     num_plots = len(prediction_times_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))
-    
+
     # Handle case of single prediction time
     if num_plots == 1:
         axs = [axs]
@@ -46,10 +47,7 @@ def plot_calibration(
         X_test = add_missing_columns(pipeline, X_test)
 
         prob_true, prob_pred = calibration_curve(
-            y_test, 
-            pipeline.predict_proba(X_test)[:, 1], 
-            n_bins=10, 
-            strategy=strategy
+            y_test, pipeline.predict_proba(X_test)[:, 1], n_bins=10, strategy=strategy
         )
 
         ax = axs[i]
