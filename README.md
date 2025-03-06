@@ -35,8 +35,8 @@ My most important contribution is a software application that [Jon Gillham](http
 
 I developed the code I wrote for UCLH into a reusable resource following the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). I did this because I want to:
 
-1. Share the code with researchers and NHS analysts who are work on similar models
-2. Make it easier for others to make use of the mathemetics involved in making these predictions
+1. Share the code with researchers and NHS analysts who are working on similar models
+2. Make it easier for others to make use of the mathematics involved in making these predictions
 3. Inform and educate anyone who wishes to adopt a similar approach
 
 ## Main features of my modelling approach
@@ -49,7 +49,7 @@ I developed the code I wrote for UCLH into a reusable resource following the pri
 
 - **Reproducible** - I follow the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). The repository can be installed as a Python package, and imported into your own code.
 - **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. I intend that anyone with some knowledge of Python could understand and adapt the code for their use.
-- **Practical:** - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anomymised version of real patient data, which you can request access to on [Zenodo](https://zenodo.org/records/14866057), or you can use the synthetic dataset, derived from real patient data, in the `data-synthetic` folder. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.)
+- **Practical:** - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anonymised version of real patient data, which you can request access to on [Zenodo](https://zenodo.org/records/14866057), or you can use the synthetic dataset, derived from real patient data, in the `data-synthetic` folder. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.)
 - **Interactive:** The repository includes a set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.
 
 ## Getting started
@@ -104,16 +104,15 @@ The data_folder_name specifies the name of the folder containing data. The funct
 
 ## About
 
-This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is developed in collaboration with the
-[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University
-College London.
+This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is based on a template developed by the
+[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London.
 
 ### Project Team
 
-Dr Zella King, Clinical Operational Research Unit (CORU), UCL ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
-Jon Gillham, Institute of Health Informatics, UCL
-Professor Sonya Crowe, CORU
-Professor Martin Utley, CORU
+Dr Zella King, Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))  
+Jon Gillham, Institute of Health Informatics, UCL  
+Professor Sonya Crowe, CORU  
+Professor Martin Utley, CORU  
 
 ## Acknowledgements
 

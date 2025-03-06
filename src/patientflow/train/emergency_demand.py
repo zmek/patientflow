@@ -758,6 +758,7 @@ def train_all_models(
     visit_col="visit_number",
     metadata_subdir="model-output",
     metadata_filename="model_metadata.json",
+    save_models=True,
 ):
     """
     Train and evaluate patient flow models.
@@ -802,11 +803,14 @@ def train_all_models(
         Subdirectory for metadata. Defaults to "model-output".
     metadata_filename : str, optional
         Metadata filename. Defaults to "model_metadata.json".
+    save_models : bool, optional
+        Whether to save the trained models to disk. Defaults to True.
 
     Returns
     -------
-    dict
-        Model metadata including training and evaluation details.
+    dict or tuple
+        If save_models is True, returns a dict with model metadata including training and evaluation details.
+        If save_models is False, returns a tuple (model_metadata, models) where models is a dict of trained models.
     """
     # Set random seed
     np.random.seed(random_seed)
@@ -866,9 +870,10 @@ def train_all_models(
         visit_col=visit_col,
     )
 
-    # Save admission models
+    # Save admission models if requested
     models[model_names["admissions"]] = admission_models
-    save_model(admission_models, model_names["admissions"], model_file_path)
+    if save_models:
+        save_model(admission_models, model_names["admissions"], model_file_path)
 
     # Train specialty model
     model_metadata, specialty_model = train_specialty_model(
@@ -882,9 +887,10 @@ def train_all_models(
         visit_col=visit_col,
     )
 
-    # Save specialty model
+    # Save specialty model if requested
     models[model_names["specialty"]] = specialty_model
-    save_model(specialty_model, model_names["specialty"], model_file_path)
+    if save_models:
+        save_model(specialty_model, model_names["specialty"], model_file_path)
 
     # Train yet-to-arrive model
     specialty_filters = create_yta_filters(uclh)
@@ -905,9 +911,10 @@ def train_all_models(
         num_days=num_days,
     )
 
-    # Save yet-to-arrive model
+    # Save yet-to-arrive model if requested
     models[model_names["yet_to_arrive"]] = yta_model
-    save_model(yta_model, yta_model_name, model_file_path)
+    if save_models:
+        save_model(yta_model, yta_model_name, model_file_path)
 
     # Test real-time predictions
     realtime_preds_dict = test_real_time_predictions(
@@ -926,15 +933,19 @@ def train_all_models(
     model_metadata["realtime_preds"] = realtime_preds_dict
 
     # Save metadata with configurable path and filename
-    save_metadata(
-        metadata=model_metadata,
-        base_path=model_file_path,
-        subdir=metadata_subdir,
-        filename=metadata_filename,
-    )
+    if save_models:
+        save_metadata(
+            metadata=model_metadata,
+            base_path=model_file_path,
+            subdir=metadata_subdir,
+            filename=metadata_filename,
+        )
 
+    # Return both models and metadata if not saving to disk
+    if not save_models:
+        return model_metadata, models
+    
     return model_metadata
-
 
 def main(data_folder_name=None):
     """

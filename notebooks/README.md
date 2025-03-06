@@ -33,10 +33,10 @@ A set of notebooks show three models I have developed for predicting number of b
 
 - **[4a_Predict_probability_of_admission_from_ED](/notebooks/4a_Predict_probability_of_admission_from_ED.ipynb):** Shows how to train a machine learning model to predict a patient's probability of admission using patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.
 - **[4b_Predict_demand_from_patients_in_ED](/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb)** Shows how to convert patient-level admission probabilities into a predictions of overall bed demand
-- **[4c_Predict_probablity_of_admission_to_specialty](/notebooks/4c_Predict_probability_of_admission_to_specialty.ipynb):** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently
+- **[4c_Predict_probability_of_admission_to_specialty](/notebooks/4c_Predict_probability_of_admission_to_specialty.ipynb):** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently
 - **[4d_Predict_demand_from_patients_yet_to_arrive](/notebooks/4d_Predict_demand_from_patients_yet_to_arrive.ipynb):** Shows the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours). Demonstrates the use of a function that will assume ED performance targets are met when predicting the number admitted by the end of the prediction window
 
-Two notebooks show how I evaluate the performance of the models, and how they are usedfor real-time prediction.
+Two notebooks show how I evaluate the performance of the models, and how they are used for real-time prediction.
 
 - **[5_Evaluate_model_performance](/notebooks/5_Evaluate_model_performance.ipynb)**: Discusses how to evaluate the models' predictions
 - **[6_Bring_it_all_together](/notebooks/6_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
@@ -49,7 +49,7 @@ One notebook shows additional analysis we have done for our users.
 
 The `PATH_TO_PATIENTFLOW` environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:
 
-- use a virtual enviromment and set PATH_TO_PATIENTFLOW up within that
+- use a virtual environment and set PATH_TO_PATIENTFLOW up within that
 - set PATH_TO_PATIENTFLOW globally on your computer
 - let each notebook infer PATH_TO_PATIENTFLOW from the location of the notebook file, or specify it within the notebook
 
