@@ -420,13 +420,13 @@ def train_admissions_models(
 
         # Prepare datasets
         X_train, y_train = get_snapshots_at_prediction_time(
-            train_visits, prediction_time, exclude_from_training_data, visit_col
+            train_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
         )
         X_valid, y_valid = get_snapshots_at_prediction_time(
-            valid_visits, prediction_time, exclude_from_training_data, visit_col
+            valid_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
         )
         X_test, y_test = get_snapshots_at_prediction_time(
-            test_visits, prediction_time, exclude_from_training_data, visit_col
+            test_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
         )
 
         if verbose:
