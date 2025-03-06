@@ -741,24 +741,24 @@ def train_all_models(
     start_test_set,
     end_test_set,
     yta,
-    model_file_path,
     prediction_times,
     prediction_window,
     yta_time_interval,
     epsilon,
-    curve_params,
     grid_params,
     exclude_columns,
     ordinal_mappings,
-    model_names,
-    specialties,
-    cdf_cut_points,
     uclh,
     random_seed,
     visit_col="visit_number",
+    specialties=None,
+    cdf_cut_points=None,
+    curve_params=None,
+    model_file_path=None,
     metadata_subdir="model-output",
     metadata_filename="model_metadata.json",
     save_models=True,
+    test_realtime=True,
 ):
     """
     Train and evaluate patient flow models.
@@ -769,8 +769,6 @@ def train_all_models(
         DataFrame containing visit data.
     yta : pd.DataFrame
         DataFrame containing yet-to-arrive data.
-    model_file_path : Path
-        Path to save trained models.
     prediction_times : list
         List of times for making predictions.
     prediction_window : int
@@ -779,39 +777,68 @@ def train_all_models(
         Interval size for yet-to-arrive predictions in minutes.
     epsilon : float
         Epsilon parameter for model training.
-    curve_params : tuple
-        Curve parameters (x1, y1, x2, y2).
     grid_params : dict
         Hyperparameter grid for model training.
     exclude_columns : list
         Columns to exclude during training.
     ordinal_mappings : dict
         Ordinal variable mappings for categorical features.
-    model_names : dict
-        Names for different models.
-    specialties : list
-        List of specialties to consider.
-    cdf_cut_points : list
-        CDF cut points for predictions.
     uclh : bool
         Indicates if the UCLH dataset is used.
     random_seed : int
         Random seed for reproducibility.
     visit_col : str, optional
         Name of column in dataset that is used to identify a hospital visit (eg visit_number, csn).
+    specialties : list, optional
+        List of specialties to consider. Required if test_realtime is True.
+    cdf_cut_points : list, optional
+        CDF cut points for predictions. Required if test_realtime is True.
+    curve_params : tuple, optional
+        Curve parameters (x1, y1, x2, y2). Required if test_realtime is True.
+    model_file_path : Path, optional
+        Path to save trained models. Required if save_models is True.
     metadata_subdir : str, optional
-        Subdirectory for metadata. Defaults to "model-output".
+        Subdirectory for metadata. Only used if save_models is True. Defaults to "model-output".
     metadata_filename : str, optional
-        Metadata filename. Defaults to "model_metadata.json".
+        Metadata filename. Only used if save_models is True. Defaults to "model_metadata.json".
     save_models : bool, optional
         Whether to save the trained models to disk. Defaults to True.
+    test_realtime : bool, optional
+        Whether to run real-time prediction tests. Defaults to True.
 
     Returns
     -------
     dict or tuple
         If save_models is True, returns a dict with model metadata including training and evaluation details.
         If save_models is False, returns a tuple (model_metadata, models) where models is a dict of trained models.
+
+    Raises
+    ------
+    ValueError
+        If save_models is True but model_file_path is not provided,
+        or if test_realtime is True but any of specialties, cdf_cut_points, or curve_params are not provided.
+
+    Notes
+    -----
+    The function generates model names internally:
+    - "admissions": "admissions"
+    - "specialty": "ed_specialty"
+    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours"
     """
+    # Validate parameters
+    if save_models and model_file_path is None:
+        raise ValueError("model_file_path must be provided when save_models is True")
+
+    if test_realtime:
+        if specialties is None:
+            raise ValueError("specialties must be provided when test_realtime is True")
+        if cdf_cut_points is None:
+            raise ValueError(
+                "cdf_cut_points must be provided when test_realtime is True"
+            )
+        if curve_params is None:
+            raise ValueError("curve_params must be provided when test_realtime is True")
+
     # Set random seed
     np.random.seed(random_seed)
 
@@ -823,11 +850,15 @@ def train_all_models(
         "train_dttm": train_dttm,
     }
 
+    # Define model names internally
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
         "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
     }
+
+    # Add model names to metadata
+    model_metadata["model_names"] = model_names
 
     models = dict.fromkeys(model_names)
 
@@ -854,7 +885,9 @@ def train_all_models(
         col_name="arrival_datetime",
     )
 
-    prediction_times = visits.prediction_time.unique()
+    # Use predicted_times from visits if not explicitly provided
+    if prediction_times is None:
+        prediction_times = visits.prediction_time.unique()
 
     # Train admission models
     model_metadata, admission_models = train_admissions_models(
@@ -916,21 +949,23 @@ def train_all_models(
     if save_models:
         save_model(yta_model, yta_model_name, model_file_path)
 
-    # Test real-time predictions
-    realtime_preds_dict = test_real_time_predictions(
-        visits=visits,
-        models=models,
-        model_names=model_names,
-        prediction_window=prediction_window,
-        specialties=specialties,
-        cdf_cut_points=cdf_cut_points,
-        curve_params=curve_params,
-        uclh=uclh,
-        random_seed=random_seed,
-    )
+    # Test real-time predictions if requested
+    realtime_preds_dict = None
+    if test_realtime:
+        realtime_preds_dict = test_real_time_predictions(
+            visits=visits,
+            models=models,
+            model_names=model_names,
+            prediction_window=prediction_window,
+            specialties=specialties,
+            cdf_cut_points=cdf_cut_points,
+            curve_params=curve_params,
+            uclh=uclh,
+            random_seed=random_seed,
+        )
 
-    # Save results in metadata
-    model_metadata["realtime_preds"] = realtime_preds_dict
+        # Save results in metadata
+        model_metadata["realtime_preds"] = realtime_preds_dict
 
     # Save metadata with configurable path and filename
     if save_models:
