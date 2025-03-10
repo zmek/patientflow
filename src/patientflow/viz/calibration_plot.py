@@ -17,6 +17,7 @@ def plot_calibration(
     exclude_from_training_data,
     strategy="uniform",
     model_group_name="admssions",
+    model_name_suffix=None
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -34,6 +35,8 @@ def plot_calibration(
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
         model_name = get_model_name(model_group_name, prediction_time)
+        if model_name_suffix:
+            model_name = f"{model_name}_{model_name_suffix}"
         pipeline = trained_models[model_name]
 
         # Get test data for this prediction time

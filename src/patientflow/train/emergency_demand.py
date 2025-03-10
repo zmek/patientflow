@@ -260,6 +260,7 @@ class ModelResults:
     feature_names: Union[List[str], List[float]]  # Allow both types
     feature_importances: List[float]
     metrics: Dict[str, Any]
+    calibrated_pipeline: Optional[Pipeline] = None
 
 
 def log_if_verbose(message: str, verbose: bool = False) -> None:
@@ -332,15 +333,52 @@ def train_single_model(
     y_test: Series,
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
+    calibrate_probabilities: bool = True,
+    calibration_method: str = 'isotonic',
     verbose: bool = False,
 ) -> ModelResults:
-    """Train a single model for one prediction time."""
+    """
+    Train a single model for one prediction time with optional probability calibration.
+    
+    Parameters:
+    -----------
+    X_train : DataFrame
+        Training features
+    X_valid : DataFrame
+        Validation features
+    X_test : DataFrame
+        Test features
+    y_train : Series
+        Training labels
+    y_valid : Series
+        Validation labels
+    y_test : Series
+        Test labels
+    grid : Dict[str, List[Any]]
+        Parameter grid for hyperparameter tuning
+    ordinal_mappings : Dict[str, List[Any]]
+        Mappings for ordinal categorical features
+    calibrate_probabilities : bool, default=True
+        Whether to apply probability calibration to the best model
+    calibration_method : str, default='isotonic'
+        Method for probability calibration ('isotonic' or 'sigmoid')
+    verbose : bool, default=False
+        Whether to print verbose output during training
+        
+    Returns:
+    --------
+    ModelResults
+        Container with the best trained model, metrics, and feature information
+    """
+    from sklearn.calibration import CalibratedClassifierCV
+    
     best_model = ModelResults(
         pipeline=None,
         valid_logloss=float("inf"),
         feature_names=[],
         feature_importances=[],
         metrics={},
+        calibrated_pipeline=None,  # Add field for calibrated pipeline
     )
     results_dict: Dict[str, Dict[str, float]] = {}
 
@@ -376,6 +414,44 @@ def train_single_model(
                 )
                 log_if_verbose(f"Valid AUPRC: {cv_results['valid_auprc']:.4f}", verbose)
                 log_if_verbose(f"Valid AUC: {cv_results['valid_auc']:.4f}", verbose)
+    
+    # Apply probability calibration to the best model if requested
+    if calibrate_probabilities and best_model.pipeline is not None:
+        if verbose:
+            log_if_verbose("\nApplying probability calibration...", verbose)
+        
+        # Extract the best classifier and feature transformer
+        best_feature_transformer = best_model.pipeline.named_steps['feature_transformer']
+        best_classifier = best_model.pipeline.named_steps['classifier']
+        
+        # Transform the training data
+        X_train_transformed = best_feature_transformer.transform(X_train)
+        
+        # Create and fit the calibrated classifier
+        calibrated_classifier = CalibratedClassifierCV(
+            estimator=best_classifier,
+            method=calibration_method,  # 'isotonic' or 'sigmoid'
+            cv=5  # Use 5-fold CV for calibration
+        )
+        calibrated_classifier.fit(X_train_transformed, y_train)
+        
+        # Create a new pipeline with the calibrated classifier
+        calibrated_pipeline = Pipeline([
+            ("feature_transformer", best_feature_transformer),
+            ("classifier", calibrated_classifier)
+        ])
+        
+        # Evaluate the calibrated model
+        cal_metrics = evaluate_model(calibrated_pipeline, X_test, y_test)
+        
+        # Store the calibrated pipeline and its metrics
+        best_model.calibrated_pipeline = calibrated_pipeline
+        best_model.metrics["calibrated_test_set_results"] = cal_metrics
+        
+        if verbose:
+            log_if_verbose(f"Calibrated LogLoss: {cal_metrics['logloss']:.4f}", verbose)
+            log_if_verbose(f"Calibrated AUPRC: {cal_metrics['auprc']:.4f}", verbose)
+            log_if_verbose(f"Calibrated AUC: {cal_metrics['auc']:.4f}", verbose)
 
     return best_model
 
@@ -391,10 +467,12 @@ def train_admissions_models(
     model_name: str,
     model_metadata: Dict[str, Any],
     visit_col: str,
+    calibrate_probabilities: bool = True,
+    calibration_method: str = 'isotonic',
     verbose: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
     """
-    Train admission prediction models for different prediction times.
+    Train admission prediction models for different prediction times with optional probability calibration.
 
     Args:
         train_visits: Training dataset
@@ -407,12 +485,15 @@ def train_admissions_models(
         model_name: Base name for the model
         model_metadata: Dictionary to store model metadata
         visit_col: Name of visit column
+        calibrate_probabilities: Whether to apply probability calibration (default: True)
+        calibration_method: Method for probability calibration ('isotonic' or 'sigmoid') (default: 'isotonic')
         verbose: Whether to print progress messages (default: False)
 
     Returns:
         Tuple of (model_metadata, trained_models)
     """
     trained_models: Dict[str, Pipeline] = {}
+    calibrated_models: Dict[str, Pipeline] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
@@ -448,7 +529,7 @@ def train_admissions_models(
             X_train, X_valid, X_test, y_train, y_valid, y_test
         )
 
-        # Train model for this prediction time
+        # Train model for this prediction time with optional calibration
         best_model = train_single_model(
             X_train,
             X_valid,
@@ -458,10 +539,12 @@ def train_admissions_models(
             y_test,
             grid,
             ordinal_mappings,
+            calibrate_probabilities=calibrate_probabilities,
+            calibration_method=calibration_method,
             verbose=verbose,
         )
 
-        # Store results
+        # Store base model results
         model_metadata[model_key].update(
             {
                 "best_params": best_model.metrics["params"],
@@ -476,17 +559,50 @@ def train_admissions_models(
             }
         )
 
+        # Store the base pipeline
         trained_models[model_key] = best_model.pipeline
+        
+        # Store and evaluate calibrated model if available
+        if calibrate_probabilities and hasattr(best_model, 'calibrated_pipeline') and best_model.calibrated_pipeline is not None:
+            calibrated_model_key = f"{model_key}_calibrated"
+            calibrated_models[calibrated_model_key] = best_model.calibrated_pipeline
+            
+            # Add calibrated model results to metadata
+            if "calibrated_test_set_results" in best_model.metrics:
+                # Store calibrated results directly in the model metadata
+                model_metadata[model_key]["calibrated_test_set_results"] = best_model.metrics["calibrated_test_set_results"]
+                
+                # Also create a separate metadata entry for the calibrated model
+                model_metadata[calibrated_model_key] = {
+                    "base_model": model_key,
+                    "calibration_method": calibration_method,
+                    "test_set_results": best_model.metrics["calibrated_test_set_results"],
+                    "best_model_features": {
+                        "feature_names": best_model.feature_names,
+                        "feature_importances": best_model.feature_importances,
+                    },
+                }
+            
+            if verbose:
+                cal_metrics = best_model.metrics.get("calibrated_test_set_results", {})
+                log_if_verbose(f"\nCalibrated model performance for {prediction_time}:", verbose)
+                log_if_verbose(f"Calibrated Test AUPRC: {cal_metrics.get('auprc', 'N/A')}", verbose)
+                log_if_verbose(f"Calibrated Test AUC: {cal_metrics.get('auc', 'N/A')}", verbose)
+                log_if_verbose(f"Calibrated Test LogLoss: {cal_metrics.get('logloss', 'N/A')}", verbose)
 
         if verbose:
             test_metrics = best_model.metrics["test_set_results"]
-            log_if_verbose(f"\nFinal model performance for {prediction_time}:", verbose)
-            log_if_verbose(f"Test AUPRC: {test_metrics['test_auprc']:.4f}", verbose)
-            log_if_verbose(f"Test AUC: {test_metrics['test_auc']:.4f}", verbose)
-            log_if_verbose(f"Test LogLoss: {test_metrics['test_logloss']:.4f}", verbose)
+            log_if_verbose(f"\nBase model performance for {prediction_time}:", verbose)
+            log_if_verbose(f"Test AUPRC: {test_metrics.get('auprc', 'N/A')}", verbose)
+            log_if_verbose(f"Test AUC: {test_metrics.get('auc', 'N/A')}", verbose)
+            log_if_verbose(f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose)
+
+    # If calibrated models were created, add them to the returned dictionary
+    if calibrated_models:
+        for key, model in calibrated_models.items():
+            trained_models[key] = model
 
     return model_metadata, trained_models
-
 
 def train_specialty_model(
     train_visits: DataFrame,
