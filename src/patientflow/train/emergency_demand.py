@@ -469,28 +469,16 @@ def train_admissions_models(
     visit_col: str,
     calibrate_probabilities: bool = True,
     calibration_method: str = 'isotonic',
+    use_balanced_training: bool = False,
     verbose: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
     """
-    Train admission prediction models for different prediction times with optional probability calibration.
-
-    Args:
-        train_visits: Training dataset
-        valid_visits: Validation dataset
-        test_visits: Test dataset
-        grid: Hyperparameter grid
-        exclude_from_training_data: Columns to exclude
-        ordinal_mappings: Mappings for ordinal features
-        prediction_times: List of prediction times
-        model_name: Base name for the model
-        model_metadata: Dictionary to store model metadata
-        visit_col: Name of visit column
-        calibrate_probabilities: Whether to apply probability calibration (default: True)
-        calibration_method: Method for probability calibration ('isotonic' or 'sigmoid') (default: 'isotonic')
-        verbose: Whether to print progress messages (default: False)
-
-    Returns:
-        Tuple of (model_metadata, trained_models)
+    Train admission prediction models with optional balanced training and validation-based calibration.
+    
+    Additional Parameters:
+    ---------------------
+    use_balanced_training : bool, default=False
+        If True, undersample majority class in training data to match minority class size
     """
     trained_models: Dict[str, Pipeline] = {}
     calibrated_models: Dict[str, Pipeline] = {}
@@ -499,7 +487,7 @@ def train_admissions_models(
         print(f"\nProcessing: {prediction_time}")
         model_key = get_model_name(model_name, prediction_time)
 
-        # Prepare datasets
+        # Get snapshots for each set
         X_train, y_train = get_snapshots_at_prediction_time(
             train_visits, prediction_time, exclude_from_training_data, visit_col
         )
@@ -510,11 +498,39 @@ def train_admissions_models(
             test_visits, prediction_time, exclude_from_training_data, visit_col
         )
 
-        if verbose:
-            log_if_verbose(
-                f"Train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
-                verbose,
+        # Prepare training data based on balancing option
+        if use_balanced_training:
+            pos_indices = y_train[y_train == 1].index
+            neg_indices = y_train[y_train == 0].index
+            neg_indices_sampled = np.random.choice(
+                neg_indices, 
+                size=len(pos_indices), 
+                replace=False
             )
+            train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
+            X_train_final = X_train.loc[train_balanced_indices]
+            y_train_final = y_train.loc[train_balanced_indices]
+            
+            if verbose:
+                log_if_verbose(
+                    f"Original train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
+                    verbose,
+                )
+                log_if_verbose(
+                    f"Balanced train set size: {len(X_train_final)}, Positive rate: {y_train_final.mean():.3f}",
+                    verbose,
+                )
+        else:
+            X_train_final = X_train
+            y_train_final = y_train
+            
+            if verbose:
+                log_if_verbose(
+                    f"Train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
+                    verbose,
+                )
+
+        if verbose:
             log_if_verbose(
                 f"Valid set size: {len(X_valid)}, Positive rate: {y_valid.mean():.3f}",
                 verbose,
@@ -524,17 +540,35 @@ def train_admissions_models(
                 verbose,
             )
 
-        # Initialize metadata for this model
+        # Initialize metadata with appropriate training data
         model_metadata[model_key] = get_dataset_metadata(
-            X_train, X_valid, X_test, y_train, y_valid, y_test
-        )
-
-        # Train model for this prediction time with optional calibration
-        best_model = train_single_model(
-            X_train,
+            X_train_final,
             X_valid,
             X_test,
-            y_train,
+            y_train_final,
+            y_valid,
+            y_test
+        )
+
+        # Add training balance information to metadata
+        model_metadata[model_key]["training_balance_info"] = {
+            "balanced_training_used": use_balanced_training,
+            "original_size": len(X_train),
+            "original_positive_rate": y_train.mean(),
+        }
+        
+        if use_balanced_training:
+            model_metadata[model_key]["training_balance_info"].update({
+                "balanced_size": len(X_train_final),
+                "balanced_positive_rate": y_train_final.mean(),
+            })
+
+        # Train model using selected training data
+        best_model = train_single_model(
+            X_train_final,
+            X_valid,
+            X_test,
+            y_train_final,
             y_valid,
             y_test,
             grid,
