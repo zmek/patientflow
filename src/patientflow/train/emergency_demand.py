@@ -145,6 +145,8 @@ def chronological_cross_validation(
         X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
         y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
 
+        print(y_train.value_counts())
+
         pipeline.fit(X_train, y_train)
         train_preds = pipeline.predict_proba(X_train)[:, 1]
         valid_preds = pipeline.predict_proba(X_valid)[:, 1]
@@ -470,15 +472,18 @@ def train_admissions_models(
     calibrate_probabilities: bool = True,
     calibration_method: str = 'isotonic',
     use_balanced_training: bool = False,
+    majority_to_minority_ratio: float = 1.0,
     verbose: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
     """
-    Train admission prediction models with optional balanced training and validation-based calibration.
-    
+    Train admission prediction models with optional balanced training.
+
     Additional Parameters:
     ---------------------
     use_balanced_training : bool, default=False
-        If True, undersample majority class in training data to match minority class size
+        Whether to use balanced training data
+    majority_to_minority_ratio : float, default=1.0
+        Ratio of majority to minority class samples (1.0 means perfectly balanced)
     """
     trained_models: Dict[str, Pipeline] = {}
     calibrated_models: Dict[str, Pipeline] = {}
@@ -498,39 +503,53 @@ def train_admissions_models(
             test_visits, prediction_time, exclude_from_training_data, visit_col
         )
 
-        # Prepare training data based on balancing option
+        # Initialize training data as unbalanced
+        X_train_final = X_train
+        y_train_final = y_train
+        balance_info = {"is_balanced": False, "original_size": len(X_train)}
+
+        # Apply balancing if requested
         if use_balanced_training:
             pos_indices = y_train[y_train == 1].index
             neg_indices = y_train[y_train == 0].index
+            
+            # Calculate number of negative samples to keep
+            n_pos = len(pos_indices)
+            n_neg = int(n_pos * majority_to_minority_ratio)
+            
+            # Sample negative cases
             neg_indices_sampled = np.random.choice(
                 neg_indices, 
-                size=len(pos_indices), 
+                size=min(n_neg, len(neg_indices)), 
                 replace=False
             )
+            
+            # Combine indices and create balanced datasets
             train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
             X_train_final = X_train.loc[train_balanced_indices]
             y_train_final = y_train.loc[train_balanced_indices]
+
+            print(y_train_final.value_counts())
             
-            if verbose:
-                log_if_verbose(
-                    f"Original train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
-                    verbose,
-                )
-                log_if_verbose(
-                    f"Balanced train set size: {len(X_train_final)}, Positive rate: {y_train_final.mean():.3f}",
-                    verbose,
-                )
-        else:
-            X_train_final = X_train
-            y_train_final = y_train
-            
-            if verbose:
-                log_if_verbose(
-                    f"Train set size: {len(X_train)}, Positive rate: {y_train.mean():.3f}",
-                    verbose,
-                )
+            # Update balance info
+            balance_info.update({
+                "is_balanced": True,
+                "balanced_size": len(X_train_final),
+                "original_positive_rate": y_train.mean(),
+                "balanced_positive_rate": y_train_final.mean(),
+                "majority_to_minority_ratio": majority_to_minority_ratio
+            })
 
         if verbose:
+            log_if_verbose(
+                f"Training set size: {len(X_train_final)}, Positive rate: {y_train_final.mean():.3f}",
+                verbose,
+            )
+            if use_balanced_training:
+                log_if_verbose(
+                    f"(Original size: {len(X_train)}, Original positive rate: {y_train.mean():.3f})",
+                    verbose,
+                )
             log_if_verbose(
                 f"Valid set size: {len(X_valid)}, Positive rate: {y_valid.mean():.3f}",
                 verbose,
@@ -549,19 +568,7 @@ def train_admissions_models(
             y_valid,
             y_test
         )
-
-        # Add training balance information to metadata
-        model_metadata[model_key]["training_balance_info"] = {
-            "balanced_training_used": use_balanced_training,
-            "original_size": len(X_train),
-            "original_positive_rate": y_train.mean(),
-        }
-        
-        if use_balanced_training:
-            model_metadata[model_key]["training_balance_info"].update({
-                "balanced_size": len(X_train_final),
-                "balanced_positive_rate": y_train_final.mean(),
-            })
+        model_metadata[model_key]["training_balance_info"] = balance_info
 
         # Train model using selected training data
         best_model = train_single_model(
