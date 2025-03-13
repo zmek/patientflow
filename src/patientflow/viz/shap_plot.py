@@ -13,7 +13,7 @@ def plot_shap(
     test_visits,
     prediction_times,
     exclude_from_training_data,
-    model_group_name="admissions",
+    model_group_name,
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(

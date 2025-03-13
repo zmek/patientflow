@@ -400,7 +400,7 @@ def train_single_model(
             best_model.metrics = {
                 "params": str(params),
                 "train_valid_set_results": results_dict,
-                "test_set_results": evaluate_model(pipeline, X_test, y_test),
+                # "test_set_results": evaluate_model(pipeline, X_test, y_test),
             }
             best_model.feature_names = get_feature_metadata(pipeline)["feature_names"]
             best_model.feature_importances = get_feature_metadata(pipeline)[
@@ -446,12 +446,10 @@ def train_single_model(
         
         # Store the calibrated pipeline and its metrics
         best_model.calibrated_pipeline = calibrated_pipeline
-        best_model.metrics["calibrated_test_set_results"] = cal_metrics
-        
-        if verbose:
-            log_if_verbose(f"Calibrated LogLoss: {cal_metrics['logloss']:.4f}", verbose)
-            log_if_verbose(f"Calibrated AUPRC: {cal_metrics['auprc']:.4f}", verbose)
-            log_if_verbose(f"Calibrated AUC: {cal_metrics['auc']:.4f}", verbose)
+        best_model.metrics["test_set_results"] = evaluate_model(calibrated_pipeline, X_test, y_test)
+
+    else:
+        best_model.metrics["test_set_results"] = evaluate_model(best_model.pipeline, X_test, y_test)
 
     return best_model
 
@@ -596,50 +594,22 @@ def train_admissions_models(
                     "feature_importances": best_model.feature_importances,
                 },
             }
-        )
-
-        # Store the base pipeline
-        trained_models[model_key] = best_model.pipeline
+        )        
         
-        # Store and evaluate calibrated model if available
-        if calibrate_probabilities and hasattr(best_model, 'calibrated_pipeline') and best_model.calibrated_pipeline is not None:
-            calibrated_model_key = f"{model_key}_calibrated"
-            calibrated_models[calibrated_model_key] = best_model.calibrated_pipeline
-            
-            # Add calibrated model results to metadata
-            if "calibrated_test_set_results" in best_model.metrics:
-                # Store calibrated results directly in the model metadata
-                model_metadata[model_key]["calibrated_test_set_results"] = best_model.metrics["calibrated_test_set_results"]
-                
-                # Also create a separate metadata entry for the calibrated model
-                model_metadata[calibrated_model_key] = {
-                    "base_model": model_key,
-                    "calibration_method": calibration_method,
-                    "test_set_results": best_model.metrics["calibrated_test_set_results"],
-                    "best_model_features": {
-                        "feature_names": best_model.feature_names,
-                        "feature_importances": best_model.feature_importances,
-                    },
-                }
-            
-            if verbose:
-                cal_metrics = best_model.metrics.get("calibrated_test_set_results", {})
-                log_if_verbose(f"\nCalibrated model performance for {prediction_time}:", verbose)
-                log_if_verbose(f"Calibrated Test AUPRC: {cal_metrics.get('auprc', 'N/A')}", verbose)
-                log_if_verbose(f"Calibrated Test AUC: {cal_metrics.get('auc', 'N/A')}", verbose)
-                log_if_verbose(f"Calibrated Test LogLoss: {cal_metrics.get('logloss', 'N/A')}", verbose)
+        # Store the pipeline
+        if calibrate_probabilities:
+            trained_models[model_key] = best_model.calibrated_pipeline 
+            model_metadata[model_key]["calibration_method"] = calibration_method
+
+        else:
+            trained_models[model_key] = best_model.pipeline
 
         if verbose:
-            test_metrics = best_model.metrics["test_set_results"]
-            log_if_verbose(f"\nBase model performance for {prediction_time}:", verbose)
+            test_metrics = model_metadata[model_key]["test_set_results"]
+            log_if_verbose(f"\nModel performance for {prediction_time}:", verbose)
             log_if_verbose(f"Test AUPRC: {test_metrics.get('auprc', 'N/A')}", verbose)
             log_if_verbose(f"Test AUC: {test_metrics.get('auc', 'N/A')}", verbose)
             log_if_verbose(f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose)
-
-    # If calibrated models were created, add them to the returned dictionary
-    if calibrated_models:
-        for key, model in calibrated_models.items():
-            trained_models[key] = model
 
     return model_metadata, trained_models
 
