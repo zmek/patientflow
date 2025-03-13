@@ -1,78 +1,83 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
+from patientflow.predict.emergency_demand import add_missing_columns
+from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.load import get_model_name
 
+# Define the color scheme
+primary_color = "#1f77b4"
+secondary_color = "#ff7f0e"
 
-def plot_distributions(
-    df,
-    col_name,
-    grouping_var,
-    grouping_var_name,
-    plot_type="both",
-    title=None,
-    rotate_x_labels=False,
-    is_discrete=False,
-    ordinal_order=None,
+def plot_prediction_distributions(
+    prediction_times,
+    media_file_path,
+    trained_models,
+    test_visits,
+    exclude_from_training_data,
+    model_group_name="admissions",
+    model_name_suffix=None,
+    bins=30
 ):
-    sns.set_theme(style="whitegrid")
-
-    if ordinal_order is not None:
-        df[col_name] = pd.Categorical(
-            df[col_name], categories=ordinal_order, ordered=True
-        )
-
-    g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)
-
-    if is_discrete:
-        valid_values = sorted([x for x in df[col_name].unique() if pd.notna(x)])
-        min_val = min(valid_values)
-        max_val = max(valid_values)
-        bins = np.arange(min_val - 0.5, max_val + 1.5, 1)
-    else:
-        # Handle numeric data
-        values = df[col_name].dropna()
-        if pd.api.types.is_numeric_dtype(values):
-            if np.allclose(values, values.round()):
-                bins = np.arange(values.min() - 0.5, values.max() + 1.5, 1)
-            else:
-                n_bins = min(100, max(10, int(np.sqrt(len(values)))))
-                bins = n_bins
-        else:
-            bins = "auto"
-
-    if plot_type == "both":
-        g.map(sns.histplot, col_name, kde=True, bins=bins)
-    elif plot_type == "hist":
-        g.map(sns.histplot, col_name, kde=False, bins=bins)
-    elif plot_type == "kde":
-        g.map(sns.kdeplot, col_name, fill=True)
-    else:
-        raise ValueError("Invalid plot_type. Choose from 'both', 'hist', or 'kde'.")
-
-    g.set_axis_labels(
-        col_name, "Frequency" if plot_type != "kde" else "Density", fontsize=10
+    # Sort prediction times by converting to minutes since midnight
+    prediction_times_sorted = sorted(
+        prediction_times,
+        key=lambda x: x[0] * 60 + x[1],
     )
+    num_plots = len(prediction_times_sorted)
+    fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))
 
-    # Set facet titles with smaller font
-    g.set_titles(col_template="{col_name}", size=11)
+    # Handle case of single prediction time
+    if num_plots == 1:
+        axs = [axs]
 
-    if rotate_x_labels:
-        for ax in g.axes.flat:
-            for label in ax.get_xticklabels():
-                label.set_rotation(90)
+    for i, prediction_time in enumerate(prediction_times_sorted):
+        # Get model name and pipeline for this prediction time
+        model_name = get_model_name(model_group_name, prediction_time)
+        if model_name_suffix:
+            model_name = f"{model_name}_{model_name_suffix}"
+        pipeline = trained_models[model_name]
 
-    if is_discrete:
-        for ax in g.axes.flat:
-            ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-            ax.set_xlim(min_val - 0.5, max_val + 0.5)
-
-    plt.subplots_adjust(top=0.85)
-    if title:
-        g.figure.suptitle(title, fontsize=14)
-    else:
-        g.figure.suptitle(
-            f"Distribution of {col_name} grouped by {grouping_var_name}", fontsize=14
+        # Get test data for this prediction time
+        X_test, y_test = get_snapshots_at_prediction_time(
+            df=test_visits,
+            prediction_time=prediction_time,
+            exclude_columns=exclude_from_training_data,
+            single_snapshot_per_visit=False,
         )
 
+        X_test = add_missing_columns(pipeline, X_test)
+        
+        # Get predictions
+        y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
+        
+        # Separate predictions for positive and negative cases
+        pos_preds = y_pred_proba[y_test == 1]
+        neg_preds = y_pred_proba[y_test == 0]
+
+        ax = axs[i]
+        hour, minutes = prediction_time
+
+        # Plot distributions
+        ax.hist(neg_preds, bins=bins, alpha=0.5, color=primary_color, 
+                density=True, label='Negative Cases', histtype='step', linewidth=2)
+        ax.hist(pos_preds, bins=bins, alpha=0.5, color=secondary_color, 
+                density=True, label='Positive Cases', histtype='step', linewidth=2)
+        
+        # Optional: Fill with lower opacity
+        ax.hist(neg_preds, bins=bins, alpha=0.2, color=primary_color, 
+                density=True)
+        ax.hist(pos_preds, bins=bins, alpha=0.2, color=secondary_color, 
+                density=True)
+        
+        ax.set_title(f"Prediction Distribution at {hour}:{minutes:02}", fontsize=14)
+        ax.set_xlabel("Predicted Probability", fontsize=12)
+        ax.set_ylabel("Density", fontsize=12)
+        ax.legend()
+
+    plt.tight_layout()
+
+    dist_plot_path = media_file_path / "distribution_plot"
+    dist_plot_path = dist_plot_path.with_suffix(".png")
+
+    plt.savefig(dist_plot_path)
     plt.show()

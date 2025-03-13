@@ -145,8 +145,6 @@ def chronological_cross_validation(
         X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
         y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
 
-        print(y_train.value_counts())
-
         pipeline.fit(X_train, y_train)
         train_preds = pipeline.predict_proba(X_train)[:, 1]
         valid_preds = pipeline.predict_proba(X_valid)[:, 1]
@@ -426,16 +424,16 @@ def train_single_model(
         best_feature_transformer = best_model.pipeline.named_steps['feature_transformer']
         best_classifier = best_model.pipeline.named_steps['classifier']
         
-        # Transform the training data
-        X_train_transformed = best_feature_transformer.transform(X_train)
+        # Transform the validation data
+        X_valid_transformed = best_feature_transformer.transform(X_valid)
         
-        # Create and fit the calibrated classifier
+        # Create and fit the calibrated classifier on the validation set
         calibrated_classifier = CalibratedClassifierCV(
             estimator=best_classifier,
             method=calibration_method,  # 'isotonic' or 'sigmoid'
-            cv=5  # Use 5-fold CV for calibration
+            cv='prefit'  # Use 'prefit' since the model is already trained
         )
-        calibrated_classifier.fit(X_train_transformed, y_train)
+        calibrated_classifier.fit(X_valid_transformed, y_valid)
         
         # Create a new pipeline with the calibrated classifier
         calibrated_pipeline = Pipeline([
@@ -526,10 +524,10 @@ def train_admissions_models(
             
             # Combine indices and create balanced datasets
             train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
+            np.random.shuffle(train_balanced_indices)  # Shuffle in place
+
             X_train_final = X_train.loc[train_balanced_indices]
             y_train_final = y_train.loc[train_balanced_indices]
-
-            print(y_train_final.value_counts())
             
             # Update balance info
             balance_info.update({

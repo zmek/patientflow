@@ -31,7 +31,10 @@ from typing import List, Tuple, Union
 import matplotlib.pyplot as plt
 import math
 import numpy as np
-from patientflow.prepare import prepare_for_inference
+import pandas as pd
+from patientflow.predict.emergency_demand import add_missing_columns
+from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.load import get_model_name
 
 exclude_from_training_data = [
     "visit_number",
@@ -84,9 +87,12 @@ def classify_age(age):
 
 def generate_madcap_plots(
     prediction_times: List[Tuple[int, int]],
-    model_file_path: Union[str, Path],
     media_file_path: Union[str, Path, None],
-    visits_csv_path: Union[str, Path],
+    trained_models: dict,
+    test_visits: pd.DataFrame,
+    exclude_from_training_data: List[str],
+    model_group_name: str = "admissions",
+    model_name_suffix: str = None,
 ) -> None:
     """
     Generates MADCAP plots for a list of prediction times, comparing predicted probabilities
@@ -96,15 +102,25 @@ def generate_madcap_plots(
     ----------
     prediction_times : list of tuple
         List of prediction times as (hour, minute) tuples.
-    model_file_path : str or Path
-        Path to the trained model file.
     media_file_path : str or Path
         Directory path where the generated plots will be saved.
-    visits_csv_path : str or Path
-        Path to the CSV file containing visit data.
+    trained_models : dict
+        Dictionary of trained model pipelines keyed by model name.
+    test_visits : pd.DataFrame
+        DataFrame containing the test visit data.
+    exclude_from_training_data : List[str]
+        List of columns to exclude from training data.
+    model_group_name : str, optional
+        Name of the model group (default: "admissions").
+    model_name_suffix : str, optional
+        Suffix to append to model names (default: None).
     """
-
-    num_plots = len(prediction_times)
+    # Sort prediction times by converting to minutes since midnight
+    prediction_times_sorted = sorted(
+        prediction_times,
+        key=lambda x: x[0] * 60 + x[1],
+    )
+    num_plots = len(prediction_times_sorted)
 
     # Calculate the number of rows and columns for the subplots
     num_cols = min(num_plots, 5)  # Maximum 5 columns
@@ -116,20 +132,27 @@ def generate_madcap_plots(
     if num_rows == 1:
         axes = axes.reshape(1, -1)
 
-    for i, _prediction_time in enumerate(prediction_times):
-        X_test, y_test, pipeline = prepare_for_inference(
-            model_file_path,
-            "admissions",
-            prediction_time=_prediction_time,
-            data_path=visits_csv_path,
+    for i, prediction_time in enumerate(prediction_times_sorted):
+        # Get model name and pipeline for this prediction time
+        model_name = get_model_name(model_group_name, prediction_time)
+        if model_name_suffix:
+            model_name = f"{model_name}_{model_name_suffix}"
+        pipeline = trained_models[model_name]
+
+        # Get test data for this prediction time
+        X_test, y_test = get_snapshots_at_prediction_time(
+            df=test_visits,
+            prediction_time=prediction_time,
+            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
         )
 
+        X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         row = i // num_cols
         col = i % num_cols
-        plot_madcap_subplot(predict_proba, y_test, _prediction_time, axes[row, col])
+        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
 
     # Hide any unused subplots
     for j in range(i + 1, num_rows * num_cols):
@@ -146,7 +169,6 @@ def generate_madcap_plots(
 
     plt.show()
     plt.close(fig)
-
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     """
@@ -298,76 +320,67 @@ def plot_madcap_by_group(
         plt.savefig(madcap_plot_path, dpi=300, bbox_inches="tight")
     plt.show()
 
-
 def generate_madcap_plots_by_group(
     prediction_times: List[Tuple[int, int]],
-    model_file_path: Union[str, Path],
     media_file_path: Union[str, Path, None],
-    visits_csv_path: Union[str, Path],
+    trained_models: dict,
+    test_visits: pd.DataFrame,
+    exclude_from_training_data: List[str],
     grouping_var: str,
     grouping_var_name: str,
+    model_group_name: str = "admissions",
+    model_name_suffix: str = None,
     plot_difference: bool = False,
 ) -> None:
     """
-    Generates MADCAP plots for different groups (e.g., age groups) across multiple prediction times.
-
-    This function creates MADCAP (Model Accuracy and Discriminative Calibration Plot) visualizations,
-    comparing predicted probabilities from a trained model to observed outcomes. The plots are generated
-    for specific groups (such as age groups) over a series of prediction times. The grouping variable
-    (e.g., 'age_group', 'age_on_arrival', or other) is specified and must exist in the dataset.
+    Generates MADCAP plots for different groups across multiple prediction times.
 
     Parameters
     ----------
     prediction_times : list of tuple
         A list of prediction times, each specified as a tuple of (hour, minute).
-    model_file_path : str or Path
-        Path to the trained machine learning model file that will be used for inference.
     media_file_path : str or Path or None
-        Directory path where the generated plots will be saved. If None, the plots are not saved.
-    visits_csv_path : str or Path
-        Path to the CSV file containing visit data used to prepare data for inference.
+        Directory path where the generated plots will be saved. If None, plots are not saved.
+    trained_models : dict
+        Dictionary of trained model pipelines keyed by model name.
+    test_visits : pd.DataFrame
+        DataFrame containing the test visit data.
+    exclude_from_training_data : List[str]
+        List of columns to exclude from training data.
     grouping_var : str
-        The column name in the dataset that defines the grouping variable (e.g., 'age_group', 'age_on_arrival').
-        This variable must exist in the `X_test` columns.
+        The column name in the dataset that defines the grouping variable.
     grouping_var_name : str
-        A descriptive name for the grouping variable, used in plot titles (e.g., 'Age Group').
+        A descriptive name for the grouping variable, used in plot titles.
+    model_group_name : str, optional
+        Name of the model group (default: "admissions").
+    model_name_suffix : str, optional
+        Suffix to append to model names (default: None).
     plot_difference : bool, optional
-        If True, includes an additional plot showing the difference between predicted and observed admissions.
-        Default is False.
+        If True, includes difference plot between predicted and observed admissions.
 
     Raises
     ------
     ValueError
-        If `grouping_var` is not found in the columns of the test data (`X_test`).
-
-    Notes
-    -----
-    The function first prepares the test data (X_test) and true labels (y_test) for each prediction time using
-    the `prepare_for_inference` function. It then uses the trained model pipeline to compute predicted
-    probabilities. Patients are classified into groups based on the specified `grouping_var`, such as 'age_group'
-    or 'age_on_arrival'. If the `grouping_var` is not found in the dataset, a `ValueError` is raised.
-
-    Finally, the function generates MADCAP plots for each group using the `plot_madcap_by_group` function, and
-    optionally saves the plots to the specified `media_file_path`.
-
-    Examples
-    --------
-    >>> generate_madcap_plots_by_group(
-            prediction_times=[(12, 0), (14, 30)],
-            model_file_path="path/to/model.pkl",
-            media_file_path="path/to/media",
-            visits_csv_path="path/to/visits.csv",
-            grouping_var='age_group',
-            grouping_var_name='Age Group'
-        )
+        If grouping_var is not found in the columns of the test data.
     """
+    # Sort prediction times by converting to minutes since midnight
+    prediction_times_sorted = sorted(
+        prediction_times,
+        key=lambda x: x[0] * 60 + x[1],
+    )
 
-    for i, _prediction_time in enumerate(prediction_times):
-        X_test, y_test, pipeline = prepare_for_inference(
-            model_file_path,
-            "admissions",
-            prediction_time=_prediction_time,
-            data_path=visits_csv_path,
+    for prediction_time in prediction_times_sorted:
+        # Get model name and pipeline for this prediction time
+        model_name = get_model_name(model_group_name, prediction_time)
+        if model_name_suffix:
+            model_name = f"{model_name}_{model_name_suffix}"
+        pipeline = trained_models[model_name]
+
+        # Get test data for this prediction time
+        X_test, y_test = get_snapshots_at_prediction_time(
+            df=test_visits,
+            prediction_time=prediction_time,
+            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
         )
 
@@ -375,6 +388,7 @@ def generate_madcap_plots_by_group(
         if grouping_var not in X_test.columns:
             raise ValueError(f"'{grouping_var}' not found in the dataset columns.")
 
+        X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Apply classification based on the grouping variable
@@ -383,13 +397,13 @@ def generate_madcap_plots_by_group(
         elif grouping_var == "age_on_arrival":
             group = X_test["age_on_arrival"].apply(classify_age)
         else:
-            group = X_test[grouping_var]  # If it's another grouping variable
+            group = X_test[grouping_var]
 
         plot_madcap_by_group(
             predict_proba,
             y_test,
             group,
-            _prediction_time,
+            prediction_time,
             grouping_var_name,
             media_file_path,
             plot_difference,
