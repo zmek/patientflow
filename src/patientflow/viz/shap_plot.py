@@ -27,7 +27,7 @@ def plot_shap(
 
         # Get model name and pipeline for this prediction time
         model_name = get_model_name(model_group_name, prediction_time)
-        pipeline = trained_models[model_name]
+        pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(

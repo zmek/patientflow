@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import get_snapshots_at_prediction_time
 from patientflow.load import get_model_name
@@ -7,6 +6,7 @@ from patientflow.load import get_model_name
 # Define the color scheme
 primary_color = "#1f77b4"
 secondary_color = "#ff7f0e"
+
 
 def plot_prediction_distributions(
     prediction_times,
@@ -16,7 +16,7 @@ def plot_prediction_distributions(
     exclude_from_training_data,
     model_group_name="admissions",
     model_name_suffix=None,
-    bins=30
+    bins=30,
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -35,7 +35,15 @@ def plot_prediction_distributions(
         model_name = get_model_name(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
-        pipeline = trained_models[model_name]
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_models[model_name], "calibrated_pipeline")
+            and trained_models[model_name].calibrated_pipeline is not None
+        ):
+            pipeline = trained_models[model_name].calibrated_pipeline
+        else:
+            pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
@@ -46,10 +54,10 @@ def plot_prediction_distributions(
         )
 
         X_test = add_missing_columns(pipeline, X_test)
-        
+
         # Get predictions
         y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
-        
+
         # Separate predictions for positive and negative cases
         pos_preds = y_pred_proba[y_test == 1]
         neg_preds = y_pred_proba[y_test == 0]
@@ -58,17 +66,31 @@ def plot_prediction_distributions(
         hour, minutes = prediction_time
 
         # Plot distributions
-        ax.hist(neg_preds, bins=bins, alpha=0.5, color=primary_color, 
-                density=True, label='Negative Cases', histtype='step', linewidth=2)
-        ax.hist(pos_preds, bins=bins, alpha=0.5, color=secondary_color, 
-                density=True, label='Positive Cases', histtype='step', linewidth=2)
-        
+        ax.hist(
+            neg_preds,
+            bins=bins,
+            alpha=0.5,
+            color=primary_color,
+            density=True,
+            label="Negative Cases",
+            histtype="step",
+            linewidth=2,
+        )
+        ax.hist(
+            pos_preds,
+            bins=bins,
+            alpha=0.5,
+            color=secondary_color,
+            density=True,
+            label="Positive Cases",
+            histtype="step",
+            linewidth=2,
+        )
+
         # Optional: Fill with lower opacity
-        ax.hist(neg_preds, bins=bins, alpha=0.2, color=primary_color, 
-                density=True)
-        ax.hist(pos_preds, bins=bins, alpha=0.2, color=secondary_color, 
-                density=True)
-        
+        ax.hist(neg_preds, bins=bins, alpha=0.2, color=primary_color, density=True)
+        ax.hist(pos_preds, bins=bins, alpha=0.2, color=secondary_color, density=True)
+
         ax.set_title(f"Prediction Distribution at {hour}:{minutes:02}", fontsize=14)
         ax.set_xlabel("Predicted Probability", fontsize=12)
         ax.set_ylabel("Density", fontsize=12)

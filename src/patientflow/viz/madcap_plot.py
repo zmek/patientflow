@@ -92,7 +92,7 @@ def generate_madcap_plots(
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     model_group_name: str = "admissions",
-    model_name_suffix: str = None,
+    model_name_suffix: Union[str, None] = None,
 ) -> None:
     """
     Generates MADCAP plots for a list of prediction times, comparing predicted probabilities
@@ -112,7 +112,7 @@ def generate_madcap_plots(
         List of columns to exclude from training data.
     model_group_name : str, optional
         Name of the model group (default: "admissions").
-    model_name_suffix : str, optional
+    model_name_suffix : str or None, optional
         Suffix to append to model names (default: None).
     """
     # Sort prediction times by converting to minutes since midnight
@@ -137,7 +137,15 @@ def generate_madcap_plots(
         model_name = get_model_name(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
-        pipeline = trained_models[model_name]
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_models[model_name], "calibrated_pipeline")
+            and trained_models[model_name].calibrated_pipeline is not None
+        ):
+            pipeline = trained_models[model_name].calibrated_pipeline
+        else:
+            pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
@@ -169,6 +177,7 @@ def generate_madcap_plots(
 
     plt.show()
     plt.close(fig)
+
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     """
@@ -320,6 +329,7 @@ def plot_madcap_by_group(
         plt.savefig(madcap_plot_path, dpi=300, bbox_inches="tight")
     plt.show()
 
+
 def generate_madcap_plots_by_group(
     prediction_times: List[Tuple[int, int]],
     media_file_path: Union[str, Path, None],
@@ -329,7 +339,7 @@ def generate_madcap_plots_by_group(
     grouping_var: str,
     grouping_var_name: str,
     model_group_name: str = "admissions",
-    model_name_suffix: str = None,
+    model_name_suffix: Union[str, None] = None,
     plot_difference: bool = False,
 ) -> None:
     """
@@ -353,7 +363,7 @@ def generate_madcap_plots_by_group(
         A descriptive name for the grouping variable, used in plot titles.
     model_group_name : str, optional
         Name of the model group (default: "admissions").
-    model_name_suffix : str, optional
+    model_name_suffix : str or None, optional
         Suffix to append to model names (default: None).
     plot_difference : bool, optional
         If True, includes difference plot between predicted and observed admissions.
@@ -374,7 +384,15 @@ def generate_madcap_plots_by_group(
         model_name = get_model_name(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
-        pipeline = trained_models[model_name]
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_models[model_name], "calibrated_pipeline")
+            and trained_models[model_name].calibrated_pipeline is not None
+        ):
+            pipeline = trained_models[model_name].calibrated_pipeline
+        else:
+            pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(

@@ -292,6 +292,25 @@ def get_dataset_metadata(
     }
 
 
+def create_balance_info(
+    is_balanced: bool,
+    original_size: int,
+    balanced_size: int,
+    original_positive_rate: float,
+    balanced_positive_rate: float,
+    majority_to_minority_ratio: float,
+) -> Dict[str, Union[bool, int, float]]:
+    """Create a dictionary with balance information."""
+    return {
+        "is_balanced": is_balanced,
+        "original_size": original_size,
+        "balanced_size": balanced_size,
+        "original_positive_rate": original_positive_rate,
+        "balanced_positive_rate": balanced_positive_rate,
+        "majority_to_minority_ratio": majority_to_minority_ratio,
+    }
+
+
 def evaluate_model(
     pipeline: Pipeline, X_test: DataFrame, y_test: Series
 ) -> Dict[str, float]:
@@ -334,12 +353,12 @@ def train_single_model(
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
     calibrate_probabilities: bool = True,
-    calibration_method: str = 'isotonic',
+    calibration_method: str = "isotonic",
     verbose: bool = False,
 ) -> ModelResults:
     """
     Train a single model for one prediction time with optional probability calibration.
-    
+
     Parameters:
     -----------
     X_train : DataFrame
@@ -364,14 +383,14 @@ def train_single_model(
         Method for probability calibration ('isotonic' or 'sigmoid')
     verbose : bool, default=False
         Whether to print verbose output during training
-        
+
     Returns:
     --------
     ModelResults
         Container with the best trained model, metrics, and feature information
     """
     from sklearn.calibration import CalibratedClassifierCV
-    
+
     best_model = ModelResults(
         pipeline=None,
         valid_logloss=float("inf"),
@@ -414,42 +433,47 @@ def train_single_model(
                 )
                 log_if_verbose(f"Valid AUPRC: {cv_results['valid_auprc']:.4f}", verbose)
                 log_if_verbose(f"Valid AUC: {cv_results['valid_auc']:.4f}", verbose)
-    
+
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
         if verbose:
             log_if_verbose("\nApplying probability calibration...", verbose)
-        
+
         # Extract the best classifier and feature transformer
-        best_feature_transformer = best_model.pipeline.named_steps['feature_transformer']
-        best_classifier = best_model.pipeline.named_steps['classifier']
-        
+        best_feature_transformer = best_model.pipeline.named_steps[
+            "feature_transformer"
+        ]
+        best_classifier = best_model.pipeline.named_steps["classifier"]
+
         # Transform the validation data
         X_valid_transformed = best_feature_transformer.transform(X_valid)
-        
+
         # Create and fit the calibrated classifier on the validation set
         calibrated_classifier = CalibratedClassifierCV(
             estimator=best_classifier,
             method=calibration_method,  # 'isotonic' or 'sigmoid'
-            cv='prefit'  # Use 'prefit' since the model is already trained
+            cv="prefit",  # Use 'prefit' since the model is already trained
         )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
-        
+
         # Create a new pipeline with the calibrated classifier
-        calibrated_pipeline = Pipeline([
-            ("feature_transformer", best_feature_transformer),
-            ("classifier", calibrated_classifier)
-        ])
-        
-        # Evaluate the calibrated model
-        cal_metrics = evaluate_model(calibrated_pipeline, X_test, y_test)
-        
+        calibrated_pipeline = Pipeline(
+            [
+                ("feature_transformer", best_feature_transformer),
+                ("classifier", calibrated_classifier),
+            ]
+        )
+
         # Store the calibrated pipeline and its metrics
         best_model.calibrated_pipeline = calibrated_pipeline
-        best_model.metrics["test_set_results"] = evaluate_model(calibrated_pipeline, X_test, y_test)
+        best_model.metrics["test_set_results"] = evaluate_model(
+            calibrated_pipeline, X_test, y_test
+        )
 
     else:
-        best_model.metrics["test_set_results"] = evaluate_model(best_model.pipeline, X_test, y_test)
+        best_model.metrics["test_set_results"] = evaluate_model(
+            best_model.pipeline, X_test, y_test
+        )
 
     return best_model
 
@@ -466,7 +490,7 @@ def train_admissions_models(
     model_metadata: Dict[str, Any],
     visit_col: str,
     calibrate_probabilities: bool = True,
-    calibration_method: str = 'isotonic',
+    calibration_method: str = "isotonic",
     use_balanced_training: bool = False,
     majority_to_minority_ratio: float = 1.0,
     verbose: bool = False,
@@ -482,7 +506,6 @@ def train_admissions_models(
         Ratio of majority to minority class samples (1.0 means perfectly balanced)
     """
     trained_models: Dict[str, Pipeline] = {}
-    calibrated_models: Dict[str, Pipeline] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
@@ -502,48 +525,60 @@ def train_admissions_models(
         # Initialize training data as unbalanced
         X_train_final = X_train
         y_train_final = y_train
-        balance_info = {"is_balanced": False, "original_size": len(X_train)}
+        balance_info: Dict[str, Union[bool, int, float]] = {
+            "is_balanced": False,
+            "original_size": len(X_train),
+        }
 
         # Apply balancing if requested
         if use_balanced_training:
             pos_indices = y_train[y_train == 1].index
             neg_indices = y_train[y_train == 0].index
-            
+
             # Calculate number of negative samples to keep
             n_pos = len(pos_indices)
             n_neg = int(n_pos * majority_to_minority_ratio)
-            
+
             # Sample negative cases
             neg_indices_sampled = np.random.choice(
-                neg_indices, 
-                size=min(n_neg, len(neg_indices)), 
-                replace=False
+                neg_indices, size=min(n_neg, len(neg_indices)), replace=False
             )
-            
+
             # Combine indices and create balanced datasets
             train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
             np.random.shuffle(train_balanced_indices)  # Shuffle in place
 
             X_train_final = X_train.loc[train_balanced_indices]
             y_train_final = y_train.loc[train_balanced_indices]
-            
-            # Update balance info
-            balance_info.update({
-                "is_balanced": True,
-                "balanced_size": len(X_train_final),
-                "original_positive_rate": y_train.mean(),
-                "balanced_positive_rate": y_train_final.mean(),
-                "majority_to_minority_ratio": majority_to_minority_ratio
-            })
+
+            # Create balance_info using the dedicated function
+            balance_info = create_balance_info(
+                is_balanced=True,
+                original_size=len(X_train),
+                balanced_size=len(X_train_final),
+                original_positive_rate=y_train.mean(),
+                balanced_positive_rate=y_train_final.mean(),
+                majority_to_minority_ratio=majority_to_minority_ratio,
+            )
+        else:
+            # Use simplified balance_info for unbalanced case
+            balance_info = create_balance_info(
+                is_balanced=False,
+                original_size=len(X_train),
+                balanced_size=len(X_train),
+                original_positive_rate=y_train.mean(),
+                balanced_positive_rate=y_train.mean(),
+                majority_to_minority_ratio=1.0,
+            )
 
         if verbose:
             log_if_verbose(
-                f"Training set size: {len(X_train_final)}, Positive rate: {y_train_final.mean():.3f}",
+                f"Training set size: {balance_info['balanced_size']}, Positive rate: {balance_info['balanced_positive_rate']:.3f}",
                 verbose,
             )
             if use_balanced_training:
                 log_if_verbose(
-                    f"(Original size: {len(X_train)}, Original positive rate: {y_train.mean():.3f})",
+                    f"(Original size: {balance_info['original_size']}, Original positive rate: {balance_info['original_positive_rate']:.3f})",
                     verbose,
                 )
             log_if_verbose(
@@ -557,12 +592,7 @@ def train_admissions_models(
 
         # Initialize metadata with appropriate training data
         model_metadata[model_key] = get_dataset_metadata(
-            X_train_final,
-            X_valid,
-            X_test,
-            y_train_final,
-            y_valid,
-            y_test
+            X_train_final, X_valid, X_test, y_train_final, y_valid, y_test
         )
         model_metadata[model_key]["training_balance_info"] = balance_info
 
@@ -594,24 +624,29 @@ def train_admissions_models(
                     "feature_importances": best_model.feature_importances,
                 },
             }
-        )        
-        
+        )
+
         # Store the pipeline
         if calibrate_probabilities:
-            trained_models[model_key] = best_model.calibrated_pipeline 
+            # trained_models[model_key] = best_model.calibrated_pipeline
             model_metadata[model_key]["calibration_method"] = calibration_method
 
-        else:
-            trained_models[model_key] = best_model.pipeline
+        # else:
+        # trained_models[model_key] = best_model.pipeline
+
+        trained_models[model_key] = best_model
 
         if verbose:
             test_metrics = model_metadata[model_key]["test_set_results"]
             log_if_verbose(f"\nModel performance for {prediction_time}:", verbose)
             log_if_verbose(f"Test AUPRC: {test_metrics.get('auprc', 'N/A')}", verbose)
             log_if_verbose(f"Test AUC: {test_metrics.get('auc', 'N/A')}", verbose)
-            log_if_verbose(f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose)
+            log_if_verbose(
+                f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose
+            )
 
     return model_metadata, trained_models
+
 
 def train_specialty_model(
     train_visits: DataFrame,
@@ -791,31 +826,55 @@ def test_real_time_predictions(
     random_seed,
 ):
     """
-    Test real-time predictions on a sample from a test dataset.
+    Test real-time predictions by selecting a random sample from the visits dataset
+    and generating predictions using the trained models.
 
     Parameters
     ----------
     visits : pd.DataFrame
-        DataFrame containing visit data.
-    model_file_path : Path
-        Path where the models are stored.
+        DataFrame containing visit data with columns including 'prediction_time',
+        'snapshot_date', and other required features for predictions.
+    models : dict
+        Dictionary containing the trained models for admissions, specialty,
+        and yet-to-arrive predictions.
+    model_names : dict
+        Dictionary mapping model types to their names (e.g., 'admissions',
+        'specialty', 'yet_to_arrive').
     prediction_window : int
-        Size of the prediction window in minutes.
-    specialties : list
-        List of specialties for which predictions are made.
-    cdf_cut_points : list
-        Cumulative distribution function cut points for predictions.
-    curve_params : tuple
-        Tuple containing curve parameters (x1, y1, x2, y2).
+        Size of the prediction window in minutes for which to generate forecasts.
+    specialties : list[str]
+        List of specialty names to generate predictions for (e.g., ['surgical',
+        'medical', 'paediatric']).
+    cdf_cut_points : list[float]
+        List of probability thresholds for cumulative distribution function
+        cut points (e.g., [0.9, 0.7]).
+    curve_params : tuple[float, float, float, float]
+        Parameters (x1, y1, x2, y2) defining the curve used for predictions.
     uclh : bool
-        Indicates if the UCLH dataset is being used.
+        Flag indicating whether UCLH-specific processing should be applied.
     random_seed : int
-        Random seed for reproducibility.
+        Random seed for reproducible sampling of test cases.
 
     Returns
     -------
     dict
-        Dictionary containing the prediction time, date, and results.
+        Dictionary containing:
+        - 'prediction_time': str, The time point for which predictions were made
+        - 'prediction_date': str, The date for which predictions were made
+        - 'realtime_preds': dict, The generated predictions for the sample
+
+    Raises
+    ------
+    Exception
+        If real-time inference fails, with detailed error message printed before
+        system exit.
+
+    Notes
+    -----
+    The function selects a single random row from the visits DataFrame and
+    generates predictions for that specific time point using all provided models.
+    The predictions are made using the create_predictions() function with the
+    specified parameters.
     """
     # Select random test set row
     random_row = visits.sample(n=1, random_state=random_seed)
@@ -1204,12 +1263,6 @@ def main(data_folder_name=None):
         "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"],
     }
 
-    model_names = {
-        "admissions": "admissions",
-        "specialty": "ed_specialty",
-        "yet_to_arrive": "ed_yet_to_arrive_by_spec_",
-    }
-
     specialties = ["surgical", "haem/onc", "medical", "paediatric"]
     cdf_cut_points = [0.9, 0.7]
     curve_params = (x1, y1, x2, y2)
@@ -1232,7 +1285,6 @@ def main(data_folder_name=None):
         grid_params=grid_params,
         exclude_columns=exclude_columns,
         ordinal_mappings=ordinal_mappings,
-        model_names=model_names,
         specialties=specialties,
         cdf_cut_points=cdf_cut_points,
         random_seed=random_seed,

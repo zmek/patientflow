@@ -23,7 +23,9 @@ def plot_features(
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
         model_name = get_model_name(model_group_name, prediction_time)
-        pipeline = trained_models[model_name]
+
+        # Always use regular pipeline
+        pipeline = trained_models[model_name].pipeline
 
         # Get feature names from the pipeline
         transformed_cols = pipeline.named_steps[

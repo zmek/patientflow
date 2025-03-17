@@ -17,7 +17,8 @@ def plot_calibration(
     exclude_from_training_data,
     strategy="uniform",
     model_group_name="admssions",
-    model_name_suffix=None
+    model_name_suffix=None,
+    suptitle=None,
 ):
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -37,7 +38,15 @@ def plot_calibration(
         model_name = get_model_name(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
-        pipeline = trained_models[model_name]
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_models[model_name], "calibrated_pipeline")
+            and trained_models[model_name].calibrated_pipeline is not None
+        ):
+            pipeline = trained_models[model_name].calibrated_pipeline
+        else:
+            pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
@@ -77,6 +86,10 @@ def plot_calibration(
         ax.legend()
 
     plt.tight_layout()
+
+    # Add suptitle if provided
+    if suptitle:
+        plt.suptitle(suptitle, fontsize=16, y=1.05)
 
     calib_plot_path = media_file_path / "calibration_plot"
     calib_plot_path = calib_plot_path.with_suffix(".png")

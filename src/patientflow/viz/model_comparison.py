@@ -34,9 +34,11 @@ def load_model_results(model_file_path, prediction_times, models):
         for time in sorted_times:
             model_key = get_model_name(model_name, time)
             test_results = model_metadata[model_key]["test_set_results"]
+            balance_info = model_metadata[model_key]["training_balance_info"]
 
             # Store results using model_key directly
             results[model_name][model_key] = {
+                "original_positive_rate": balance_info["original_positive_rate"],
                 "test_auc": test_results["test_auc"],
                 "test_auprc": test_results["test_auprc"],
                 "test_logloss": test_results["test_logloss"],
@@ -117,21 +119,27 @@ def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8
     return fig
 
 
-def print_model_results(results):
+def print_model_results(
+    results,
+    metrics_keys=["original_positive_rate", "test_auc", "test_auprc", "test_logloss"],
+):
     """
     Print model results in a specific format.
 
     Parameters:
     results (dict): Nested dictionary containing results for each model and time
+    metrics_keys (list): List of metric keys to print (default includes class balance and performance metrics)
     """
     for model_name, model_results in results.items():
         print(f"\nResults for {model_name} model")
         for model_key, metrics in model_results.items():
-            print(
-                f"\nModel: {model_key}; "
-                f"AUC: {metrics['test_auc']:.3f}; "
-                f"AUPRC: {metrics['test_auprc']:.3f}; "
-                f"log loss {metrics['test_logloss']:.3f}",
-                end=" ",
-            )
+            print(f"\nModel: {model_key}", end="")
+            for metric in metrics_keys:
+                label = (
+                    "class balance"
+                    if metric == "original_positive_rate"
+                    else metric.replace("test_", "")
+                )
+                print(f"; {label}: {metrics[metric]:.3f}", end="")
+            print(" ")
         print("\n")

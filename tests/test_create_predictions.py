@@ -4,13 +4,13 @@ import numpy as np
 import os
 from scipy.stats import poisson
 
-
 from pathlib import Path
 import joblib
 
 from patientflow.predict.emergency_demand import create_predictions
 from patientflow.load import get_model_name
 from patientflow.prepare import create_special_category_objects
+from patientflow.train.emergency_demand import ModelResults
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -54,6 +54,18 @@ def create_random_df(n=1000, include_consults=False):
 
 
 def create_admissions_model(prediction_time):
+    """Create a test admissions model with ModelResults structure.
+
+    Parameters
+    ----------
+    prediction_time : float
+        The prediction time point to create the model for
+
+    Returns
+    -------
+    tuple
+        (ModelResults object, model_name string)
+    """
     # Define the feature columns and target
     feature_columns = ["elapsed_los", "sex", "age_on_arrival", "arrival_method"]
     target_column = "is_admitted"
@@ -66,7 +78,6 @@ def create_admissions_model(prediction_time):
 
     # Define the model
     model = XGBClassifier(eval_metric="logloss")
-    # column_transformer = create_column_transformer(X)
     column_transformer = ColumnTransformer(
         [
             ("onehot", OneHotEncoder(), ["sex", "arrival_method"]),
@@ -74,19 +85,30 @@ def create_admissions_model(prediction_time):
         ]
     )
 
-    # create a pipeline with the feature transformer and the model
+    # Create a pipeline with the feature transformer and the model
     pipeline = Pipeline(
         [("feature_transformer", column_transformer), ("classifier", model)]
     )
 
     # Fit the pipeline to the data
     pipeline.fit(X, y)
-    # transformed_X = pipeline.named_steps['feature_transformer'].transform(X)
+
+    # Create ModelResults object
+    model_results = ModelResults(
+        pipeline=pipeline,
+        valid_logloss=0.5,  # Mock value for testing
+        feature_names=feature_columns,
+        feature_importances=[0.25] * len(feature_columns),  # Mock values
+        metrics={
+            "params": "test_params",
+            "train_valid_set_results": {},
+            "test_set_results": {},
+        },
+        calibrated_pipeline=None,  # No calibration for test
+    )
 
     model_name = get_model_name("admissions", prediction_time)
-    # full_path = self.model_file_path / str(model_name + ".joblib")
-    # joblib.dump(pipeline, full_path)
-    return (pipeline, model_name)
+    return (model_results, model_name)
 
 
 def create_spec_model(

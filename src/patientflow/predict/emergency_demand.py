@@ -110,16 +110,64 @@ def create_predictions(
     """
     Create predictions for emergency demand for a single prediction moment.
 
-    Parameters:
-    - models (Dict[str, Any]): Dictionary containing all required models
-    - model_names (Dict[str, str]): Dictionary mapping model types to their names
-    - prediction_time (Tuple): Hour and minute of time for model inference
-    - prediction_snapshots (pd.DataFrame): DataFrame containing prediction snapshots
-    - specialties (List[str]): List of specialty names for predictions
-    - prediction_window_hrs (float): Prediction window in hours
-    - x1, y1, x2, y2 (float): Parameters for calculating admission probability
-    - cdf_cut_points (List[float]): List of CDF cut points
-    - special_params (Optional[Dict[str, Any]]): Special handling parameters
+    Parameters
+    ----------
+    models : Dict[str, Any]
+        Dictionary containing all required models with the following structure:
+        {
+            'admissions': {
+                'admissions_<prediction_time>': ModelResults,
+                # ... one ModelResults object per prediction time
+            },
+            'specialty': SequencePredictor,
+            'yet_to_arrive': WeightedPoissonPredictor
+        }
+        where ModelResults objects contain either a 'pipeline' or 'calibrated_pipeline' attribute
+    model_names : Dict[str, str]
+        Dictionary mapping model types to their names, e.g.:
+        {
+            'admissions': 'admissions',
+            'specialty': 'ed_specialty',
+            'yet_to_arrive': 'yet_to_arrive_4_hours'
+        }
+    prediction_time : Tuple
+        Hour and minute of time for model inference
+    prediction_snapshots : pd.DataFrame
+        DataFrame containing prediction snapshots
+    specialties : List[str]
+        List of specialty names for predictions (e.g., ['surgical', 'medical'])
+    prediction_window_hrs : float
+        Prediction window in hours
+    x1 : float
+        X-coordinate of first point for probability curve
+    y1 : float
+        Y-coordinate of first point for probability curve
+    x2 : float
+        X-coordinate of second point for probability curve
+    y2 : float
+        Y-coordinate of second point for probability curve
+    cdf_cut_points : List[float]
+        List of cumulative distribution function cut points (e.g., [0.9, 0.7])
+    special_params : Optional[Dict[str, Any]], optional
+        Special handling parameters for categories, by default None
+
+    Returns
+    -------
+    Dict[str, Dict[str, List[int]]]
+        Nested dictionary containing predictions for each specialty:
+        {
+            'specialty_name': {
+                'in_ed': [pred1, pred2, ...],
+                'yet_to_arrive': [pred1, pred2, ...]
+            }
+        }
+
+    Notes
+    -----
+    The admissions models in the models dictionary must be ModelResults objects
+    that contain either a 'pipeline' or 'calibrated_pipeline' attribute. The pipeline
+    will be used for making predictions, with calibrated_pipeline taking precedence
+    if both exist.
     """
 
     validate_model_names(models, model_names)
@@ -140,7 +188,25 @@ def create_predictions(
     model_for_prediction_time = get_model_name(
         model_names["admissions"], prediction_time
     )
-    admissions_model = models[model_names["admissions"]][model_for_prediction_time]
+
+    # Use calibrated pipeline if available, otherwise use regular pipeline
+    if (
+        hasattr(
+            models[model_names["admissions"]][model_for_prediction_time],
+            "calibrated_pipeline",
+        )
+        and models[model_names["admissions"]][
+            model_for_prediction_time
+        ].calibrated_pipeline
+        is not None
+    ):
+        admissions_model = models[model_names["admissions"]][
+            model_for_prediction_time
+        ].calibrated_pipeline
+    else:
+        admissions_model = models[model_names["admissions"]][
+            model_for_prediction_time
+        ].pipeline
 
     # Add missing columns expected by the model
     prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
