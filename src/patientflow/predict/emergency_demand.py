@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key
 from patientflow.prepare import validate_special_category_objects
 
 from patientflow.predict.admission_in_prediction_window import (
@@ -185,7 +185,7 @@ def create_predictions(
     }
 
     # Get appropriate model for prediction time
-    model_for_prediction_time = get_model_name(
+    model_for_prediction_time = get_model_key(
         model_names["admissions"], prediction_time
     )
 

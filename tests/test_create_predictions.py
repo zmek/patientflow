@@ -8,7 +8,7 @@ from pathlib import Path
 import joblib
 
 from patientflow.predict.emergency_demand import create_predictions
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key
 from patientflow.prepare import create_special_category_objects
 from patientflow.train.emergency_demand import ModelResults
 
@@ -107,7 +107,7 @@ def create_admissions_model(prediction_time):
         calibrated_pipeline=None,  # No calibration for test
     )
 
-    model_name = get_model_name("admissions", prediction_time)
+    model_name = get_model_key("admissions", prediction_time)
     return (model_results, model_name)
 
 

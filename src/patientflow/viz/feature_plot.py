@@ -1,11 +1,31 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key, load_saved_model
 
 
 def plot_features(
-    trained_models, media_file_path, prediction_times, model_group_name="admissions"
+    trained_models,
+    media_file_path,
+    prediction_times,
+    model_group_name="admissions",
+    model_name_suffix=None,
+    model_file_path=None,
 ):
+    # Load models if not provided
+    if trained_models is None:
+        if model_file_path is None:
+            raise ValueError(
+                "model_file_path must be provided if trained_models is None"
+            )
+        trained_models = {}
+        for prediction_time in prediction_times:
+            model_name = get_model_key(model_group_name, prediction_time)
+            if model_name_suffix:
+                model_name = f"{model_name}_{model_name_suffix}"
+            trained_models[model_name] = load_saved_model(
+                model_file_path, model_group_name, prediction_time
+            )
+
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
         prediction_times,
@@ -22,7 +42,7 @@ def plot_features(
 
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name(model_group_name, prediction_time)
+        model_name = get_model_key(model_group_name, prediction_time)
 
         # Always use regular pipeline
         pipeline = trained_models[model_name].pipeline

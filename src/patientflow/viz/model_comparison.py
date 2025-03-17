@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key
 
 
 def load_model_results(model_file_path, prediction_times, models):
@@ -32,7 +32,7 @@ def load_model_results(model_file_path, prediction_times, models):
 
         # Extract results for each time
         for time in sorted_times:
-            model_key = get_model_name(model_name, time)
+            model_key = get_model_key(model_name, time)
             test_results = model_metadata[model_key]["test_set_results"]
             balance_info = model_metadata[model_key]["training_balance_info"]
 
@@ -69,7 +69,7 @@ def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8
 
     # Create consistent keys for all models
     display_keys = [
-        get_model_name(next(iter(models.keys())), time) for time in sorted_times
+        get_model_key(next(iter(models.keys())), time) for time in sorted_times
     ]
 
     # Create figure and subplots
@@ -94,7 +94,7 @@ def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8
     for ax, metric, title in zip(axes, metrics, titles):
         for model_name, pos in zip(models.keys(), positions):
             # Generate the correct key for this model and time
-            model_keys = [get_model_name(model_name, time) for time in sorted_times]
+            model_keys = [get_model_key(model_name, time) for time in sorted_times]
             metric_values = [results[model_name][key][metric] for key in model_keys]
 
             label = " ".join(model_name.split("_")).title()

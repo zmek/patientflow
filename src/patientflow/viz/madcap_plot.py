@@ -18,7 +18,7 @@ generate_madcap_plots(prediction_times, model_file_path, media_file_path, visits
 plot_madcap_subplot(predict_proba, label, _prediction_time, ax)
     Helper function to plot a single MADCAP subplot for a given prediction time.
 
-plot_madcap_by_group(predict_proba, label, group, _prediction_time, group_name, media_path=None, plot_difference=True)
+plot_madcap_by_group(predict_proba, label, _prediction_time, group_name, media_path=None, plot_difference=True)
     Generates MADCAP plots for subgroups (e.g., age groups) at a specific prediction time.
 
 generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_path, visits_csv_path, grouping_var, grouping_var_name)
@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import get_snapshots_at_prediction_time
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key, load_saved_model
 
 exclude_from_training_data = [
     "visit_number",
@@ -93,6 +93,7 @@ def generate_madcap_plots(
     exclude_from_training_data: List[str],
     model_group_name: str = "admissions",
     model_name_suffix: Union[str, None] = None,
+    model_file_path: Union[str, Path, None] = None,
 ) -> None:
     """
     Generates MADCAP plots for a list of prediction times, comparing predicted probabilities
@@ -114,7 +115,24 @@ def generate_madcap_plots(
         Name of the model group (default: "admissions").
     model_name_suffix : str or None, optional
         Suffix to append to model names (default: None).
+    model_file_path : str or Path or None, optional
+        Path to the model file. If None, models must be provided in trained_models.
     """
+    # Load models if not provided
+    if trained_models is None:
+        if model_file_path is None:
+            raise ValueError(
+                "model_file_path must be provided if trained_models is None"
+            )
+        trained_models = {}
+        for prediction_time in prediction_times:
+            model_name = get_model_key(model_group_name, prediction_time)
+            if model_name_suffix:
+                model_name = f"{model_name}_{model_name_suffix}"
+            trained_models[model_name] = load_saved_model(
+                model_file_path, model_group_name, prediction_time
+            )
+
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
         prediction_times,
@@ -134,7 +152,7 @@ def generate_madcap_plots(
 
     for i, prediction_time in enumerate(prediction_times_sorted):
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name(model_group_name, prediction_time)
+        model_name = get_model_key(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
 
@@ -341,6 +359,7 @@ def generate_madcap_plots_by_group(
     model_group_name: str = "admissions",
     model_name_suffix: Union[str, None] = None,
     plot_difference: bool = False,
+    model_file_path: Union[str, Path, None] = None,
 ) -> None:
     """
     Generates MADCAP plots for different groups across multiple prediction times.
@@ -367,12 +386,29 @@ def generate_madcap_plots_by_group(
         Suffix to append to model names (default: None).
     plot_difference : bool, optional
         If True, includes difference plot between predicted and observed admissions.
+    model_file_path : str or Path or None, optional
+        Path to the model file. If None, models must be provided in trained_models.
 
     Raises
     ------
     ValueError
         If grouping_var is not found in the columns of the test data.
     """
+    # Load models if not provided
+    if trained_models is None:
+        if model_file_path is None:
+            raise ValueError(
+                "model_file_path must be provided if trained_models is None"
+            )
+        trained_models = {}
+        for prediction_time in prediction_times:
+            model_name = get_model_key(model_group_name, prediction_time)
+            if model_name_suffix:
+                model_name = f"{model_name}_{model_name_suffix}"
+            trained_models[model_name] = load_saved_model(
+                model_file_path, model_group_name, prediction_time
+            )
+
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
         prediction_times,
@@ -381,7 +417,7 @@ def generate_madcap_plots_by_group(
 
     for prediction_time in prediction_times_sorted:
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name(model_group_name, prediction_time)
+        model_name = get_model_key(model_group_name, prediction_time)
         if model_name_suffix:
             model_name = f"{model_name}_{model_name_suffix}"
 

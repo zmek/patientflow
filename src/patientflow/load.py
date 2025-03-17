@@ -25,7 +25,7 @@ safe_literal_eval:
     Safely evaluate string literals into Python objects when loading from csv.
 load_data:
     Load and preprocess data from a CSV or pickle file.
-get_model_name:
+get_model_key:
     Generate a model name based on the time of day.
 load_saved_model:
     Load a machine learning model saved in a joblib file.
@@ -523,7 +523,7 @@ def load_data(
     return df
 
 
-def get_model_name(model_name, prediction_time):
+def get_model_key(model_name, prediction_time):
     """
     Create a model name based on the time of day.
 
@@ -571,7 +571,7 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     """
     if prediction_time:
         # retrieve model based on the time of day it is trained for
-        model_name = get_model_name(model_name, prediction_time)
+        model_name = get_model_key(model_name, prediction_time)
 
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")

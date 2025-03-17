@@ -379,6 +379,7 @@ def prepare_for_inference(
     if requested, prepares the data required for inference. The data can be
     provided either as a DataFrame or as a file path to a CSV file. The function
     allows filtering and processing of the data to match the model's requirements.
+    If available, it will use the calibrated pipeline instead of the regular pipeline.
 
     Parameters
     ----------
@@ -413,7 +414,7 @@ def prepare_for_inference(
     Returns
     -------
     model : object
-        The loaded model.
+        The loaded model (calibrated pipeline if available, otherwise regular pipeline).
     X_test : pandas.DataFrame, optional
         The features prepared for testing, returned only if model_only is False.
     y_test : pandas.Series, optional
@@ -426,16 +427,23 @@ def prepare_for_inference(
 
     Notes
     -----
-    Either `df` or `data_path` must be provided. If neither is provided or if `df`
-    is empty, the function will print an error message and return None.
-
+    - Either `df` or `data_path` must be provided. If neither is provided or if `df`
+      is empty, the function will print an error message and return None.
+    - The function will automatically use a calibrated pipeline if one is available
+      in the model, otherwise it will fall back to the regular pipeline.
     """
 
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
+    # Use calibrated pipeline if available, otherwise use regular pipeline
+    if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
+        pipeline = model.calibrated_pipeline
+    else:
+        pipeline = model.pipeline
+
     if model_only:
-        return model
+        return pipeline
 
     if data_path:
         df = data_from_csv(data_path, index_column, sort_columns, eval_columns)
@@ -460,7 +468,7 @@ def prepare_for_inference(
         single_snapshot_per_visit,
     )
 
-    return X_test, y_test, model
+    return X_test, y_test, pipeline
 
 
 def prepare_snapshots_dict(df, start_dt=None, end_dt=None):

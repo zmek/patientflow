@@ -26,7 +26,7 @@ from patientflow.prepare import (
 )
 from patientflow.load import (
     load_config_file,
-    get_model_name,
+    get_model_key,
     set_file_paths,
     load_data,
     parse_args,
@@ -509,7 +509,7 @@ def train_admissions_models(
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
-        model_key = get_model_name(model_name, prediction_time)
+        model_key = get_model_key(model_name, prediction_time)
 
         # Get snapshots for each set
         X_train, y_train = get_snapshots_at_prediction_time(

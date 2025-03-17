@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from patientflow.load import get_model_name
+from patientflow.load import get_model_key
 from patientflow.prepare import get_snapshots_at_prediction_time
 from patientflow.predict.emergency_demand import add_missing_columns
 import shap
@@ -26,7 +26,7 @@ def plot_shap(
         fig, ax = plt.subplots(figsize=(8, 12))
 
         # Get model name and pipeline for this prediction time
-        model_name = get_model_name(model_group_name, prediction_time)
+        model_name = get_model_key(model_group_name, prediction_time)
         pipeline = trained_models[model_name].pipeline
 
         # Get test data for this prediction time
@@ -83,7 +83,7 @@ def plot_shap(
         plt.tight_layout()
 
         # Save plot
-        model_name = get_model_name("admissions_minimal", prediction_time)
+        model_name = get_model_key("admissions_minimal", prediction_time)
         shap_plot_path = str(media_file_path / "shap_plot_") + model_name + ".png"
 
         plt.savefig(shap_plot_path)
