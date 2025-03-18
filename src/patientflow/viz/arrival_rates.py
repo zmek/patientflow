@@ -406,6 +406,7 @@ def plot_cumulative_arrival_rates(
     text_y_offset=1,
     num_days=None,
     return_figure=False,
+    min_threshold=10
 ):
     """
     Plot cumulative arrival rates with optional statistical distributions.
@@ -459,6 +460,8 @@ def plot_cumulative_arrival_rates(
 
     return_figure : bool, optional
         If True, returns the matplotlib figure instead of displaying it (default is False)
+    min_threshold : float, optional
+        Minimal average daily arrivals required to generate the plot
 
     Returns
     -------
@@ -488,6 +491,15 @@ def plot_cumulative_arrival_rates(
         arrival_rates_dict = time_varying_arrival_rates(
             inpatient_arrivals, time_interval, num_days=num_days
         )
+
+    # Check whether arrival rates are above threshold
+    avg_daily_arrivals = sum(arrival_rates_dict.values())
+    if avg_daily_arrivals < min_threshold:
+        print(f"""Skipping plot with intended title of {title}\nInsufficient volume ({avg_daily_arrivals:.1f} arrivals per day)""")
+        if return_figure:
+            return None
+        else:
+            return
 
     # Process arrival rates
     arrival_rates, hour_labels, hour_values = process_arrival_rates(arrival_rates_dict)
