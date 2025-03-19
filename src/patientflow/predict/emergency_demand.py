@@ -254,6 +254,7 @@ def create_predictions(
         prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
             lambda x: x[specialty]
         )
+
         filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
             non_zero_indices
         ]
@@ -264,6 +265,7 @@ def create_predictions(
         filtered_weights = (
             filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
         )
+
         agg_predicted_in_ed = pred_proba_to_agg_predicted(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )

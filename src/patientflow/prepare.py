@@ -36,6 +36,7 @@ from datetime import datetime, date
 
 
 from typing import Tuple, List, Set, Dict, Any
+from functools import partial
 
 from patientflow.errors import MissingKeysError
 
@@ -224,14 +225,45 @@ def create_temporal_splits(
     return tuple(splits)
 
 
+class SpecialCategoryParams:
+    def __init__(self, columns):
+        self.columns = columns
+        self.special_category_dict = {
+            "medical": 0.0, "surgical": 0.0, "haem/onc": 0.0, "paediatric": 1.0,
+        }
+        
+        if "age_on_arrival" in columns:
+            self.method_type = "age_on_arrival"
+        elif "age_group" in columns:
+            self.method_type = "age_group"
+        else:
+            raise ValueError("Unknown data format: could not find expected age columns")
+    
+    def special_category_func(self, row):
+        if self.method_type == "age_on_arrival":
+            return row["age_on_arrival"] < 18
+        else:  # age_group
+            return row["age_group"] == "0-17"
+    
+    def opposite_special_category_func(self, row):
+        return not self.special_category_func(row)
+    
+    def get_params_dict(self):
+        return {
+            "special_category_func": self.special_category_func,
+            "special_category_dict": self.special_category_dict,
+            "special_func_map": {
+                "paediatric": self.special_category_func,
+                "default": self.opposite_special_category_func,
+            }
+        }
+    
+    def __reduce__(self):
+        return (self.__class__, (self.columns,))
+
 def create_special_category_objects(columns):
     """
     Creates a configuration for categorizing patients with special handling for pediatric cases.
-    
-    This function detects which age-related columns are present and configures the appropriate
-    functions for categorizing patients. It supports two different data formats:
-      1. Data with an 'age_on_arrival' column containing numeric age values
-      2. Data with an 'age_group' column containing categorical age ranges
     
     Parameters:
     -----------
@@ -241,62 +273,12 @@ def create_special_category_objects(columns):
     Returns:
     --------
     dict
-        A dictionary containing:
-        - 'special_category_dict': Default category values (1.0 for pediatric, 0.0 for others)
-        - 'special_category_func': Function that identifies pediatric patients
-        - 'special_func_map': Mapping of category names to their detection functions
-    
-    Raises:
-    -------
-    ValueError
-        If neither 'age_on_arrival' nor 'age_group' columns are found in the provided columns
-    
-    Examples:
-    ---------
-    >>> columns = ['patient_id', 'age_on_arrival', 'diagnosis']
-    >>> params = create_special_category_objects(columns)
-    >>> row = {'age_on_arrival': 12}
-    >>> params['special_category_func'](row)
-    True
+        A dictionary containing special category configuration.
     """
-    special_category_dict = {
-        "medical": 0.0,
-        "surgical": 0.0,
-        "haem/onc": 0.0,
-        "paediatric": 1.0,
-    }
+    # Create the class instance and return its parameter dictionary
+    params_obj = SpecialCategoryParams(columns)
+    return params_obj.get_params_dict()
 
-    # Auto-detect the data format based on column presence
-    if "age_on_arrival" in columns:
-        # Format with numeric age column
-        def special_category_func(row):
-            """Identify pediatric patients using age_on_arrival < 18"""
-            return row["age_on_arrival"] < 18
-    elif "age_group" in columns:
-        # Format with categorical age groups
-        def special_category_func(row):
-            """Identify pediatric patients using age_group == '0-17'"""
-            return row["age_group"] == "0-17"
-    else:
-        raise ValueError("Unknown data format: could not find expected age columns "
-                        "('age_on_arrival' or 'age_group')")
-
-    def opposite_special_category_func(row):
-        """Returns the opposite result of the pediatric identification function"""
-        return not special_category_func(row)
-
-    special_func_map = {
-        "paediatric": special_category_func,
-        "default": opposite_special_category_func,
-    }
-
-    special_params = {
-        "special_category_func": special_category_func,
-        "special_category_dict": special_category_dict,
-        "special_func_map": special_func_map,
-    }
-
-    return special_params
 
 def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
     required_keys = [
