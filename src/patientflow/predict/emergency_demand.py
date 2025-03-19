@@ -104,8 +104,7 @@ def create_predictions(
     y1: float,
     x2: float,
     y2: float,
-    cdf_cut_points: List[float],
-    special_params: Optional[Dict[str, Any]] = None,
+    cdf_cut_points: List[float]
 ) -> Dict[str, Dict[str, List[int]]]:
     """
     Create predictions for emergency demand for a single prediction moment.
@@ -172,13 +171,15 @@ def create_predictions(
 
     validate_model_names(models, model_names)
 
+    special_params = models[model_names["specialty"]].special_params
+
     if special_params:
-        validate_special_category_objects(special_params)
         special_category_func = special_params["special_category_func"]
         special_category_dict = special_params["special_category_dict"]
         special_func_map = special_params["special_func_map"]
     else:
         special_category_func = special_category_dict = special_func_map = None
+
 
     predictions: Dict[str, Dict[str, List[int]]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
