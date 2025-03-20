@@ -227,7 +227,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     Methods
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
-        fit(self, train_df, prediction_window, yta_time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the model using historical data and prediction parameters.
+        fit(self, train_df, prediction_window, yta_time_interval, prediction_times, y=None): Trains the model using historical data and prediction parameters.
         predict(self, prediction_context): Predicts the number of admissions for a given context after the model is trained.
         get_weights(self): Retrieves the model parameters computed during fitting.
 

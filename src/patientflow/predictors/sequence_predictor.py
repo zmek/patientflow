@@ -35,7 +35,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         Whether to filter out special categories of patients before fitting the model.
     admit_col : str, default='is_admitted'
         Name of the column indicating whether a patient was admitted.
-    
+
     Attributes
     ----------
     weights : dict
@@ -46,7 +46,14 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         The special category parameters used for filtering, only populated if apply_special_category_filtering=True.
     """
 
-    def __init__(self, input_var, grouping_var, outcome_var, apply_special_category_filtering=True, admit_col='is_admitted'):
+    def __init__(
+        self,
+        input_var,
+        grouping_var,
+        outcome_var,
+        apply_special_category_filtering=True,
+        admit_col="is_admitted",
+    ):
         self.input_var = input_var
         self.grouping_var = grouping_var
         self.outcome_var = outcome_var
@@ -58,28 +65,30 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
     def __repr__(self):
         """Return a string representation of the estimator."""
         class_name = self.__class__.__name__
-        return (f"{class_name}(\n"
-                f"    input_var='{self.input_var}',\n"
-                f"    grouping_var='{self.grouping_var}',\n"
-                f"    outcome_var='{self.outcome_var}',\n"
-                f"    apply_special_category_filtering={self.apply_special_category_filtering},\n"
-                f"    admit_col='{self.admit_col}'\n"
-                f")")
-    
+        return (
+            f"{class_name}(\n"
+            f"    input_var='{self.input_var}',\n"
+            f"    grouping_var='{self.grouping_var}',\n"
+            f"    outcome_var='{self.outcome_var}',\n"
+            f"    apply_special_category_filtering={self.apply_special_category_filtering},\n"
+            f"    admit_col='{self.admit_col}'\n"
+            f")"
+        )
+
     def _preprocess_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Preprocesses the input data before fitting the model.
-        
+
         Steps include:
         1. Selecting only admitted patients with a non-null specialty
         2. Optionally filtering out special categories
         3. Converting sequence columns to tuple format if they aren't already
-        
+
         Parameters
         ----------
         X : pd.DataFrame
             DataFrame containing patient data.
-            
+
         Returns
         -------
         pd.DataFrame
@@ -87,54 +96,62 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         """
         # Make a copy to avoid modifying the original
         df = X.copy()
-        
+
         # Step 1: Select only admitted patients with a non-null specialty
         if self.admit_col in df.columns:
             df = df[df[self.admit_col] & ~df[self.outcome_var].isnull()]
-        
+
         # Step 2: Optionally apply filtering for special categories
         if self.apply_special_category_filtering:
             # Get configuration for categorizing patients based on columns
             self.special_params = create_special_category_objects(df.columns)
-            
+
             # Extract function that identifies non-special category patients
-            opposite_special_category_func = self.special_params["special_func_map"]["default"]
-            
+            opposite_special_category_func = self.special_params["special_func_map"][
+                "default"
+            ]
+
             # Determine which category is the special category
             special_category_key = next(
                 key
                 for key, value in self.special_params["special_category_dict"].items()
                 if value == 1.0
             )
-            
-            # Filter out special category patients 
+
+            # Filter out special category patients
             df = df[
                 df.apply(opposite_special_category_func, axis=1)
                 & (df[self.outcome_var] != special_category_key)
             ]
-        
+
         # Step 3: Convert sequence columns to tuple format if not already tuples
         # Process input variable
         if self.input_var in df.columns:
             df[self.input_var] = df[self.input_var].apply(
-                lambda x: tuple(x) if (x is not None and not isinstance(x, tuple)) else 
-                          () if x is None else x
+                lambda x: tuple(x)
+                if (x is not None and not isinstance(x, tuple))
+                else ()
+                if x is None
+                else x
             )
-        
+
         # Process grouping variable
         if self.grouping_var in df.columns:
             df[self.grouping_var] = df[self.grouping_var].apply(
-                lambda x: tuple(x) if (x is not None and not isinstance(x, tuple)) else 
-                          () if x is None else x
+                lambda x: tuple(x)
+                if (x is not None and not isinstance(x, tuple))
+                else ()
+                if x is None
+                else x
             )
-        
+
         return df
 
-    def fit(self, X: pd.DataFrame) -> 'SequencePredictor':
+    def fit(self, X: pd.DataFrame) -> "SequencePredictor":
         """
         Fits the predictor based on training data by computing the proportion of each input variable sequence
         ending in specific outcome variable categories.
-        
+
         Automatically preprocesses the data before fitting.
 
         Parameters
@@ -149,7 +166,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         """
         # Preprocess the data
         X = self._preprocess_data(X)
-        
+
         # derive the names of the observed outcome variables from the data
         prop_keys = X[self.outcome_var].unique()
 

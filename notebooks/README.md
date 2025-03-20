@@ -4,7 +4,7 @@
 
 The notebooks in this folder demonstrate how you can use the PatientFlow repository. Notebooks combine commentary, code and the results produced by that code. Here's how different audiences can use the notebooks:
 
-- **As a non-programmer seeking to understand the approach:** The narrative sections in each notebook introduce my approach to creating predictive models of emergency demand for a hospital. 
+- **As a non-programmer seeking to understand the approach:** The narrative sections in each notebook introduce my approach to creating predictive models of emergency demand for a hospital.
 - **As a data scientist interested in how to model emergency demand:** The code snippets, combined with the narrative, show how I trained, tested and applied my models in Python. The output of each notebook cell shows the results of running the code.
 - **As a researcher interested in the patientflow package:** The repository contains a Python package that can be installed using an import statement in your code, so that you can use the functions I have developed. The notebooks demonstrate use of the functions in the PatientFlow package.
 
@@ -34,8 +34,6 @@ Two notebooks show how I evaluate the performance of the models, and how they ar
 - **[6_Bring_it_all_together](/notebooks/6_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
 
 Ignore the instructions below if you are just browsing. You can view the notebooks without going through these steps.
-
-
 
 ## Preparing your notebook environment
 
