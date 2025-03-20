@@ -390,7 +390,7 @@ def train_single_model(
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
     visit_col: str,
-    use_balanced_training: bool = False,
+    use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
@@ -417,7 +417,7 @@ def train_single_model(
         Mappings for ordinal categorical features
     visit_col : str
         Name of the visit column
-    use_balanced_training : bool, default=False
+    use_balanced_training : bool, default=True
         Whether to use balanced training data
     majority_to_minority_ratio : float, default=1.0
         Ratio of majority to minority class samples
@@ -435,13 +435,13 @@ def train_single_model(
     """
     # Get snapshots for each set
     X_train, y_train = get_snapshots_at_prediction_time(
-        train_visits, prediction_time, exclude_from_training_data, visit_col
+        train_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
     )
     X_valid, y_valid = get_snapshots_at_prediction_time(
-        valid_visits, prediction_time, exclude_from_training_data, visit_col
+        valid_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
     )
     X_test, y_test = get_snapshots_at_prediction_time(
-        test_visits, prediction_time, exclude_from_training_data, visit_col
+        test_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
     )
 
     # Store original size and positive rate before any balancing
@@ -577,7 +577,7 @@ def train_admissions_models(
     visit_col: str,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
-    use_balanced_training: bool = False,
+    use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     verbose: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
@@ -638,7 +638,6 @@ def train_specialty_model(
     train_visits: DataFrame,
     model_name: str,
     model_metadata: Dict[str, Any],
-    uclh: bool,
     visit_col: str,
     input_var: str,
     grouping_var: str,
@@ -686,7 +685,7 @@ def train_specialty_model(
 
 
 def train_yet_to_arrive_model(
-    ed_visits: DataFrame,
+    train_visits: DataFrame,
     train_yta: DataFrame,
     prediction_window: int,
     yta_time_interval: int,
@@ -724,7 +723,7 @@ def train_yet_to_arrive_model(
     elif train_yta.index.name != "arrival_datetime":
         print("Dataset needs arrival_datetime column")
 
-    specialty_filters = create_yta_filters(ed_visits)
+    specialty_filters = create_yta_filters(train_visits)
 
     yta_model = WeightedPoissonPredictor(filters=specialty_filters)
     yta_model.fit(
