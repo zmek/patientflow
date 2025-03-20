@@ -15,7 +15,8 @@ from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
 from sklearn.model_selection import TimeSeriesSplit, ParameterGrid
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from sklearn.calibration import CalibratedClassifierCV
 
 from patientflow.prepare import (
     get_snapshots_at_prediction_time,
@@ -297,6 +298,7 @@ class ModelResults:
     feature_importances: List[float]
     metrics: Dict[str, Any]
     calibrated_pipeline: Optional[Pipeline] = None
+    balance_info: Dict[str, Union[bool, int, float]] = field(default_factory=dict)
 
 
 def log_if_verbose(message: str, verbose: bool = False) -> None:
@@ -380,39 +382,45 @@ def get_feature_metadata(
 
 
 def train_single_model(
-    X_train: DataFrame,
-    X_valid: DataFrame,
-    X_test: DataFrame,
-    y_train: Series,
-    y_valid: Series,
-    y_test: Series,
+    train_visits: DataFrame,
+    valid_visits: DataFrame,
+    test_visits: DataFrame,
+    prediction_time: str,
+    exclude_from_training_data: List[str],
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
+    visit_col: str,
+    use_balanced_training: bool = False,
+    majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
     verbose: bool = False,
 ) -> ModelResults:
     """
-    Train a single model for one prediction time with optional probability calibration.
+    Train a single model including data preparation and balancing.
 
     Parameters:
     -----------
-    X_train : DataFrame
-        Training features
-    X_valid : DataFrame
-        Validation features
-    X_test : DataFrame
-        Test features
-    y_train : Series
-        Training labels
-    y_valid : Series
-        Validation labels
-    y_test : Series
-        Test labels
+    train_visits : DataFrame
+        Training visits dataset
+    valid_visits : DataFrame
+        Validation visits dataset
+    test_visits : DataFrame
+        Test visits dataset
+    prediction_time : str
+        The prediction time point to use
+    exclude_from_training_data : List[str]
+        Columns to exclude from training
     grid : Dict[str, List[Any]]
         Parameter grid for hyperparameter tuning
     ordinal_mappings : Dict[str, List[Any]]
         Mappings for ordinal categorical features
+    visit_col : str
+        Name of the visit column
+    use_balanced_training : bool, default=False
+        Whether to use balanced training data
+    majority_to_minority_ratio : float, default=1.0
+        Ratio of majority to minority class samples
     calibrate_probabilities : bool, default=True
         Whether to apply probability calibration to the best model
     calibration_method : str, default='isotonic'
@@ -425,7 +433,49 @@ def train_single_model(
     ModelResults
         Container with the best trained model, metrics, and feature information
     """
-    from sklearn.calibration import CalibratedClassifierCV
+    # Get snapshots for each set
+    X_train, y_train = get_snapshots_at_prediction_time(
+        train_visits, prediction_time, exclude_from_training_data, visit_col
+    )
+    X_valid, y_valid = get_snapshots_at_prediction_time(
+        valid_visits, prediction_time, exclude_from_training_data, visit_col
+    )
+    X_test, y_test = get_snapshots_at_prediction_time(
+        test_visits, prediction_time, exclude_from_training_data, visit_col
+    )
+
+    # Store original size and positive rate before any balancing
+    original_size = len(X_train)
+    original_positive_rate = y_train.mean()
+
+    if use_balanced_training:
+        pos_indices = y_train[y_train == 1].index
+        neg_indices = y_train[y_train == 0].index
+
+        n_pos = len(pos_indices)
+        n_neg = int(n_pos * majority_to_minority_ratio)
+
+        neg_indices_sampled = np.random.choice(
+            neg_indices, size=min(n_neg, len(neg_indices)), replace=False
+        )
+
+        train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
+        np.random.shuffle(train_balanced_indices)
+
+        X_train = X_train.loc[train_balanced_indices]
+        y_train = y_train.loc[train_balanced_indices]
+
+    # Create balance info after any balancing is done
+    balance_info = create_balance_info(
+        is_balanced=use_balanced_training,
+        original_size=original_size,
+        balanced_size=len(X_train),
+        original_positive_rate=original_positive_rate,
+        balanced_positive_rate=y_train.mean(),
+        majority_to_minority_ratio=majority_to_minority_ratio
+        if use_balanced_training
+        else 1.0,
+    )
 
     best_model = ModelResults(
         pipeline=None,
@@ -433,13 +483,14 @@ def train_single_model(
         feature_names=[],
         feature_importances=[],
         metrics={},
-        calibrated_pipeline=None,  # Add field for calibrated pipeline
+        calibrated_pipeline=None,
+        balance_info=balance_info,  # Add the balance info to the model results
     )
     results_dict: Dict[str, Dict[str, float]] = {}
 
     for params in ParameterGrid(grid):
         model = initialise_xgb(params)
-        column_transformer = create_column_transformer(X_test, ordinal_mappings)
+        column_transformer = create_column_transformer(X_train, ordinal_mappings)
         pipeline = Pipeline(
             [("feature_transformer", column_transformer), ("classifier", model)]
         )
@@ -455,7 +506,6 @@ def train_single_model(
             best_model.metrics = {
                 "params": str(params),
                 "train_valid_set_results": results_dict,
-                # "test_set_results": evaluate_model(pipeline, X_test, y_test),
             }
             best_model.feature_names = get_feature_metadata(pipeline)["feature_names"]
             best_model.feature_importances = get_feature_metadata(pipeline)[
@@ -531,144 +581,44 @@ def train_admissions_models(
     majority_to_minority_ratio: float = 1.0,
     verbose: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
-    """
-    Train admission prediction models with optional balanced training.
-
-    Additional Parameters:
-    ---------------------
-    use_balanced_training : bool, default=False
-        Whether to use balanced training data
-    majority_to_minority_ratio : float, default=1.0
-        Ratio of majority to minority class samples (1.0 means perfectly balanced)
-    """
+    """Train admission prediction models for multiple prediction times."""
     trained_models: Dict[str, Pipeline] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
         model_key = get_model_key(model_name, prediction_time)
 
-        # Get snapshots for each set
-        X_train, y_train = get_snapshots_at_prediction_time(
-            train_visits, prediction_time, exclude_from_training_data, visit_col
-        )
-        X_valid, y_valid = get_snapshots_at_prediction_time(
-            valid_visits, prediction_time, exclude_from_training_data, visit_col
-        )
-        X_test, y_test = get_snapshots_at_prediction_time(
-            test_visits, prediction_time, exclude_from_training_data, visit_col
-        )
-
-        # Initialize training data as unbalanced
-        X_train_final = X_train
-        y_train_final = y_train
-        balance_info: Dict[str, Union[bool, int, float]] = {
-            "is_balanced": False,
-            "original_size": len(X_train),
-        }
-
-        # Apply balancing if requested
-        if use_balanced_training:
-            pos_indices = y_train[y_train == 1].index
-            neg_indices = y_train[y_train == 0].index
-
-            # Calculate number of negative samples to keep
-            n_pos = len(pos_indices)
-            n_neg = int(n_pos * majority_to_minority_ratio)
-
-            # Sample negative cases
-            neg_indices_sampled = np.random.choice(
-                neg_indices, size=min(n_neg, len(neg_indices)), replace=False
-            )
-
-            # Combine indices and create balanced datasets
-            train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
-            np.random.shuffle(train_balanced_indices)  # Shuffle in place
-
-            X_train_final = X_train.loc[train_balanced_indices]
-            y_train_final = y_train.loc[train_balanced_indices]
-
-            # Create balance_info using the dedicated function
-            balance_info = create_balance_info(
-                is_balanced=True,
-                original_size=len(X_train),
-                balanced_size=len(X_train_final),
-                original_positive_rate=y_train.mean(),
-                balanced_positive_rate=y_train_final.mean(),
-                majority_to_minority_ratio=majority_to_minority_ratio,
-            )
-        else:
-            # Use simplified balance_info for unbalanced case
-            balance_info = create_balance_info(
-                is_balanced=False,
-                original_size=len(X_train),
-                balanced_size=len(X_train),
-                original_positive_rate=y_train.mean(),
-                balanced_positive_rate=y_train.mean(),
-                majority_to_minority_ratio=1.0,
-            )
-
-        if verbose:
-            log_if_verbose(
-                f"Training set size: {balance_info['balanced_size']}, Positive rate: {balance_info['balanced_positive_rate']:.3f}",
-                verbose,
-            )
-            if use_balanced_training:
-                log_if_verbose(
-                    f"(Original size: {balance_info['original_size']}, Original positive rate: {balance_info['original_positive_rate']:.3f})",
-                    verbose,
-                )
-            log_if_verbose(
-                f"Valid set size: {len(X_valid)}, Positive rate: {y_valid.mean():.3f}",
-                verbose,
-            )
-            log_if_verbose(
-                f"Test set size: {len(X_test)}, Positive rate: {y_test.mean():.3f}",
-                verbose,
-            )
-
-        # Initialize metadata with appropriate training data
-        model_metadata[model_key] = get_dataset_metadata(
-            X_train_final, X_valid, X_test, y_train_final, y_valid, y_test
-        )
-        model_metadata[model_key]["training_balance_info"] = balance_info
-
-        # Train model using selected training data
+        # Train model with the new simplified interface
         best_model = train_single_model(
-            X_train_final,
-            X_valid,
-            X_test,
-            y_train_final,
-            y_valid,
-            y_test,
+            train_visits,
+            valid_visits,
+            test_visits,
+            prediction_time,
+            exclude_from_training_data,
             grid,
             ordinal_mappings,
+            visit_col,
+            use_balanced_training=use_balanced_training,
+            majority_to_minority_ratio=majority_to_minority_ratio,
             calibrate_probabilities=calibrate_probabilities,
             calibration_method=calibration_method,
             verbose=verbose,
         )
 
-        # Store base model results
-        model_metadata[model_key].update(
-            {
-                "best_params": best_model.metrics["params"],
-                "train_valid_set_results": best_model.metrics[
-                    "train_valid_set_results"
-                ],
-                "test_set_results": best_model.metrics["test_set_results"],
-                "best_model_features": {
-                    "feature_names": best_model.feature_names,
-                    "feature_importances": best_model.feature_importances,
-                },
-            }
-        )
+        # Store model metadata
+        model_metadata[model_key] = {
+            "training_balance_info": best_model.balance_info,
+            "best_params": best_model.metrics["params"],
+            "train_valid_set_results": best_model.metrics["train_valid_set_results"],
+            "test_set_results": best_model.metrics["test_set_results"],
+            "best_model_features": {
+                "feature_names": best_model.feature_names,
+                "feature_importances": best_model.feature_importances,
+            },
+        }
 
-        # Store the pipeline
         if calibrate_probabilities:
-            # trained_models[model_key] = best_model.calibrated_pipeline
             model_metadata[model_key]["calibration_method"] = calibration_method
-
-        # else:
-        # trained_models[model_key] = best_model.pipeline
 
         trained_models[model_key] = best_model
 
