@@ -174,7 +174,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         if not X.empty:
             self.metrics["start_date"] = X["snapshot_date"].min()
             self.metrics["end_date"] = X["snapshot_date"].max()
-        
+
         # Preprocess the data
         X = self._preprocess_data(X)
 

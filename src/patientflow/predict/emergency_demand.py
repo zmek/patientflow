@@ -2,7 +2,6 @@ from typing import List, Dict, Any, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from patientflow.load import get_model_key
 
 from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
@@ -18,6 +17,10 @@ from patientflow.aggregate import (
 
 from patientflow.errors import ModelLoadError
 import warnings
+
+from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.metrics import TrainedModel
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
@@ -93,8 +96,7 @@ def validate_model_names(models: Dict[str, Any], model_names: Dict[str, str]) ->
 
 
 def create_predictions(
-    models: Dict[str, Any],
-    model_names: Dict[str, str],
+    models: Tuple[TrainedModel, SequencePredictor, WeightedPoissonPredictor],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
@@ -110,24 +112,11 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Dict[str, Any]
-        Dictionary containing all required models with the following structure:
-        {
-            'admissions': {
-                'admissions_<prediction_time>': ModelResults,
-                # ... one ModelResults object per prediction time
-            },
-            'specialty': SequencePredictor,
-            'yet_to_arrive': WeightedPoissonPredictor
-        }
-        where ModelResults objects contain either a 'pipeline' or 'calibrated_pipeline' attribute
-    model_names : Dict[str, str]
-        Dictionary mapping model types to their names, e.g.:
-        {
-            'admissions': 'admissions',
-            'specialty': 'ed_specialty',
-            'yet_to_arrive': 'yet_to_arrive_4_hours'
-        }
+    models : Tuple[TrainedModel, SequencePredictor, WeightedPoissonPredictor]
+        Tuple containing:
+        - admissions_model_results: TrainedModel containing admission predictions
+        - spec_model: SequencePredictor for specialty predictions
+        - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
     prediction_snapshots : pd.DataFrame
@@ -167,10 +156,17 @@ def create_predictions(
     will be used for making predictions, with calibrated_pipeline taking precedence
     if both exist.
     """
+    # Validate model types
+    admissions_model_results, spec_model, yet_to_arrive_model = models
 
-    validate_model_names(models, model_names)
+    if not isinstance(admissions_model_results, TrainedModel):
+        raise TypeError("First model must be of type TrainedModel")
+    if not isinstance(spec_model, SequencePredictor):
+        raise TypeError("Second model must be of type SequencePredictor")
+    if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
+        raise TypeError("Third model must be of type WeightedPoissonPredictor")
 
-    special_params = models[model_names["specialty"]].special_params
+    special_params = spec_model.special_params
 
     if special_params:
         special_category_func = special_params["special_category_func"]
@@ -183,35 +179,17 @@ def create_predictions(
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
 
-    # Get appropriate model for prediction time
-    model_for_prediction_time = get_model_key(
-        model_names["admissions"], prediction_time
-    )
-
     # Use calibrated pipeline if available, otherwise use regular pipeline
     if (
-        hasattr(
-            models[model_names["admissions"]][model_for_prediction_time],
-            "calibrated_pipeline",
-        )
-        and models[model_names["admissions"]][
-            model_for_prediction_time
-        ].calibrated_pipeline
-        is not None
+        hasattr(admissions_model_results, "calibrated_pipeline")
+        and admissions_model_results.calibrated_pipeline is not None
     ):
-        admissions_model = models[model_names["admissions"]][
-            model_for_prediction_time
-        ].calibrated_pipeline
+        admissions_model = admissions_model_results.calibrated_pipeline
     else:
-        admissions_model = models[model_names["admissions"]][
-            model_for_prediction_time
-        ].pipeline
+        admissions_model = admissions_model_results.pipeline
 
     # Add missing columns expected by the model
     prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
-
-    # Get yet to arrive model
-    yet_to_arrive_model = models[model_names["yet_to_arrive"]]
 
     # Get predictions of admissions for ED patients
     prob_admission_after_ed = model_input_to_pred_proba(
@@ -221,7 +199,7 @@ def create_predictions(
     # Get predictions of admission to specialty
     prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
         specialties,
-        models[model_names["specialty"]],
+        spec_model,
         prediction_snapshots,
         special_category_func=special_category_func,
         special_category_dict=special_category_dict,

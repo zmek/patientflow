@@ -225,7 +225,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         filters (dict): Optional filters for data categorization
         verbose (bool): Whether to enable verbose logging
         metrics (dict): Stores metadata about the model and training data
-    
+
     Methods
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.

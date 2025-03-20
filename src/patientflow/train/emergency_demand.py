@@ -5,8 +5,7 @@ from xgboost import XGBClassifier
 import pandas as pd
 from pandas import DataFrame, Series
 from joblib import dump
-import json
-from datetime import datetime, date
+from datetime import date
 from collections import Counter
 import sys
 
@@ -15,7 +14,6 @@ from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
 from sklearn.model_selection import TimeSeriesSplit, ParameterGrid
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
-from dataclasses import dataclass, field
 from sklearn.calibration import CalibratedClassifierCV
 
 from patientflow.prepare import (
@@ -36,6 +34,7 @@ from patientflow.load import (
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.predict.emergency_demand import create_predictions
+from patientflow.metrics import FoldResults, TrainingResults, TrainedModel
 
 
 def split_and_check_sets(
@@ -113,20 +112,11 @@ def split_and_check_sets(
         )
 
 
-@dataclass
-class MetricResults:
-    """Store evaluation metrics for a single fold."""
-
-    auc: float
-    logloss: float
-    auprc: float
-
-
 def evaluate_predictions(
     y_true: npt.NDArray[np.int_], y_pred: npt.NDArray[np.float64]
-) -> MetricResults:
+) -> FoldResults:
     """Calculate multiple metrics for given predictions."""
-    return MetricResults(
+    return FoldResults(
         auc=roc_auc_score(y_true, y_pred),
         logloss=log_loss(y_true, y_pred),
         auprc=average_precision_score(y_true, y_pred),
@@ -139,8 +129,8 @@ def chronological_cross_validation(
     """Perform time series cross-validation with multiple metrics."""
     tscv = TimeSeriesSplit(n_splits=n_splits)
 
-    train_metrics: List[MetricResults] = []
-    valid_metrics: List[MetricResults] = []
+    train_metrics: List[FoldResults] = []
+    valid_metrics: List[FoldResults] = []
 
     for train_idx, valid_idx in tscv.split(X):
         X_train, X_valid = X.iloc[train_idx], X.iloc[valid_idx]
@@ -153,10 +143,10 @@ def chronological_cross_validation(
         train_metrics.append(evaluate_predictions(y_train, train_preds))
         valid_metrics.append(evaluate_predictions(y_valid, valid_preds))
 
-    def aggregate_metrics(metrics_list: List[MetricResults]) -> Dict[str, float]:
+    def aggregate_metrics(metrics_list: List[FoldResults]) -> Dict[str, float]:
         return {
             field: np.mean([getattr(m, field) for m in metrics_list])
-            for field in MetricResults.__dataclass_fields__
+            for field in FoldResults.__dataclass_fields__
         }
 
     train_means = aggregate_metrics(train_metrics)
@@ -288,19 +278,6 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     return filtered_admitted
 
 
-@dataclass
-class ModelResults:
-    """Store model training results and metadata."""
-
-    pipeline: Pipeline
-    valid_logloss: float
-    feature_names: Union[List[str], List[float]]  # Allow both types
-    feature_importances: List[float]
-    metrics: Dict[str, Any]
-    calibrated_pipeline: Optional[Pipeline] = None
-    balance_info: Dict[str, Union[bool, int, float]] = field(default_factory=dict)
-
-
 def log_if_verbose(message: str, verbose: bool = False) -> None:
     """Helper function to handle verbose logging."""
     if verbose:
@@ -385,7 +362,7 @@ def train_single_model(
     train_visits: DataFrame,
     valid_visits: DataFrame,
     test_visits: DataFrame,
-    prediction_time: str,
+    prediction_time: Tuple[int, int],
     exclude_from_training_data: List[str],
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
@@ -394,8 +371,7 @@ def train_single_model(
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
-    verbose: bool = False,
-) -> ModelResults:
+) -> TrainedModel:
     """
     Train a single model including data preparation and balancing.
 
@@ -407,7 +383,7 @@ def train_single_model(
         Validation visits dataset
     test_visits : DataFrame
         Test visits dataset
-    prediction_time : str
+    prediction_time : Tuple[int, int]
         The prediction time point to use
     exclude_from_training_data : List[str]
         Columns to exclude from training
@@ -425,13 +401,11 @@ def train_single_model(
         Whether to apply probability calibration to the best model
     calibration_method : str, default='isotonic'
         Method for probability calibration ('isotonic' or 'sigmoid')
-    verbose : bool, default=False
-        Whether to print verbose output during training
 
     Returns:
     --------
-    ModelResults
-        Container with the best trained model, metrics, and feature information
+    TrainedModel
+        Trained model, including metrics, and feature information
     """
     # Get snapshots for each set
     X_train, y_train = get_snapshots_at_prediction_time(
@@ -482,15 +456,23 @@ def train_single_model(
         else 1.0,
     )
 
-    best_model = ModelResults(
-        pipeline=None,
+    # Initialize best training results with default values
+    best_training = TrainingResults(
         valid_logloss=float("inf"),
         feature_names=[],
         feature_importances=[],
-        metrics={},
-        calibrated_pipeline=None,
-        balance_info=balance_info,  # Add the balance info to the model results
+        metadata={},
+        balance_info=balance_info,
+        prediction_time=prediction_time,
     )
+
+    # Initialize best model container
+    best_model = TrainedModel(
+        metrics=best_training,
+        pipeline=None,
+        calibrated_pipeline=None,
+    )
+
     results_dict: Dict[str, Dict[str, float]] = {}
 
     for params in ParameterGrid(grid):
@@ -505,59 +487,44 @@ def train_single_model(
         )
         results_dict[str(params)] = cv_results
 
-        if cv_results["valid_logloss"] < best_model.valid_logloss:
+        if cv_results["valid_logloss"] < best_training.valid_logloss:
             best_model.pipeline = pipeline
-            best_model.valid_logloss = cv_results["valid_logloss"]
             feature_metadata = get_feature_metadata(pipeline)
-            best_model.feature_names = feature_metadata["feature_names"]
-            best_model.feature_importances = feature_metadata["feature_importances"]
-            
-            # Update metrics to include all information
-            best_model.metrics = {
+
+            # Update training results
+            best_training.valid_logloss = cv_results["valid_logloss"]
+            best_training.feature_names = feature_metadata["feature_names"]
+            best_training.feature_importances = feature_metadata["feature_importances"]
+            best_training.metadata = {
                 "best_params": str(params),
                 "train_valid_set_results": results_dict,
                 "training_balance_info": balance_info,
                 "best_model_features": {
-                    "feature_names": best_model.feature_names,
-                    "feature_importances": best_model.feature_importances,
+                    "feature_names": feature_metadata["feature_names"],
+                    "feature_importances": feature_metadata["feature_importances"],
                 },
-                "dataset_metadata": dataset_metadata  # Add the dataset metadata here
+                "dataset_metadata": dataset_metadata,
             }
 
             if calibrate_probabilities:
-                best_model.metrics["calibration_method"] = calibration_method
-
-            if verbose:
-                log_if_verbose("\nNew best model found:", verbose)
-                log_if_verbose(
-                    f"Valid LogLoss: {best_model.valid_logloss:.4f}", verbose
-                )
-                log_if_verbose(f"Valid AUPRC: {cv_results['valid_auprc']:.4f}", verbose)
-                log_if_verbose(f"Valid AUC: {cv_results['valid_auc']:.4f}", verbose)
+                best_training.metadata["calibration_method"] = calibration_method
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
-        if verbose:
-            log_if_verbose("\nApplying probability calibration...", verbose)
-
-        # Extract the best classifier and feature transformer
         best_feature_transformer = best_model.pipeline.named_steps[
             "feature_transformer"
         ]
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
-        # Transform the validation data
         X_valid_transformed = best_feature_transformer.transform(X_valid)
 
-        # Create and fit the calibrated classifier on the validation set
         calibrated_classifier = CalibratedClassifierCV(
             estimator=best_classifier,
-            method=calibration_method,  # 'isotonic' or 'sigmoid'
-            cv="prefit",  # Use 'prefit' since the model is already trained
+            method=calibration_method,
+            cv="prefit",
         )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 
-        # Create a new pipeline with the calibrated classifier
         calibrated_pipeline = Pipeline(
             [
                 ("feature_transformer", best_feature_transformer),
@@ -565,14 +532,13 @@ def train_single_model(
             ]
         )
 
-        # Store the calibrated pipeline and its metrics
         best_model.calibrated_pipeline = calibrated_pipeline
-        best_model.metrics["test_set_results"] = evaluate_model(
+        best_training.metadata["test_set_results"] = evaluate_model(
             calibrated_pipeline, X_test, y_test
         )
 
     else:
-        best_model.metrics["test_set_results"] = evaluate_model(
+        best_training.metadata["test_set_results"] = evaluate_model(
             best_model.pipeline, X_test, y_test
         )
 
@@ -586,17 +552,16 @@ def train_admissions_models(
     grid: Dict[str, List[Any]],
     exclude_from_training_data: List[str],
     ordinal_mappings: Dict[str, List[Any]],
-    prediction_times: List[str],
+    prediction_times: List[Tuple[int, int]],
     model_name: str = "admissions",
     visit_col: str = "visit_number",
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
-    verbose: bool = False,
-) -> Tuple[Dict[str, Any], Dict[str, Pipeline]]:
+) -> Dict[str, TrainedModel]:
     """Train admission prediction models for multiple prediction times."""
-    trained_models: Dict[str, Pipeline] = {}
+    trained_models: Dict[str, TrainedModel] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
@@ -616,19 +581,9 @@ def train_admissions_models(
             majority_to_minority_ratio=majority_to_minority_ratio,
             calibrate_probabilities=calibrate_probabilities,
             calibration_method=calibration_method,
-            verbose=verbose,
         )
 
         trained_models[model_key] = best_model
-
-        if verbose:
-            test_metrics = best_model.metrics["test_set_results"]
-            log_if_verbose(f"\nModel performance for {prediction_time}:", verbose)
-            log_if_verbose(f"Test AUPRC: {test_metrics.get('auprc', 'N/A')}", verbose)
-            log_if_verbose(f"Test AUC: {test_metrics.get('auc', 'N/A')}", verbose)
-            log_if_verbose(
-                f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose
-            )
 
     return trained_models
 
@@ -759,16 +714,13 @@ def save_model(model, model_name, model_file_path):
         dump(model, full_path)
 
 
-
 def test_real_time_predictions(
     visits,
-    models,
-    model_names,
+    models: Tuple[Dict[str, TrainedModel], SequencePredictor, WeightedPoissonPredictor],
     prediction_window,
     specialties,
     cdf_cut_points,
     curve_params,
-    uclh,
     random_seed,
 ):
     """
@@ -780,12 +732,11 @@ def test_real_time_predictions(
     visits : pd.DataFrame
         DataFrame containing visit data with columns including 'prediction_time',
         'snapshot_date', and other required features for predictions.
-    models : dict
-        Dictionary containing the trained models for admissions, specialty,
-        and yet-to-arrive predictions.
-    model_names : dict
-        Dictionary mapping model types to their names (e.g., 'admissions',
-        'specialty', 'yet_to_arrive').
+    models : Tuple[Dict[str, TrainedModel], SequencePredictor, WeightedPoissonPredictor]
+        Tuple containing:
+        - admissions_model_results: TrainedModel containing admission predictions
+        - spec_model: SequencePredictor for specialty predictions
+        - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_window : int
         Size of the prediction window in minutes for which to generate forecasts.
     specialties : list[str]
@@ -796,8 +747,6 @@ def test_real_time_predictions(
         cut points (e.g., [0.9, 0.7]).
     curve_params : tuple[float, float, float, float]
         Parameters (x1, y1, x2, y2) defining the curve used for predictions.
-    uclh : bool
-        Flag indicating whether UCLH-specific processing should be applied.
     random_seed : int
         Random seed for reproducible sampling of test cases.
 
@@ -832,16 +781,23 @@ def test_real_time_predictions(
         (visits.prediction_time == prediction_time)
         & (visits.snapshot_date == prediction_date)
     ]
-    realtime_preds_dict = {
-        "prediction_time": str(prediction_time),
-        "prediction_date": str(prediction_date),
-    }
+
+    admissions_models, spec_model, yet_to_arrive_model = models
+
+    # Find the model matching the required prediction time
+    admissions_model = None
+    for model_key, trained_model in admissions_models.items():
+        if trained_model.metrics.prediction_time == prediction_time:
+            admissions_model = trained_model
+            break
+
+    if admissions_model is None:
+        raise ValueError(f"No model found for prediction time {prediction_time}")
 
     try:
         x1, y1, x2, y2 = curve_params
-        realtime_preds_dict["realtime_preds"] = create_predictions(
-            models=models,
-            model_names=model_names,
+        _ = create_predictions(
+            models=(admissions_model, spec_model, yet_to_arrive_model),
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=specialties,
@@ -855,10 +811,9 @@ def test_real_time_predictions(
         print("Real-time inference ran correctly")
     except Exception as e:
         print(f"Real-time inference failed due to this error: {str(e)}")
-        print(realtime_preds_dict)
         sys.exit(1)
 
-    return realtime_preds_dict
+    return
 
 
 def train_all_models(
@@ -875,7 +830,6 @@ def train_all_models(
     grid_params,
     exclude_columns,
     ordinal_mappings,
-    uclh,
     random_seed,
     visit_col="visit_number",
     specialties=None,
@@ -908,8 +862,6 @@ def train_all_models(
         Columns to exclude during training.
     ordinal_mappings : dict
         Ordinal variable mappings for categorical features.
-    uclh : bool
-        Indicates if the UCLH dataset is used.
     random_seed : int
         Random seed for reproducibility.
     visit_col : str, optional
@@ -968,9 +920,6 @@ def train_all_models(
         "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
     }
 
-
-    models = dict.fromkeys(model_names)
-
     if "arrival_datetime" in visits.columns:
         col_name = "arrival_datetime"
     else:
@@ -1012,7 +961,7 @@ def train_all_models(
     )
 
     # Save admission models if requested
-    models[model_names["admissions"]] = admission_models
+
     if save_models:
         save_model(admission_models, model_names["admissions"], model_file_path)
 
@@ -1027,7 +976,6 @@ def train_all_models(
     )
 
     # Save specialty model if requested
-    models[model_names["specialty"]] = specialty_model
     if save_models:
         save_model(specialty_model, model_names["specialty"], model_file_path)
 
@@ -1047,27 +995,23 @@ def train_all_models(
     )
 
     # Save yet-to-arrive model if requested
-    models[model_names["yet_to_arrive"]] = yta_model
     if save_models:
         save_model(yta_model, yta_model_name, model_file_path)
-        print(f'Models have been saved to {model_file_path}')
+        print(f"Models have been saved to {model_file_path}")
 
     # Test real-time predictions if requested
-    realtime_preds_dict = None
     if test_realtime:
-        realtime_preds_dict = test_real_time_predictions(
+        test_real_time_predictions(
             visits=visits,
-            models=models,
-            model_names=model_names,
+            models=(admission_models, specialty_model, yta_model),
             prediction_window=prediction_window,
             specialties=specialties,
             cdf_cut_points=cdf_cut_points,
             curve_params=curve_params,
-            uclh=uclh,
             random_seed=random_seed,
         )
 
-    return 
+    return
 
 
 def main(data_folder_name=None):
@@ -1190,11 +1134,9 @@ def main(data_folder_name=None):
         specialties=specialties,
         cdf_cut_points=cdf_cut_points,
         random_seed=random_seed,
-        uclh=False,
     )
 
-
-    return 
+    return
 
 
 if __name__ == "__main__":
