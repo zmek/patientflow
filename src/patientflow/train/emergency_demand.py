@@ -236,22 +236,22 @@ def create_json_safe_params(params: Dict[str, Any]) -> Dict[str, Any]:
 def get_default_visits(admitted: DataFrame) -> DataFrame:
     """
     Filters a dataframe of patient visits to include only non-pediatric patients.
-    
+
     This function identifies and removes pediatric patients from the dataset based on
     both age criteria and specialty assignment. It automatically detects the appropriate
     age column format from the provided dataframe.
-    
+
     Parameters:
     -----------
     admitted : DataFrame
         A pandas DataFrame containing patient visit information. Must include either
         'age_on_arrival' or 'age_group' columns, and a 'specialty' column.
-    
+
     Returns:
     --------
     DataFrame
         A filtered DataFrame containing only non-pediatric patients (adults).
-    
+
     Notes:
     ------
     The function automatically detects which age-related columns are present in the
@@ -259,7 +259,7 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     are either:
     1. Identified as pediatric based on age criteria, or
     2. Assigned to a pediatric specialty
-    
+
     Examples:
     ---------
     >>> adult_visits = get_default_visits(all_patient_visits)
@@ -267,24 +267,25 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     """
     # Get configuration for categorizing patients based on age columns
     special_params = create_special_category_objects(admitted.columns)
-    
+
     # Extract function that identifies non-pediatric patients
     opposite_special_category_func = special_params["special_func_map"]["default"]
-    
+
     # Determine which category is the special category (should be "paediatric")
     special_category_key = next(
         key
         for key, value in special_params["special_category_dict"].items()
         if value == 1.0
     )
-    
+
     # Filter out pediatric patients based on both age criteria and specialty
     filtered_admitted = admitted[
         admitted.apply(opposite_special_category_func, axis=1)
         & (admitted["specialty"] != special_category_key)
     ]
-    
+
     return filtered_admitted
+
 
 @dataclass
 class ModelResults:
@@ -735,6 +736,7 @@ def train_specialty_model(
 
 
 def train_yet_to_arrive_model(
+    ed_visits: DataFrame,
     train_yta: DataFrame,
     prediction_window: int,
     yta_time_interval: int,
@@ -742,13 +744,12 @@ def train_yet_to_arrive_model(
     epsilon: float,
     model_name: str,
     model_metadata: Dict[str, Any],
-    uclh: bool,
-    specialty_filters: Dict[str, Any],
     num_days: int,
 ) -> Tuple[Dict[str, Any], WeightedPoissonPredictor]:
     """Train a yet-to-arrive prediction model.
 
     Args:
+        ed_visits: Visits dataset (used for identifying special categories)
         train_yta: Training data for yet-to-arrive predictions
         prediction_window: Time window for predictions
         yta_time_interval: Time interval for predictions
@@ -772,6 +773,8 @@ def train_yet_to_arrive_model(
 
     elif train_yta.index.name != "arrival_datetime":
         print("Dataset needs arrival_datetime column")
+
+    specialty_filters = create_yta_filters(ed_visits)
 
     yta_model = WeightedPoissonPredictor(filters=specialty_filters)
     yta_model.fit(
@@ -921,8 +924,6 @@ def test_real_time_predictions(
         (visits.prediction_time == prediction_time)
         & (visits.snapshot_date == prediction_date)
     ]
-    special_params = create_special_category_objects(uclh)
-
     realtime_preds_dict = {
         "prediction_time": str(prediction_time),
         "prediction_date": str(prediction_date),
@@ -942,7 +943,6 @@ def test_real_time_predictions(
             y1=y1,
             x2=x2,
             y2=y2,
-            special_params=special_params,
         )
         print("Real-time inference ran correctly")
     except Exception as e:
@@ -1145,12 +1145,12 @@ def train_all_models(
         save_model(specialty_model, model_names["specialty"], model_file_path)
 
     # Train yet-to-arrive model
-    specialty_filters = create_yta_filters(uclh)
     yta_model_name = model_names["yet_to_arrive"]
 
     num_days = (start_validation_set - start_training_set).days
 
     model_metadata, yta_model = train_yet_to_arrive_model(
+        ed_visits=train_visits,
         train_yta=train_yta,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
@@ -1158,8 +1158,6 @@ def train_all_models(
         epsilon=epsilon,
         model_name=yta_model_name,
         model_metadata=model_metadata,
-        uclh=uclh,
-        specialty_filters=specialty_filters,
         num_days=num_days,
     )
 

@@ -1,9 +1,8 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 from patientflow.load import get_model_key
-from patientflow.prepare import validate_special_category_objects
 
 from patientflow.predict.admission_in_prediction_window import (
     calculate_probability,
@@ -104,7 +103,7 @@ def create_predictions(
     y1: float,
     x2: float,
     y2: float,
-    cdf_cut_points: List[float]
+    cdf_cut_points: List[float],
 ) -> Dict[str, Dict[str, List[int]]]:
     """
     Create predictions for emergency demand for a single prediction moment.
@@ -179,7 +178,6 @@ def create_predictions(
         special_func_map = special_params["special_func_map"]
     else:
         special_category_func = special_category_dict = special_func_map = None
-
 
     predictions: Dict[str, Dict[str, List[int]]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
