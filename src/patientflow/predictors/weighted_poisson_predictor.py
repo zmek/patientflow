@@ -221,9 +221,11 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     This prediction does not include patients who have already arrived and is based on historical data.
     The prediction uses a combination of Poisson and binomial distributions.
 
-    Attributes
-        None
-
+    Attributes:
+        filters (dict): Optional filters for data categorization
+        verbose (bool): Whether to enable verbose logging
+        metrics (dict): Stores metadata about the model and training data
+    
     Methods
         __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
         filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
@@ -244,6 +246,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         """
         self.filters = filters if filters else {}
         self.verbose = verbose
+        self.metrics = {}  # Add metrics dictionary to store metadata
 
         if verbose:
             # Configure logging for Jupyter notebook compatibility
@@ -344,9 +347,9 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         prediction_window: int,
         yta_time_interval: int,
         prediction_times: List[float],
+        num_days: int,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        num_days: Optional[int] = None,
     ) -> "WeightedPoissonPredictor":
         """
         Fits the model to the training data, computing necessary parameters for future predictions.
@@ -360,12 +363,12 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 The interval in minutes for splitting the prediction window.
             prediction_times (list):
                 Times of day at which predictions are made, in hours.
+            num_days (int):
+                 The number of days that the train_df spans
             epsilon (float, optional):
                 A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
             y (None, optional):
                 Ignored, present for compatibility with scikit-learn's fit method.
-            num_days (int, optional):
-                 The number of days that the train_df spans
 
         Returns:
             WeightedPoissonPredictor: The instance itself, fitted with the training data.
@@ -421,6 +424,13 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             self.logger.info(
                 "To see the weights saved by this model, used the get_weights() method"
             )
+
+        # Store metrics about the training data
+        self.metrics["train_dttm"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.metrics["train_set_no"] = len(train_df)
+        self.metrics["start_date"] = train_df.index.min().date()
+        self.metrics["end_date"] = train_df.index.max().date()
+        self.metrics["num_days"] = num_days
 
         return self
 

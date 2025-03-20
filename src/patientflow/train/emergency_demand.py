@@ -444,6 +444,11 @@ def train_single_model(
         test_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
     )
 
+    # Get dataset metadata before any balancing
+    dataset_metadata = get_dataset_metadata(
+        X_train, X_valid, X_test, y_train, y_valid, y_test
+    )
+
     # Store original size and positive rate before any balancing
     original_size = len(X_train)
     original_positive_rate = y_train.mean()
@@ -503,14 +508,24 @@ def train_single_model(
         if cv_results["valid_logloss"] < best_model.valid_logloss:
             best_model.pipeline = pipeline
             best_model.valid_logloss = cv_results["valid_logloss"]
+            feature_metadata = get_feature_metadata(pipeline)
+            best_model.feature_names = feature_metadata["feature_names"]
+            best_model.feature_importances = feature_metadata["feature_importances"]
+            
+            # Update metrics to include all information
             best_model.metrics = {
-                "params": str(params),
+                "best_params": str(params),
                 "train_valid_set_results": results_dict,
+                "training_balance_info": balance_info,
+                "best_model_features": {
+                    "feature_names": best_model.feature_names,
+                    "feature_importances": best_model.feature_importances,
+                },
+                "dataset_metadata": dataset_metadata  # Add the dataset metadata here
             }
-            best_model.feature_names = get_feature_metadata(pipeline)["feature_names"]
-            best_model.feature_importances = get_feature_metadata(pipeline)[
-                "feature_importances"
-            ]
+
+            if calibrate_probabilities:
+                best_model.metrics["calibration_method"] = calibration_method
 
             if verbose:
                 log_if_verbose("\nNew best model found:", verbose)
@@ -572,9 +587,8 @@ def train_admissions_models(
     exclude_from_training_data: List[str],
     ordinal_mappings: Dict[str, List[Any]],
     prediction_times: List[str],
-    model_name: str,
-    model_metadata: Dict[str, Any],
-    visit_col: str,
+    model_name: str = "admissions",
+    visit_col: str = "visit_number",
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
     use_balanced_training: bool = True,
@@ -605,25 +619,10 @@ def train_admissions_models(
             verbose=verbose,
         )
 
-        # Store model metadata
-        model_metadata[model_key] = {
-            "training_balance_info": best_model.balance_info,
-            "best_params": best_model.metrics["params"],
-            "train_valid_set_results": best_model.metrics["train_valid_set_results"],
-            "test_set_results": best_model.metrics["test_set_results"],
-            "best_model_features": {
-                "feature_names": best_model.feature_names,
-                "feature_importances": best_model.feature_importances,
-            },
-        }
-
-        if calibrate_probabilities:
-            model_metadata[model_key]["calibration_method"] = calibration_method
-
         trained_models[model_key] = best_model
 
         if verbose:
-            test_metrics = model_metadata[model_key]["test_set_results"]
+            test_metrics = best_model.metrics["test_set_results"]
             log_if_verbose(f"\nModel performance for {prediction_time}:", verbose)
             log_if_verbose(f"Test AUPRC: {test_metrics.get('auprc', 'N/A')}", verbose)
             log_if_verbose(f"Test AUC: {test_metrics.get('auc', 'N/A')}", verbose)
@@ -631,13 +630,12 @@ def train_admissions_models(
                 f"Test LogLoss: {test_metrics.get('logloss', 'N/A')}", verbose
             )
 
-    return model_metadata, trained_models
+    return trained_models
 
 
 def train_specialty_model(
     train_visits: DataFrame,
     model_name: str,
-    model_metadata: Dict[str, Any],
     visit_col: str,
     input_var: str,
     grouping_var: str,
@@ -648,7 +646,6 @@ def train_specialty_model(
     Args:
         train_visits: Training data containing visit information
         model_name: Name identifier for the model
-        model_metadata: Dictionary to store model metadata
         uclh: Flag for UCLH specific processing
         visit_col: Column name containing visit identifiers
         input_var: Column name for input sequence
@@ -677,11 +674,8 @@ def train_specialty_model(
         outcome_var=outcome_var,
     )
     spec_model.fit(filtered_admitted)
-    model_metadata[model_name] = {}
-    model_metadata[model_name]["train_set_no"] = {
-        "train_set_no": len(filtered_admitted),
-    }
-    return model_metadata, spec_model
+
+    return spec_model
 
 
 def train_yet_to_arrive_model(
@@ -691,10 +685,8 @@ def train_yet_to_arrive_model(
     yta_time_interval: int,
     prediction_times: List[float],
     epsilon: float,
-    model_name: str,
-    model_metadata: Dict[str, Any],
     num_days: int,
-) -> Tuple[Dict[str, Any], WeightedPoissonPredictor]:
+) -> WeightedPoissonPredictor:
     """Train a yet-to-arrive prediction model.
 
     Args:
@@ -705,13 +697,12 @@ def train_yet_to_arrive_model(
         prediction_times: List of prediction times
         epsilon: Epsilon parameter for model
         model_name: Name identifier for the model
-        model_metadata: Dictionary to store model metadata
         uclh: Flag for UCLH specific processing
         specialty_filters: Filters for specialties
         num_days: Number of days to consider
 
     Returns:
-        Tuple of updated model metadata dictionary and trained WeightedPoissonPredictor model
+        Trained WeightedPoissonPredictor model
     """
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
@@ -735,12 +726,7 @@ def train_yet_to_arrive_model(
         num_days=num_days,
     )
 
-    model_metadata[model_name] = {}
-    model_metadata[model_name]["train_set_no"] = {
-        "train_set_no": len(train_yta),
-    }
-
-    return model_metadata, yta_model
+    return yta_model
 
 
 def save_model(model, model_name, model_file_path):
@@ -772,33 +758,6 @@ def save_model(model, model_name, model_file_path):
         full_path = full_path.with_suffix(".joblib")
         dump(model, full_path)
 
-
-def save_metadata(metadata, base_path, subdir, filename):
-    """
-    Save model metadata to disk.
-
-    Parameters
-    ----------
-    metadata : dict
-        Metadata dictionary to save as a JSON file.
-    base_path : Path
-        Base directory where the metadata will be stored.
-    subdir : str, optional
-        Subdirectory within the base directory for saving metadata. Defaults to "model-output".
-    filename : str, optional
-        Name of the metadata file. Defaults to "model_metadata.json".
-
-    Returns
-    -------
-    None
-    """
-    # Construct full path
-    metadata_dir = base_path / subdir if subdir else base_path
-    metadata_dir.mkdir(exist_ok=True, parents=True)
-    metadata_path = metadata_dir / filename
-
-    with open(metadata_path, "w") as f:
-        json.dump(metadata, f)
 
 
 def test_real_time_predictions(
@@ -923,8 +882,6 @@ def train_all_models(
     cdf_cut_points=None,
     curve_params=None,
     model_file_path=None,
-    metadata_subdir="model-output",
-    metadata_filename="model_metadata.json",
     save_models=True,
     test_realtime=True,
 ):
@@ -965,10 +922,6 @@ def train_all_models(
         Curve parameters (x1, y1, x2, y2). Required if test_realtime is True.
     model_file_path : Path, optional
         Path to save trained models. Required if save_models is True.
-    metadata_subdir : str, optional
-        Subdirectory for metadata. Only used if save_models is True. Defaults to "model-output".
-    metadata_filename : str, optional
-        Metadata filename. Only used if save_models is True. Defaults to "model_metadata.json".
     save_models : bool, optional
         Whether to save the trained models to disk. Defaults to True.
     test_realtime : bool, optional
@@ -976,9 +929,7 @@ def train_all_models(
 
     Returns
     -------
-    dict or tuple
-        If save_models is True, returns a dict with model metadata including training and evaluation details.
-        If save_models is False, returns a tuple (model_metadata, models) where models is a dict of trained models.
+    None
 
     Raises
     ------
@@ -1010,14 +961,6 @@ def train_all_models(
     # Set random seed
     np.random.seed(random_seed)
 
-    train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
-
-    # Create metadata dictionary
-    model_metadata = {
-        "uclh": uclh,
-        "train_dttm": train_dttm,
-    }
-
     # Define model names internally
     model_names = {
         "admissions": "admissions",
@@ -1025,8 +968,6 @@ def train_all_models(
         "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
     }
 
-    # Add model names to metadata
-    model_metadata["model_names"] = model_names
 
     models = dict.fromkeys(model_names)
 
@@ -1058,7 +999,7 @@ def train_all_models(
         prediction_times = visits.prediction_time.unique()
 
     # Train admission models
-    model_metadata, admission_models = train_admissions_models(
+    admission_models = train_admissions_models(
         train_visits=train_visits,
         valid_visits=valid_visits,
         test_visits=test_visits,
@@ -1067,7 +1008,6 @@ def train_all_models(
         ordinal_mappings=ordinal_mappings,
         prediction_times=prediction_times,
         model_name=model_names["admissions"],
-        model_metadata=model_metadata,
         visit_col=visit_col,
     )
 
@@ -1077,11 +1017,9 @@ def train_all_models(
         save_model(admission_models, model_names["admissions"], model_file_path)
 
     # Train specialty model
-    model_metadata, specialty_model = train_specialty_model(
+    specialty_model = train_specialty_model(
         train_visits=train_visits,
         model_name=model_names["specialty"],
-        model_metadata=model_metadata,
-        uclh=uclh,
         input_var="consultation_sequence",
         grouping_var="final_sequence",
         outcome_var="specialty",
@@ -1098,15 +1036,13 @@ def train_all_models(
 
     num_days = (start_validation_set - start_training_set).days
 
-    model_metadata, yta_model = train_yet_to_arrive_model(
-        ed_visits=train_visits,
+    yta_model = train_yet_to_arrive_model(
+        train_visits=train_visits,
         train_yta=train_yta,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         epsilon=epsilon,
-        model_name=yta_model_name,
-        model_metadata=model_metadata,
         num_days=num_days,
     )
 
@@ -1114,6 +1050,7 @@ def train_all_models(
     models[model_names["yet_to_arrive"]] = yta_model
     if save_models:
         save_model(yta_model, yta_model_name, model_file_path)
+        print(f'Models have been saved to {model_file_path}')
 
     # Test real-time predictions if requested
     realtime_preds_dict = None
@@ -1130,23 +1067,7 @@ def train_all_models(
             random_seed=random_seed,
         )
 
-        # Save results in metadata
-        model_metadata["realtime_preds"] = realtime_preds_dict
-
-    # Save metadata with configurable path and filename
-    if save_models:
-        save_metadata(
-            metadata=model_metadata,
-            base_path=model_file_path,
-            subdir=metadata_subdir,
-            filename=metadata_filename,
-        )
-
-    # Return both models and metadata if not saving to disk
-    if not save_models:
-        return model_metadata, models
-
-    return model_metadata
+    return 
 
 
 def main(data_folder_name=None):
@@ -1164,7 +1085,6 @@ def main(data_folder_name=None):
         )
     print(f"Loading data from folder: {data_folder_name}")
 
-    train_dttm = datetime.now().strftime("%Y-%m-%d-%H-%M")
     project_root = set_project_root()
 
     # Set file locations
@@ -1251,7 +1171,7 @@ def main(data_folder_name=None):
     random_seed = 42
 
     # Call train_all_models with prepared parameters
-    model_metadata = train_all_models(
+    train_all_models(
         visits=ed_visits,
         start_training_set=start_training_set,
         start_validation_set=start_validation_set,
@@ -1273,17 +1193,8 @@ def main(data_folder_name=None):
         uclh=False,
     )
 
-    # Add additional metadata
-    model_metadata.update(
-        {
-            "data_folder_name": data_folder_name,
-            "uclh": False,
-            "train_dttm": train_dttm,
-            "config": create_json_safe_params(config),
-        }
-    )
 
-    return model_metadata
+    return 
 
 
 if __name__ == "__main__":

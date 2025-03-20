@@ -14,6 +14,7 @@ from typing import Dict
 import pandas as pd
 import ast
 from sklearn.base import BaseEstimator, TransformerMixin
+from datetime import datetime
 
 from patientflow.prepare import create_special_category_objects
 
@@ -44,6 +45,8 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         A DataFrame that stores the computed probabilities of input sequences being associated with different grouping sequences.
     special_params : dict, optional
         The special category parameters used for filtering, only populated if apply_special_category_filtering=True.
+    metrics : dict
+        A dictionary to store metrics related to the training process.
     """
 
     def __init__(
@@ -61,6 +64,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         self.admit_col = admit_col
         self.weights = None
         self.special_params = None
+        self.metrics = {}
 
     def __repr__(self):
         """Return a string representation of the estimator."""
@@ -164,6 +168,13 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         self : SequencePredictor
             The fitted SequencePredictor model with calculated probabilities for each sequence.
         """
+        # Store metrics about the training data
+        self.metrics["train_dttm"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.metrics["train_set_no"] = len(X)
+        if not X.empty:
+            self.metrics["start_date"] = X["snapshot_date"].min()
+            self.metrics["end_date"] = X["snapshot_date"].max()
+        
         # Preprocess the data
         X = self._preprocess_data(X)
 
