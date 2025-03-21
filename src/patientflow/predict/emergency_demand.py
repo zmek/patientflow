@@ -20,7 +20,7 @@ import warnings
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from patientflow.metrics import TrainedModel
+from patientflow.metrics import TrainedClassifier
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
@@ -96,7 +96,7 @@ def validate_model_names(models: Dict[str, Any], model_names: Dict[str, str]) ->
 
 
 def create_predictions(
-    models: Tuple[TrainedModel, SequencePredictor, WeightedPoissonPredictor],
+    models: Tuple[TrainedClassifier, SequencePredictor, WeightedPoissonPredictor],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
@@ -112,9 +112,9 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedModel, SequencePredictor, WeightedPoissonPredictor]
+    models : Tuple[TrainedClassifier, SequencePredictor, WeightedPoissonPredictor]
         Tuple containing:
-        - admissions_model_results: TrainedModel containing admission predictions
+        - classifier: TrainedClassifier containing admission predictions
         - spec_model: SequencePredictor for specialty predictions
         - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_time : Tuple
@@ -157,14 +157,39 @@ def create_predictions(
     if both exist.
     """
     # Validate model types
-    admissions_model_results, spec_model, yet_to_arrive_model = models
+    classifier, spec_model, yet_to_arrive_model = models
 
-    if not isinstance(admissions_model_results, TrainedModel):
-        raise TypeError("First model must be of type TrainedModel")
+    if not isinstance(classifier, TrainedClassifier):
+        raise TypeError("First model must be of type TrainedClassifier")
     if not isinstance(spec_model, SequencePredictor):
         raise TypeError("Second model must be of type SequencePredictor")
     if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
         raise TypeError("Third model must be of type WeightedPoissonPredictor")
+
+    # Check that all models have been fit
+    if not hasattr(classifier, "pipeline") or classifier.pipeline is None:
+        raise ValueError("Classifier model has not been fit")
+    if not hasattr(spec_model, "weights") or spec_model.weights is None:
+        raise ValueError("Specialty model has not been fit")
+    if (
+        not hasattr(yet_to_arrive_model, "prediction_window")
+        or yet_to_arrive_model.prediction_window is None
+    ):
+        raise ValueError("Yet-to-arrive model has not been fit")
+
+    # Validate that the correct models have been passed for the requested prediction time and prediction window
+    if not classifier.metrics.prediction_time == prediction_time:
+        raise ValueError(
+            "Requested prediction time does not match the prediction time of the trained classifier"
+        )
+    if not yet_to_arrive_model.prediction_window / 60 == prediction_window_hrs:
+        raise ValueError(
+            "Requested prediction window does not match the prediction window of the trained yet-to-arrive model"
+        )
+    if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
+        raise ValueError(
+            "Requested specialties do not match the specialties of the trained yet-to-arrive model"
+        )
 
     special_params = spec_model.special_params
 
@@ -175,26 +200,31 @@ def create_predictions(
     else:
         special_category_func = special_category_dict = special_func_map = None
 
+    if special_category_dict is not None and not set(specialties) == set(
+        special_category_dict.keys()
+    ):
+        raise ValueError(
+            "Requested specialties do not match the specialty dictionary defined in special_params"
+        )
+
     predictions: Dict[str, Dict[str, List[int]]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
 
     # Use calibrated pipeline if available, otherwise use regular pipeline
     if (
-        hasattr(admissions_model_results, "calibrated_pipeline")
-        and admissions_model_results.calibrated_pipeline is not None
+        hasattr(classifier, "calibrated_pipeline")
+        and classifier.calibrated_pipeline is not None
     ):
-        admissions_model = admissions_model_results.calibrated_pipeline
+        pipeline = classifier.calibrated_pipeline
     else:
-        admissions_model = admissions_model_results.pipeline
+        pipeline = classifier.pipeline
 
     # Add missing columns expected by the model
-    prediction_snapshots = add_missing_columns(admissions_model, prediction_snapshots)
+    prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 
     # Get predictions of admissions for ED patients
-    prob_admission_after_ed = model_input_to_pred_proba(
-        prediction_snapshots, admissions_model
-    )
+    prob_admission_after_ed = model_input_to_pred_proba(prediction_snapshots, pipeline)
 
     # Get predictions of admission to specialty
     prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
