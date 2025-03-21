@@ -135,6 +135,7 @@ def poisson_binom_generating_function(NTimes, lambda_t, theta, epsilon):
     pd.DataFrame: The generated distribution.
 
     """
+
     if NTimes <= 0 or epsilon <= 0 or epsilon >= 1:
         raise ValueError("Ensure NTimes > 0 and 0 < epsilon < 1.")
 
@@ -374,6 +375,12 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             WeightedPoissonPredictor: The instance itself, fitted with the training data.
 
         """
+        # Add error checking at the start of fit
+        if int(prediction_window / yta_time_interval) == 0:
+            raise ValueError(
+                f"prediction_window ({prediction_window}) divided by yta_time_interval ({yta_time_interval}) must be greater than 1 to generate meaningful predictions"
+            )
+
         # Store prediction_window, yta_time_interval, and any other parameters as instance variables
         self.prediction_window = prediction_window
         self.yta_time_interval = yta_time_interval
@@ -468,7 +475,6 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         """
         predictions = {}
 
-        # theta = self.weights.get("theta", 1)  # Provide a default value or handle if missing
         NTimes = int(self.prediction_window / self.yta_time_interval)
         # Calculate theta, probability of admission in prediction window
 
