@@ -25,7 +25,7 @@ class TrainingResults:
 
 
 @dataclass
-class TrainedModel:
+class TrainedClassifier:
     """Container for trained model artifacts and their associated metrics."""
 
     metrics: TrainingResults

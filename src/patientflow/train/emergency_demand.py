@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict
+from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict, Type
 import numpy as np
 import numpy.typing as npt
 from xgboost import XGBClassifier
@@ -34,7 +34,7 @@ from patientflow.load import (
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.predict.emergency_demand import create_predictions
-from patientflow.metrics import FoldResults, TrainingResults, TrainedModel
+from patientflow.metrics import FoldResults, TrainingResults, TrainedClassifier
 
 
 def split_and_check_sets(
@@ -157,14 +157,38 @@ def chronological_cross_validation(
     }
 
 
-def initialise_xgb(params: Dict[str, Any]) -> XGBClassifier:
-    """Initialize the model with given hyperparameters."""
-    model = XGBClassifier(
-        n_jobs=-1,
-        eval_metric="logloss",
-        enable_categorical=True,
-    )
-    model.set_params(**params)
+def initialise_model(
+    model_class: Type,
+    params: Dict[str, Any],
+    xgb_specific_params: Dict[str, Any] = {
+        "n_jobs": -1,
+        "eval_metric": "logloss",
+        "enable_categorical": True,
+    },
+) -> Any:
+    """
+    Initialize a model with given hyperparameters.
+
+    Parameters
+    ----------
+    model_class : Type
+        The classifier class to instantiate
+    params : Dict[str, Any]
+        Model-specific parameters to set
+    xgb_specific_params : Dict[str, Any], optional
+        XGBoost-specific default parameters
+
+    Returns
+    -------
+    Any
+        Initialized model instance
+    """
+    if model_class == XGBClassifier:
+        model = model_class(**xgb_specific_params)
+        model.set_params(**params)
+    else:
+        model = model_class(**params)
+
     return model
 
 
@@ -343,22 +367,49 @@ class FeatureMetadata(TypedDict):
     feature_importances: List[float]
 
 
-def get_feature_metadata(
-    pipeline: Pipeline,
-) -> FeatureMetadata:
-    """Extract feature names and importances from pipeline."""
+def get_feature_metadata(pipeline: Pipeline) -> FeatureMetadata:
+    """
+    Extract feature names and importances from pipeline.
+
+    Parameters
+    ----------
+    pipeline : Pipeline
+        Sklearn pipeline containing feature transformer and classifier
+
+    Returns
+    -------
+    FeatureMetadata
+        Dictionary containing feature names and their importance scores (if available)
+
+    Raises
+    ------
+    AttributeError
+        If the classifier doesn't support feature importance
+    """
     transformed_cols = pipeline.named_steps[
         "feature_transformer"
     ].get_feature_names_out()
+    classifier = pipeline.named_steps["classifier"]
+
+    # Try different common feature importance attributes
+    if hasattr(classifier, "feature_importances_"):
+        importances = classifier.feature_importances_
+    elif hasattr(classifier, "coef_"):
+        importances = (
+            np.abs(classifier.coef_[0])
+            if classifier.coef_.ndim > 1
+            else np.abs(classifier.coef_)
+        )
+    else:
+        raise AttributeError("Classifier doesn't provide feature importance scores")
+
     return {
         "feature_names": [col.split("__")[-1] for col in transformed_cols],
-        "feature_importances": pipeline.named_steps[
-            "classifier"
-        ].feature_importances_.tolist(),
+        "feature_importances": importances.tolist(),
     }
 
 
-def train_single_model(
+def train_classifier(
     train_visits: DataFrame,
     valid_visits: DataFrame,
     test_visits: DataFrame,
@@ -367,11 +418,12 @@ def train_single_model(
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
     visit_col: str,
+    model_class: Type = XGBClassifier,
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
-) -> TrainedModel:
+) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
 
@@ -393,6 +445,9 @@ def train_single_model(
         Mappings for ordinal categorical features
     visit_col : str
         Name of the visit column
+    model_class : Type, optional
+        The classifier class to use. Must be sklearn-compatible with fit() and predict_proba().
+        Defaults to XGBClassifier.
     use_balanced_training : bool, default=True
         Whether to use balanced training data
     majority_to_minority_ratio : float, default=1.0
@@ -404,7 +459,7 @@ def train_single_model(
 
     Returns:
     --------
-    TrainedModel
+    TrainedClassifier
         Trained model, including metrics, and feature information
     """
     # Get snapshots for each set
@@ -467,7 +522,7 @@ def train_single_model(
     )
 
     # Initialize best model container
-    best_model = TrainedModel(
+    best_model = TrainedClassifier(
         metrics=best_training,
         pipeline=None,
         calibrated_pipeline=None,
@@ -476,7 +531,9 @@ def train_single_model(
     results_dict: Dict[str, Dict[str, float]] = {}
 
     for params in ParameterGrid(grid):
-        model = initialise_xgb(params)
+        # Initialize model based on provided class
+        model = initialise_model(model_class, params)
+
         column_transformer = create_column_transformer(X_train, ordinal_mappings)
         pipeline = Pipeline(
             [("feature_transformer", column_transformer), ("classifier", model)]
@@ -489,7 +546,17 @@ def train_single_model(
 
         if cv_results["valid_logloss"] < best_training.valid_logloss:
             best_model.pipeline = pipeline
-            feature_metadata = get_feature_metadata(pipeline)
+
+            # Get feature metadata if available
+            try:
+                feature_metadata = get_feature_metadata(pipeline)
+                has_feature_importance = True
+            except (AttributeError, NotImplementedError):
+                feature_metadata = {
+                    "feature_names": column_transformer.get_feature_names_out().tolist(),
+                    "feature_importances": [],
+                }
+                has_feature_importance = False
 
             # Update training results
             best_training.valid_logloss = cv_results["valid_logloss"]
@@ -499,11 +566,9 @@ def train_single_model(
                 "best_params": str(params),
                 "train_valid_set_results": results_dict,
                 "training_balance_info": balance_info,
-                "best_model_features": {
-                    "feature_names": feature_metadata["feature_names"],
-                    "feature_importances": feature_metadata["feature_importances"],
-                },
+                "best_model_features": feature_metadata,
                 "dataset_metadata": dataset_metadata,
+                "has_feature_importance": has_feature_importance,
             }
 
             if calibrate_probabilities:
@@ -545,7 +610,7 @@ def train_single_model(
     return best_model
 
 
-def train_admissions_models(
+def train_multiple_classifiers(
     train_visits: DataFrame,
     valid_visits: DataFrame,
     test_visits: DataFrame,
@@ -559,16 +624,16 @@ def train_admissions_models(
     calibration_method: str = "isotonic",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
-) -> Dict[str, TrainedModel]:
+) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times."""
-    trained_models: Dict[str, TrainedModel] = {}
+    trained_models: Dict[str, TrainedClassifier] = {}
 
     for prediction_time in prediction_times:
         print(f"\nProcessing: {prediction_time}")
         model_key = get_model_key(model_name, prediction_time)
 
         # Train model with the new simplified interface
-        best_model = train_single_model(
+        best_model = train_classifier(
             train_visits,
             valid_visits,
             test_visits,
@@ -716,7 +781,9 @@ def save_model(model, model_name, model_file_path):
 
 def test_real_time_predictions(
     visits,
-    models: Tuple[Dict[str, TrainedModel], SequencePredictor, WeightedPoissonPredictor],
+    models: Tuple[
+        Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor
+    ],
     prediction_window,
     specialties,
     cdf_cut_points,
@@ -732,9 +799,9 @@ def test_real_time_predictions(
     visits : pd.DataFrame
         DataFrame containing visit data with columns including 'prediction_time',
         'snapshot_date', and other required features for predictions.
-    models : Tuple[Dict[str, TrainedModel], SequencePredictor, WeightedPoissonPredictor]
+    models : Tuple[Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor]
         Tuple containing:
-        - admissions_model_results: TrainedModel containing admission predictions
+        - trained_classifiers: TrainedClassifier containing admission predictions
         - spec_model: SequencePredictor for specialty predictions
         - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_window : int
@@ -782,22 +849,22 @@ def test_real_time_predictions(
         & (visits.snapshot_date == prediction_date)
     ]
 
-    admissions_models, spec_model, yet_to_arrive_model = models
+    trained_classifiers, spec_model, yet_to_arrive_model = models
 
     # Find the model matching the required prediction time
-    admissions_model = None
-    for model_key, trained_model in admissions_models.items():
+    classifier = None
+    for model_key, trained_model in trained_classifiers.items():
         if trained_model.metrics.prediction_time == prediction_time:
-            admissions_model = trained_model
+            classifier = trained_model
             break
 
-    if admissions_model is None:
+    if classifier is None:
         raise ValueError(f"No model found for prediction time {prediction_time}")
 
     try:
         x1, y1, x2, y2 = curve_params
         _ = create_predictions(
-            models=(admissions_model, spec_model, yet_to_arrive_model),
+            models=(classifier, spec_model, yet_to_arrive_model),
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=specialties,
@@ -948,7 +1015,7 @@ def train_all_models(
         prediction_times = visits.prediction_time.unique()
 
     # Train admission models
-    admission_models = train_admissions_models(
+    admission_models = train_multiple_classifiers(
         train_visits=train_visits,
         valid_visits=valid_visits,
         test_visits=test_visits,

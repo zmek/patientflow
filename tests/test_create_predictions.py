@@ -7,7 +7,7 @@ from pathlib import Path
 
 from patientflow.predict.emergency_demand import create_predictions
 from patientflow.load import get_model_key
-from patientflow.metrics import TrainedModel, TrainingResults
+from patientflow.metrics import TrainedClassifier, TrainingResults
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -116,7 +116,7 @@ def create_random_arrivals(n=1000):
 
 
 def create_admissions_model(prediction_time, n):
-    """Create a test admissions model with TrainedModel structure.
+    """Create a test admissions model with TrainedClassifier structure.
 
     Parameters
     ----------
@@ -126,7 +126,7 @@ def create_admissions_model(prediction_time, n):
     Returns
     -------
     tuple
-        (TrainedModel object, model_name string)
+        (TrainedClassifier object, model_name string)
     """
     # Define the feature columns and target
     feature_columns = ["elapsed_los", "sex", "age_on_arrival", "arrival_method"]
@@ -172,7 +172,7 @@ def create_admissions_model(prediction_time, n):
     )
 
     # Create ModelResults object
-    model_results = TrainedModel(
+    model_results = TrainedClassifier(
         pipeline=pipeline,
         metrics=training_results,
         calibrated_pipeline=None,  # No calibration for test
@@ -354,11 +354,11 @@ class TestCreatePredictions(unittest.TestCase):
             self.assertEqual(predictions[specialty]["in_ed"], [0, 0])
 
     def test_model_not_found(self):
-        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots = create_random_df(n=5, include_consults=True)
         non_existing_window_hrs = 10.0
 
         # Replace YTA model with None while keeping admission and specialty models
-        admission_model, spec_model, _ = self.models
+        admission_model, spec_model, yta_model = self.models
         models = (admission_model, spec_model, None)
 
         with self.assertRaises(TypeError):
@@ -375,8 +375,67 @@ class TestCreatePredictions(unittest.TestCase):
                 y2=self.y2,
             )
 
+    def test_model_not_fit(self):
+        prediction_snapshots = create_random_df(n=5, include_consults=True)
+
+        pipeline = Pipeline([("classifier", XGBClassifier())])
+        _, spec_model, yta_model = self.models
+        models = (pipeline, spec_model, yta_model)
+
+        with self.assertRaises(TypeError):
+            create_predictions(
+                models=models,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window_hrs=self.prediction_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+
+        unfitted_spec_model = SequencePredictor(
+            input_var="consultation_sequence",
+            grouping_var="final_sequence",
+            outcome_var="specialty",
+            admit_col="is_admitted",
+        )
+        models = (pipeline, unfitted_spec_model, yta_model)
+
+        with self.assertRaises(TypeError):
+            create_predictions(
+                models=models,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window_hrs=self.prediction_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+        unfitted_yta_model = WeightedPoissonPredictor()
+        models = (pipeline, spec_model, unfitted_yta_model)
+
+        with self.assertRaises(TypeError):
+            create_predictions(
+                models=models,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window_hrs=self.prediction_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+
     def test_prediction_window_extremes(self):
-        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots = create_random_df(n=5, include_consults=True)
 
         short_window_hrs = 0.1
         long_window_hrs = 100.0
