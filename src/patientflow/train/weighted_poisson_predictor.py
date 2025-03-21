@@ -67,8 +67,8 @@ def train_weighted_poisson_predictor(
     prediction_window: int,
     yta_time_interval: int,
     prediction_times: List[float],
-    epsilon: float,
     num_days: int,
+    epsilon: float = 10e-7
 ) -> WeightedPoissonPredictor:
     """Train a yet-to-arrive prediction model.
 
