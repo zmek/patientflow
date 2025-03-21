@@ -2,7 +2,6 @@ import unittest
 import pandas as pd
 import numpy as np
 import os
-from scipy.stats import poisson
 
 from pathlib import Path
 
@@ -15,15 +14,18 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-from patientflow.errors import ModelLoadError
 from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.prepare import create_yta_filters
 
 
 def create_random_df(n=1000, include_consults=False):
     # Generate random data
     np.random.seed(0)
     # Generate single random snapshot date for all rows
-    snapshot_date = pd.Timestamp('2023-01-01') + pd.Timedelta(minutes=np.random.randint(0, 60*24*7))
+    snapshot_date = pd.Timestamp("2023-01-01") + pd.Timedelta(
+        minutes=np.random.randint(0, 60 * 24 * 7)
+    )
     snapshot_date = [snapshot_date] * n
     age_on_arrival = np.random.randint(1, 100, size=n)
     elapsed_los = np.random.randint(0, 3 * 24 * 3600, size=n)
@@ -70,14 +72,15 @@ def create_random_df(n=1000, include_consults=False):
 
     return df
 
+
 def create_random_arrivals(n=1000):
     """Create random arrival data with arrival times and specialties.
-    
+
     Parameters
     ----------
     n : int
         Number of arrivals to generate
-        
+
     Returns
     -------
     pd.DataFrame
@@ -85,25 +88,34 @@ def create_random_arrivals(n=1000):
     """
     # Use same seed as create_random_df for consistency
     np.random.seed(0)
-    
+
     # Generate random arrival times over a week
-    base_date = pd.Timestamp('2023-01-01')
-    arrival_datetime = [base_date + pd.Timedelta(minutes=np.random.randint(0, 60*24*7)) for _ in range(n)]
-    
+    base_date = pd.Timestamp("2023-01-01")
+    arrival_datetime = [
+        base_date + pd.Timedelta(minutes=np.random.randint(0, 60 * 24 * 7))
+        for _ in range(n)
+    ]
+
     # Use same specialty list as create_random_df
     specialties = ["medical", "surgical", "haem/onc", "paediatric"]
     specialty = np.random.choice(specialties, size=n)
-    
+
+    # Generate random is_child values
+    is_child = np.random.choice([True, False], size=n)
+
     # Create DataFrame
-    df = pd.DataFrame({
-        "arrival_datetime": arrival_datetime,
-        "specialty": specialty
-    })
-    
+    df = pd.DataFrame(
+        {
+            "arrival_datetime": arrival_datetime,
+            "specialty": specialty,
+            "is_child": is_child,
+        }
+    )
+
     return df
 
 
-def create_admissions_model(prediction_time):
+def create_admissions_model(prediction_time, n):
     """Create a test admissions model with TrainedModel structure.
 
     Parameters
@@ -120,8 +132,7 @@ def create_admissions_model(prediction_time):
     feature_columns = ["elapsed_los", "sex", "age_on_arrival", "arrival_method"]
     target_column = "is_admitted"
 
-    df = create_random_df(include_consults=True, n=10)
-    arrivals_df = create_random_arrivals(n=1000)
+    df = create_random_df(include_consults=True, n=n)
     # Split the data into features and target
     X = df[feature_columns]
     y = df[target_column]
@@ -186,43 +197,39 @@ def create_spec_model(df, apply_special_category_filtering):
     return model
 
 
-def create_yta_model(prediction_window_hrs, df, arrivals_df):
+def create_yta_model(prediction_window_hrs, df, arrivals_df, yta_time_interval=60):
     """Create a test yet-to-arrive model using WeightedPoissonPredictor.
-    
+
     Parameters
     ----------
     prediction_window_hrs : float
         The prediction window in hours
     arrivals_df : pd.DataFrame
         DataFrame containing historical arrival data with arrival_datetime and specialty columns
-        
+
     Returns
     -------
     tuple
         (model, model_name)
     """
-    from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-    from patientflow.predictors.weighted_poisson_predictor import create_yta_filters
 
     filters = create_yta_filters(df)
 
-    
     # Convert hours to minutes for the model
     prediction_window_mins = int(prediction_window_hrs * 60)
-    yta_time_interval = 60  # 1 hour intervals
     prediction_times = [(7, 0)]  # 7am predictions
     num_days = 7  # One week of data
-    
+
     # Create and fit the model
     model = WeightedPoissonPredictor(filters=filters)
     model.fit(
-        train_df=arrivals_df.set_index('arrival_datetime'),
+        train_df=arrivals_df.set_index("arrival_datetime"),
         prediction_window=prediction_window_mins,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
-        num_days=num_days
+        num_days=num_days,
     )
-    
+
     model_name = f"ed_yet_to_arrive_by_spec_{str(int(prediction_window_hrs))}_hours"
     return (model, model_name)
 
@@ -239,15 +246,17 @@ class TestCreatePredictions(unittest.TestCase):
 
         # Create and save models
         admissions_model, admissions_name, self.df = create_admissions_model(
-            self.prediction_time
+            self.prediction_time, n=1000
         )
 
-        spec_model = create_spec_model(
-            self.df, apply_special_category_filtering=False
+        self.arrivals_df = create_random_arrivals(n=1000)
+
+        spec_model = create_spec_model(self.df, apply_special_category_filtering=False)
+
+        yta_model, yta_name = create_yta_model(
+            self.prediction_window_hrs, self.df, self.arrivals_df
         )
-        yta_model, yta_name = create_yta_model(self.prediction_window_hrs, create_random_arrivals(n=1000))
         self.models = (admissions_model, spec_model, yta_model)
-
 
     def test_basic_functionality(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
@@ -271,11 +280,11 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("in_ed", predictions["paediatric"])
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
-        self.assertEqual(predictions["paediatric"]["in_ed"], [7, 6])
-        self.assertEqual(predictions["medical"]["in_ed"], [7, 6])
+        self.assertEqual(predictions["paediatric"]["in_ed"], [4, 3])
+        self.assertEqual(predictions["medical"]["yet_to_arrive"], [2, 1])
 
     def test_basic_functionality_with_special_category(self):
-        prediction_snapshots = create_random_df(n=5, include_consults=True)
+        prediction_snapshots = create_random_df(n=100, include_consults=True)
 
         # print("\nWithout special category")
         # print(self.df[self.df.is_admitted == 1])
@@ -318,10 +327,10 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("paediatric", predictions_with_special_category)
 
         self.assertEqual(
-            predictions_without_special_category["paediatric"]["in_ed"], [1, 0]
+            predictions_without_special_category["paediatric"]["in_ed"], [9, 7]
         )
         self.assertEqual(
-            predictions_with_special_category["paediatric"]["in_ed"], [0, 0]
+            predictions_with_special_category["paediatric"]["in_ed"], [9, 8]
         )
 
     def test_single_row_prediction_snapshots(self):
@@ -352,7 +361,7 @@ class TestCreatePredictions(unittest.TestCase):
         admission_model, spec_model, _ = self.models
         models = (admission_model, spec_model, None)
 
-        with self.assertRaises(ModelLoadError):
+        with self.assertRaises(TypeError):
             create_predictions(
                 models=models,
                 prediction_time=self.prediction_time,
@@ -368,12 +377,23 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_prediction_window_extremes(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
-        models = self.models.copy()  # Create copy
 
         short_window_hrs = 0.1
         long_window_hrs = 100.0
 
-        short_yta_model, _ = create_yta_model(short_window_hrs, create_random_arrivals(n=1000))
+        # Test that an error is raised for where prediction_window is less than yta_time_interval
+        with self.assertRaises(ValueError):
+            short_yta_model, _ = create_yta_model(
+                short_window_hrs, self.df, self.arrivals_df
+            )
+
+        short_window_hrs = 0.25
+        yta_time_interval = 15
+
+        short_yta_model, _ = create_yta_model(
+            short_window_hrs, self.df, self.arrivals_df, yta_time_interval
+        )
+
         admission_model, spec_model, _ = self.models
         models = (admission_model, spec_model, short_yta_model)
 
@@ -390,7 +410,7 @@ class TestCreatePredictions(unittest.TestCase):
             y2=self.y2,
         )
 
-        long_yta_model, _ = create_yta_model(long_window_hrs, create_random_arrivals(n=1000))
+        long_yta_model, _ = create_yta_model(long_window_hrs, self.df, self.arrivals_df)
         models = (admission_model, spec_model, long_yta_model)
 
         long_window_predictions = create_predictions(
@@ -432,9 +452,7 @@ class TestCreatePredictions(unittest.TestCase):
         )
 
         self.assertIn("paediatric", predictions)
-        self.assertNotIn(
-            "paediatric", spec_model.weights.keys()
-        )
+        self.assertNotIn("paediatric", spec_model.weights.keys())
 
 
 #     # def test_large_dataset_performance(self):
