@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from scipy import signal
-from patientflow.predict.admission_in_prediction_window import (
+from patientflow.calculate.admission_in_prediction_window import (
     get_y_from_aspirational_curve,
 )
 from patientflow.load import get_model_key

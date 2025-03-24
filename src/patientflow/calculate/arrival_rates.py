@@ -66,7 +66,7 @@ from datetime import datetime, time, timedelta
 from pandas import DataFrame
 from collections import OrderedDict
 from typing import Dict, List, Tuple, Optional
-from patientflow.predict.admission_in_prediction_window import (
+from patientflow.calculate.admission_in_prediction_window import (
     get_y_from_aspirational_curve,
 )
 

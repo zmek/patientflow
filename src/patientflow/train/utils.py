@@ -1,5 +1,4 @@
 from joblib import dump
-from pathlib import Path
 
 
 def save_model(model, model_name, model_file_path):
@@ -19,7 +18,7 @@ def save_model(model, model_name, model_file_path):
     -------
     None
     """
-    
+
     if isinstance(model, dict):
         # Handle dictionary of models (e.g., admission models)
         for name, m in model.items():
@@ -31,5 +30,3 @@ def save_model(model, model_name, model_file_path):
         full_path = model_file_path / model_name
         full_path = full_path.with_suffix(".joblib")
         dump(model, full_path)
-
-

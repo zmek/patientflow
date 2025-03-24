@@ -14,14 +14,14 @@ Dependencies:
     - matplotlib.pyplot
     - numpy
     - scipy.stats
-    - patientflow.calculate (for rate calculations)
+    - patientflow.calculate.arrival_rates (for rate calculations)
     - patientflow.viz.utils (for utility functions)
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from patientflow.calculate import (
+from patientflow.calculate.arrival_rates import (
     time_varying_arrival_rates,
     time_varying_arrival_rates_lagged,
     process_arrival_rates,

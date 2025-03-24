@@ -1,8 +1,6 @@
-from typing import Dict, List, Any, Tuple, Optional
+from typing import List
 import pandas as pd
 from pandas import DataFrame
-from joblib import dump
-from pathlib import Path
 
 from patientflow.prepare import create_special_category_objects
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
@@ -59,8 +57,6 @@ def create_yta_filters(df):
     return specialty_filters
 
 
-
-
 def train_weighted_poisson_predictor(
     train_visits: DataFrame,
     train_yta: DataFrame,
@@ -68,7 +64,7 @@ def train_weighted_poisson_predictor(
     yta_time_interval: int,
     prediction_times: List[float],
     num_days: int,
-    epsilon: float = 10e-7
+    epsilon: float = 10e-7,
 ) -> WeightedPoissonPredictor:
     """Train a yet-to-arrive prediction model.
 
