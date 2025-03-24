@@ -7,7 +7,7 @@ from pathlib import Path
 
 from patientflow.predict.emergency_demand import create_predictions
 from patientflow.load import get_model_key
-from patientflow.metrics import TrainedClassifier, TrainingResults
+from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -161,22 +161,15 @@ def create_admissions_model(prediction_time, n):
     # Create TrainingResults object
     training_results = TrainingResults(
         prediction_time=prediction_time,
-        valid_logloss=0.5,  # Mock value for testing
-        feature_names=feature_columns,
-        feature_importances=[0.25] * len(feature_columns),  # Mock values
-        metadata={
-            "params": "test_params",
-            "train_valid_set_results": {},
-            "test_set_results": {},
-        },
     )
 
     # Create ModelResults object
     model_results = TrainedClassifier(
         pipeline=pipeline,
-        metrics=training_results,
+        training_results=training_results,
         calibrated_pipeline=None,  # No calibration for test
     )
+
 
     model_name = get_model_key("admissions", prediction_time)
     return (model_results, model_name, df)

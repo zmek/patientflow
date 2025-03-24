@@ -14,7 +14,12 @@ from sklearn.calibration import CalibratedClassifierCV
 
 from patientflow.prepare import get_snapshots_at_prediction_time
 from patientflow.load import get_model_key
-from patientflow.metrics import FoldResults, TrainingResults, TrainedClassifier
+from patientflow.model_artifacts import (
+    HyperParameterTrial,
+    FoldResults,
+    TrainingResults,
+    TrainedClassifier,
+)
 
 
 def evaluate_predictions(
@@ -342,22 +347,20 @@ def train_classifier(
 
     # Initialize best training results with default values
     best_training = TrainingResults(
-        valid_logloss=float("inf"),
-        feature_names=[],
-        feature_importances=[],
-        metadata={},
-        balance_info=balance_info,
         prediction_time=prediction_time,
+        balance_info=balance_info,
+        # Other fields will use their default empty dictionaries
     )
 
     # Initialize best model container
     best_model = TrainedClassifier(
-        metrics=best_training,
+        training_results=best_training,
         pipeline=None,
         calibrated_pipeline=None,
     )
 
-    results_dict: Dict[str, Dict[str, float]] = {}
+    trials_list: List[HyperParameterTrial] = []
+    best_logloss = float("inf")
 
     for params in ParameterGrid(grid):
         # Initialize model based on provided class
@@ -371,9 +374,16 @@ def train_classifier(
         cv_results = chronological_cross_validation(
             pipeline, X_train, y_train, n_splits=5
         )
-        results_dict[str(params)] = cv_results
+        # Store trial results
+        trials_list.append(
+            HyperParameterTrial(
+                parameters=params.copy(),  # Make a copy to ensure immutability
+                cv_results=cv_results,
+            )
+        )
 
-        if cv_results["valid_logloss"] < best_training.valid_logloss:
+        if cv_results["valid_logloss"] < best_logloss:
+            best_logloss = cv_results["valid_logloss"]
             best_model.pipeline = pipeline
 
             # Get feature metadata if available
@@ -388,20 +398,18 @@ def train_classifier(
                 has_feature_importance = False
 
             # Update training results
-            best_training.valid_logloss = cv_results["valid_logloss"]
-            best_training.feature_names = feature_metadata["feature_names"]
-            best_training.feature_importances = feature_metadata["feature_importances"]
-            best_training.metadata = {
-                "best_params": str(params),
-                "train_valid_set_results": results_dict,
-                "training_balance_info": balance_info,
-                "best_model_features": feature_metadata,
-                "dataset_metadata": dataset_metadata,
-                "has_feature_importance": has_feature_importance,
+            best_training.training_info = {
+                "cv_trials": trials_list,
+                "features": {
+                    "names": feature_metadata["feature_names"],
+                    "importances": feature_metadata["feature_importances"],
+                    "has_importance_values": has_feature_importance,
+                },
+                "dataset_info": dataset_metadata,
             }
 
             if calibrate_probabilities:
-                best_training.metadata["calibration_method"] = calibration_method
+                best_training.calibration_info = {"method": calibration_method}
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
@@ -427,14 +435,10 @@ def train_classifier(
         )
 
         best_model.calibrated_pipeline = calibrated_pipeline
-        best_training.metadata["test_set_results"] = evaluate_model(
-            calibrated_pipeline, X_test, y_test
-        )
+        best_training.test_results = evaluate_model(calibrated_pipeline, X_test, y_test)
 
     else:
-        best_training.metadata["test_set_results"] = evaluate_model(
-            best_model.pipeline, X_test, y_test
-        )
+        best_training.test_results = evaluate_model(best_model.pipeline, X_test, y_test)
 
     return best_model
 
