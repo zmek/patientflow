@@ -170,7 +170,6 @@ def create_admissions_model(prediction_time, n):
         calibrated_pipeline=None,  # No calibration for test
     )
 
-
     model_name = get_model_key("admissions", prediction_time)
     return (model_results, model_name, df)
 
