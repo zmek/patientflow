@@ -29,30 +29,33 @@
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
 <!-- prettier-ignore-end -->
 
-Welcome to the PatientFlow repository, which provides predictive modelling for hospital bed management. I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) on practical tools to improve patient flow through the hospital.
+## Summary
 
-With a team from UCLH, I developed a predictive tool that is now in daily use by bed managers at the hospital. The tool generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system.
+patientflow, a Python package, converts patient-level predictions into output that is useful for bed managers in hospitals. If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients. The package was developed for University College London Hospitals (UCLH) NHS Trust to predict the number of emergency admissions within the next eight hours. The methods generalise to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
 
-I am sharing the code I wrote for UCLH as a reusable resource because I want to make it easier for researchers to convert patient-level predictions into output that is useful for bed managers in hospitals. This repository includes a Python package, called patientflow, which converts patient-level predictions into output that is useful for bed managers. If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients.
+## Background
 
-The methods generalise to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
+I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) on practical tools to improve patient flow through the hospital.
 
-## Main features of my modelling approach
+Hospital bed managers constantly monitor whether they have sufficient beds to meet demand. At specific points during the day they count numbers of inpatients likely to leave, and numbers of new admissions. Their projections about short-term changes are vital because if they anticipate a shortage of bedsd, bed managers must take swift action to mitigate the situation. 
 
-- **Led by what users need:** My work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), since 2020. What is modelled directly reflects how they work and what is most useful to them.
-- **Focused on short-term predictions:** The modelling is designed for predicting demand within a short time horizon eg 8 or 12 hours. I show how to use my code to predict how many beds will be needed emergency patients. (Later I plan to add modules that for elective demand, discharge and transfers between specialties.)
-- **Assumes real-time data is available:** Hospital bed managers have to deal with rapidly changing situations. My focus is on the use of real-time data (or near to real-time) to help them make informed decisions.
+With a team from UCLH, I developed a predictive tool that is now in daily use by bed managers at the hospital. 
 
-## Main Features of this repository
+The tool we built for UCLH takes a 'snapshot' of patients in the hospital at a point in time, and using data from the hospital's electronic record system, predicts the number of emergency admissions in the next 8 or 12 hours. We are working on predicting discharges in the same way. 
 
-- **Reproducible** - I follow the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). The repository can be installed as a Python package, and imported into your own code.
-- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. I intend that anyone with some knowledge of Python could understand and adapt the code for their use.
-- **Practical:** - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anonymised version of real patient data, which you can request access on [Zenodo](https://zenodo.org/records/14866057), or you can use the synthetic dataset, derived from real patient data, in the `data-synthetic` folder. (Note that, if you use the synthetic dataset, you will observe articifically inflated model performance.)
-- **Interactive:** The repository includes a set of notebooks with code written on Python and commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.
+The key principle is that we take data on hospital visits that are unfinished, and predict whether some outcome (admission from A&E, discharge from hospital, or transfer to another clinical specialty) will happen to each of those patients in a window of time. What the outcome is doesn't really matter; the same methods can be used. 
+
+But the true utility of our approach - and the thing that makes it very generalisable - is that we build up from the patient-level predictions into a predictions for a whole cohort of patients at a point in time. That step is what creates useful information for bed managers. They are less interested in whether any individual will need a bed and more interested in the overall number of beds needed, and in which parts of the hospital. They trade in cohort-level data - numbers of beds needed for patients in A&E, number of transfers out of the acute medical unit to other wards, number of patients leaving a certain ward. And they are always only looking a few hours ahead. 
+
+The methods that we developed for UCLH can be used in any hospitals setting where point-in-time predictions about cohorts of patients are useful. We are sharing these methods because we want to make it easier for researchers and analysts in healthcare to create information products that are useful for site and operations managers in hospitals. 
+
+We provide a Python package to make this convenient. The repository includes a set of notebooks with code written in Python and commentary on how to use the package.
+
+We also show a fully worked example of how to predict emergency demand for beds, and demonstrate how we tailored the approach, using the package, to the specific demands of bed managers at UCLH. 
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the notebooks, and read the [patientflow README](src/patientflow/README.md) to understand my intentions for the Python package
+- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](src/patientflow/README.md) for an overview of the Python package
 - Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
 - Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
 

@@ -1,33 +1,43 @@
 from matplotlib import pyplot as plt
-from patientflow.load import get_model_key
 from patientflow.prepare import get_snapshots_at_prediction_time
 from patientflow.predict.emergency_demand import add_missing_columns
+from patientflow.model_artifacts import TrainedClassifier
 import shap
 import scipy.sparse
 import numpy as np
 
 
 def plot_shap(
-    trained_models,
+    trained_models: list[TrainedClassifier],
     media_file_path,
     test_visits,
-    prediction_times,
     exclude_from_training_data,
-    model_group_name,
 ):
-    # Sort prediction times by converting to minutes since midnight
-    prediction_times_sorted = sorted(
-        prediction_times,
-        key=lambda x: x[0] * 60
-        + x[1],  # Convert (hour, minute) to minutes since midnight
+    """
+    Generate SHAP plots for multiple trained models.
+
+    Parameters
+    ----------
+    trained_models : list[TrainedClassifier]
+        List of trained classifier objects
+    media_file_path : Path
+        Directory path where the generated plots will be saved
+    test_visits : pd.DataFrame
+        DataFrame containing the test visit data
+    exclude_from_training_data : list[str]
+        List of columns to exclude from training data
+    """
+    # Sort trained_models by prediction time
+    trained_models_sorted = sorted(
+        trained_models,
+        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
     )
 
-    for i, prediction_time in enumerate(prediction_times_sorted):
+    for trained_model in trained_models_sorted:
         fig, ax = plt.subplots(figsize=(8, 12))
 
-        # Get model name and pipeline for this prediction time
-        model_name = get_model_key(model_group_name, prediction_time)
-        pipeline = trained_models[model_name].pipeline
+        pipeline = trained_model.pipeline
+        prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
@@ -83,8 +93,8 @@ def plot_shap(
         plt.tight_layout()
 
         # Save plot
-        model_name = get_model_key("admissions_minimal", prediction_time)
-        shap_plot_path = str(media_file_path / "shap_plot_") + model_name + ".png"
+        shap_plot_path = str(media_file_path / f"shap_plot_{hour:02}{minutes:02}.png")
 
         plt.savefig(shap_plot_path)
         plt.show()
+        plt.close(fig)

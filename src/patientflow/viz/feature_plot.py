@@ -1,51 +1,41 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from patientflow.model_artifacts import TrainedClassifier
 from patientflow.load import get_model_key, load_saved_model
 
 
 def plot_features(
-    trained_models,
+    trained_models: list[TrainedClassifier],
     media_file_path,
-    prediction_times,
-    model_group_name="admissions",
-    model_name_suffix=None,
-    model_file_path=None,
+    top_n: int = 20,
+    suptitle: str | None = None,
 ):
-    # Load models if not provided
-    if trained_models is None:
-        if model_file_path is None:
-            raise ValueError(
-                "model_file_path must be provided if trained_models is None"
-            )
-        trained_models = {}
-        for prediction_time in prediction_times:
-            model_name = get_model_key(model_group_name, prediction_time)
-            if model_name_suffix:
-                model_name = f"{model_name}_{model_name_suffix}"
-            trained_models[model_name] = load_saved_model(
-                model_file_path, model_group_name, prediction_time
-            )
+    """
+    Plot feature importance for multiple models.
 
-    # Sort prediction times by converting to minutes since midnight
-    prediction_times_sorted = sorted(
-        prediction_times,
-        key=lambda x: x[0] * 60
-        + x[1],  # Convert (hour, minute) to minutes since midnight
+    Args:
+        trained_models: List of TrainedClassifier objects
+        media_file_path: Path where the plot should be saved
+        top_n: Number of top features to display (default: 20)
+        suptitle: Optional super title for the entire figure (default: None)
+    """
+    # Sort trained_models by prediction time
+    trained_models_sorted = sorted(
+        trained_models,
+        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
     )
 
-    num_plots = len(prediction_times_sorted)
+    num_plots = len(trained_models_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 6, 12))
 
     # Handle case of single prediction time
     if num_plots == 1:
         axs = [axs]
 
-    for i, prediction_time in enumerate(prediction_times_sorted):
-        # Get model name and pipeline for this prediction time
-        model_name = get_model_key(model_group_name, prediction_time)
-
+    for i, trained_model in enumerate(trained_models_sorted):
         # Always use regular pipeline
-        pipeline = trained_models[model_name].pipeline
+        pipeline = trained_model.pipeline
+        prediction_time = trained_model.training_results.prediction_time
 
         # Get feature names from the pipeline
         transformed_cols = pipeline.named_steps[
@@ -56,9 +46,7 @@ def plot_features(
 
         # Get feature importances
         feature_importances = pipeline.named_steps["classifier"].feature_importances_
-        indices = np.argsort(feature_importances)[
-            -20:
-        ]  # Get indices of the top 20 features
+        indices = np.argsort(feature_importances)[-top_n:]  # Get indices of the top N features
 
         # Plot for this prediction time
         ax = axs[i]
@@ -72,8 +60,12 @@ def plot_features(
 
     plt.tight_layout()
 
+    # Add suptitle if provided
+    if suptitle is not None:
+        plt.suptitle(suptitle, y=1.05, fontsize=16)
+
     # Save and display plot
     feature_plot_path = media_file_path / "feature_importance_plots.png"
-    plt.savefig(feature_plot_path)
+    plt.savefig(feature_plot_path, bbox_inches='tight')
     plt.show()
     plt.close(fig)
