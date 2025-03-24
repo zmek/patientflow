@@ -1,13 +1,11 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 
-from patientflow.predict.admission_in_prediction_window import (
+from patientflow.calculate.admission_in_prediction_window import (
     calculate_probability,
 )
-
-from patientflow.predict.specialty_of_admission import get_specialty_probs
 
 from patientflow.aggregate import (
     model_input_to_pred_proba,
@@ -15,7 +13,6 @@ from patientflow.aggregate import (
 )
 
 
-from patientflow.errors import ModelLoadError
 import warnings
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
@@ -79,20 +76,106 @@ def index_of_sum(sequence: List[float], max_sum: float) -> int:
     return len(sequence) - 1  # Return the last index if the sum doesn't exceed max_sum
 
 
-def validate_model_names(models: Dict[str, Any], model_names: Dict[str, str]) -> None:
+def get_specialty_probs(
+    specialties,
+    specialty_model,
+    snapshots_df,
+    special_category_func=None,
+    special_category_dict=None,
+):
     """
-    Validates that all model types specified in model_names exist in models.
+    Calculate specialty probability distributions for patient visits based on their data.
 
-    Args:
-        models: Dictionary containing all required models
-        model_names: Dictionary mapping model types to their names
+    This function applies a predictive model to each row of the input DataFrame to compute
+    specialty probability distributions. Optionally, it can classify certain rows as
+    belonging to a special category (like pediatric cases) based on a user-defined function,
+    applying a fixed probability distribution for these cases.
 
-    Raises:
-        ModelLoadError: If a required model name is not found in models
+    Parameters
+    ----------
+
+    specialties : str
+        List of specialty names for which predictions are required.
+    specialty_model : object
+        Trained model for making specialty predictions.
+    snapshots_df : pandas.DataFrame
+        DataFrame containing the data on which predictions are to be made. Must include
+        a 'consultation_sequence' column if no special_category_func is applied.
+    special_category_func : callable, optional
+        A function that takes a DataFrame row (Series) as input and returns True if the row
+        belongs to a special category that requires a fixed probability distribution.
+        If not provided, no special categorization is applied.
+    special_category_dict : dict, optional
+        A dictionary containing the fixed probability distribution for special category cases.
+        This dictionary is applied to rows identified by `special_category_func`. If
+        `special_category_func` is provided, this parameter must also be provided.
+
+    Returns
+    -------
+    pandas.Series
+        A Series containing dictionaries as values. Each dictionary represents the probability
+        distribution of specialties for each patient visit.
+
+    Raises
+    ------
+    ValueError
+        If `special_category_func` is provided but `special_category_dict` is None.
+
+    Examples
+    --------
+    >>> snapshots_df = pd.DataFrame({
+    ...     'consultation_sequence': [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]],
+    ...     'age': [5, 40, 70]
+    ... })
+    >>> def pediatric_case(row):
+    ...     return row['age'] < 18
+    >>> special_dist = {'pediatrics': 0.9, 'general': 0.1}
+    >>> get_specialty_probs('model.pkl', snapshots_df, pediatric_case, special_dist)
+    0    {'pediatrics': 0.9, 'general': 0.1}
+    1    {'cardiology': 0.7, 'general': 0.3}
+    2    {'neurology': 0.8, 'general': 0.2}
+    dtype: object
     """
-    missing_models = [name for name in model_names.values() if name not in models]
-    if missing_models:
-        raise ModelLoadError(f"Missing required models: {missing_models}")
+
+    # Convert consultation_sequence to tuple if not already a tuple
+    if len(snapshots_df["consultation_sequence"]) > 0 and not isinstance(
+        snapshots_df["consultation_sequence"].iloc[0], tuple
+    ):
+        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df[
+            "consultation_sequence"
+        ].apply(lambda x: tuple(x) if x else ())
+
+    if special_category_func and not special_category_dict:
+        raise ValueError(
+            "special_category_dict must be provided if special_category_func is specified."
+        )
+
+    # Function to determine the specialty probabilities
+    def determine_specialty(row):
+        if special_category_func and special_category_func(row):
+            return special_category_dict
+        else:
+            return specialty_model.predict(row["consultation_sequence"])
+
+    # Apply the determine_specialty function to each row
+    specialty_prob_series = snapshots_df.apply(determine_specialty, axis=1)
+
+    # Find all unique keys used in any dictionary within the series
+    all_keys = set().union(
+        *(d.keys() for d in specialty_prob_series if isinstance(d, dict))
+    )
+
+    # Combine all_keys with the specialties requested
+    all_keys = set(all_keys).union(set(specialties))
+
+    # Ensure each dictionary contains all keys found, with default values of 0 for missing keys
+    specialty_prob_series = specialty_prob_series.apply(
+        lambda d: (
+            {key: d.get(key, 0) for key in all_keys} if isinstance(d, dict) else d
+        )
+    )
+
+    return specialty_prob_series
 
 
 def create_predictions(

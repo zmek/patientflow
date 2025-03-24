@@ -2,7 +2,6 @@ from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict, Type
 import numpy as np
 import numpy.typing as npt
 from xgboost import XGBClassifier
-import pandas as pd
 from pandas import DataFrame, Series
 from collections import Counter
 

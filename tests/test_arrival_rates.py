@@ -4,7 +4,7 @@ import pandas as pd
 from collections import OrderedDict
 
 # Import the functions to test
-from patientflow.calculate import (
+from patientflow.calculate.arrival_rates import (
     time_varying_arrival_rates,
     time_varying_arrival_rates_lagged,
     admission_probabilities,

@@ -2,7 +2,6 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from joblib import dump
 from datetime import date
 import sys
 
@@ -16,6 +15,8 @@ from patientflow.load import (
     parse_args,
     set_project_root,
 )
+
+from patientflow.train.utils import save_model
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.predict.emergency_demand import create_predictions
@@ -101,36 +102,6 @@ def split_and_check_sets(
         print(
             f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
         )
-
-
-def save_model(model, model_name, model_file_path):
-    """
-    Save trained model(s) to disk.
-
-    Parameters
-    ----------
-    model : object or dict
-        A single model instance or a dictionary of models to save.
-    model_name : str
-        Base name to use for saving the model(s).
-    model_file_path : Path
-        Directory path where the model(s) will be saved.
-
-    Returns
-    -------
-    None
-    """
-    if isinstance(model, dict):
-        # Handle dictionary of models (e.g., admission models)
-        for name, m in model.items():
-            full_path = model_file_path / name
-            full_path = full_path.with_suffix(".joblib")
-            dump(m, full_path)
-    else:
-        # Handle single model (e.g., specialty or yet-to-arrive model)
-        full_path = model_file_path / model_name
-        full_path = full_path.with_suffix(".joblib")
-        dump(model, full_path)
 
 
 def test_real_time_predictions(
