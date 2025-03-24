@@ -17,7 +17,7 @@ import warnings
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from patientflow.metrics import TrainedClassifier
+from patientflow.model_artifacts import TrainedClassifier
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
@@ -261,7 +261,7 @@ def create_predictions(
         raise ValueError("Yet-to-arrive model has not been fit")
 
     # Validate that the correct models have been passed for the requested prediction time and prediction window
-    if not classifier.metrics.prediction_time == prediction_time:
+    if not classifier.training_results.prediction_time == prediction_time:
         raise ValueError(
             "Requested prediction time does not match the prediction time of the trained classifier"
         )

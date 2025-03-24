@@ -26,7 +26,7 @@ from patientflow.train.sequence_predictor import train_sequence_predictor
 from patientflow.train.weighted_poisson_predictor import (
     train_weighted_poisson_predictor,
 )
-from patientflow.metrics import TrainedClassifier
+from patientflow.model_artifacts import TrainedClassifier
 
 
 def split_and_check_sets(
@@ -179,7 +179,7 @@ def test_real_time_predictions(
     # Find the model matching the required prediction time
     classifier = None
     for model_key, trained_model in trained_classifiers.items():
-        if trained_model.metrics.prediction_time == prediction_time:
+        if trained_model.training_results.prediction_time == prediction_time:
             classifier = trained_model
             break
 
