@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.9">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8608ea7d.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.4af4bdda.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#patientflow-code-and-explanatory-notebooks-for-predicting-short-term-hospital-bed-capacity-using-real-time-data" class="md-skip">
+        <a href="#patientflow-predicting-demand-for-hospital-beds-using-real-time-data" class="md-skip">
           Skip to content
         </a>
       
@@ -746,7 +746,7 @@
   
 
 
-<h1 id="patientflow-code-and-explanatory-notebooks-for-predicting-short-term-hospital-bed-capacity-using-real-time-data">PatientFlow: Code and explanatory notebooks for predicting short-term hospital bed capacity using real-time data</h1>
+<h1 id="patientflow-predicting-demand-for-hospital-beds-using-real-time-data">PatientFlow: Predicting demand for hospital beds using real-time data</h1>
 <p><a href="https://github.com/pre-commit/pre-commit"><img alt="pre-commit" src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&amp;logoColor=white" /></a>
 <a href="https://github.com/zmek/patientflow/actions/workflows/tests.yml"><img alt="Tests status" src="https://github.com/zmek/patientflow/actions/workflows/tests.yml/badge.svg" /></a>
 <a href="https://github.com/zmek/patientflow/actions/workflows/linting.yml"><img alt="Linting status" src="https://github.com/zmek/patientflow/actions/workflows/linting.yml/badge.svg" /></a>
@@ -765,26 +765,22 @@
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
 <!-- prettier-ignore-end -->
 
-<p>Welcome to the PatientFlow repository, which is designed to support hospital bed management through predictive modelling. I'm <a href="https://github.com/zmek/">Zella King</a>, a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) NHS Trust on practical tools to improve patient flow through the hospital.</p>
-<p>My most important contribution is a software application that <a href="https://github.com/jongillham">Jon Gillham</a> and I developed, which is now in daily use by bed managers at the hospital. That application generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system, and sends the predictions to the bed managers. I created the predictive models that are used in the application. Jon created the software that runs my modelling code five times a day, and sends the predictions by email to the bed managers.</p>
-<p>I developed the code I wrote for UCLH into a reusable resource following the principles of <a href="https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/">Reproducible Analytical Pipelines</a>. I did this because I want to:</p>
-<ol>
-<li>Share the code with researchers and NHS analysts who are work on similar models</li>
-<li>Make it easier for others to make use of the mathemetics involved in making these predictions</li>
-<li>Inform and educate anyone who wishes to adopt a similar approach</li>
-</ol>
+<p>Welcome to the PatientFlow repository, which provides predictive modelling for hospital bed management. I'm <a href="https://github.com/zmek/">Zella King</a>, a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) on practical tools to improve patient flow through the hospital.</p>
+<p>With a team from UCLH, I developed a predictive tool that is now in daily use by bed managers at the hospital. The tool generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system.</p>
+<p>I am sharing the code I wrote for UCLH as a reusable resource because I want to make it easier for researchers to convert patient-level predictions into output that is useful for bed managers in hospitals. This repository includes a Python package, called patientflow, which converts patient-level predictions into output that is useful for bed managers. If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients.</p>
+<p>The methods generalise to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.</p>
 <h2 id="main-features-of-my-modelling-approach">Main features of my modelling approach</h2>
 <ul>
 <li><strong>Led by what users need:</strong> My work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), since 2020. What is modelled directly reflects how they work and what is most useful to them.</li>
-<li><strong>Focused on short-term predictions:</strong> I am expert in predicting demand within a short time horizon eg 8 or 12 hours. Here I show models that predict how many beds will be needed emergency patients. (Later I plan to add modules that also predict elective demand, discharge and transfers between specialties.)</li>
-<li><strong>Assumes real-time data is available:</strong> Hospital bed managers have to deal with rapidly changing situations. My focus is on the use of real-time data (or near to real-time) to help them make informed decisions. The modelling shown here assumes that a hospital has some capacity to make use of real-time data in its electronic health record, even if this data is minimal.</li>
+<li><strong>Focused on short-term predictions:</strong> The modelling is designed for predicting demand within a short time horizon eg 8 or 12 hours. I show how to use my code to predict how many beds will be needed emergency patients. (Later I plan to add modules that for elective demand, discharge and transfers between specialties.)</li>
+<li><strong>Assumes real-time data is available:</strong> Hospital bed managers have to deal with rapidly changing situations. My focus is on the use of real-time data (or near to real-time) to help them make informed decisions.</li>
 </ul>
 <h2 id="main-features-of-this-repository">Main Features of this repository</h2>
 <ul>
 <li><strong>Reproducible</strong> - I follow the principles of <a href="https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/">Reproducible Analytical Pipelines</a>. The repository can be installed as a Python package, and imported into your own code.</li>
 <li><strong>Accessible</strong> - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. I intend that anyone with some knowledge of Python could understand and adapt the code for their use.</li>
-<li><strong>Practical:</strong> - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anomymised version of real patient data, which you can request access to on <a href="https://zenodo.org/records/14866057">Zenodo</a>, or you can use the synthetic dataset, derived from real patient data, in the <code>data-synthetic</code> folder. (Note that, if you use the synthetic dataset, the integrity of relationships between variables is not maintained and you will obtain articifically inflated model performance.)</li>
-<li><strong>Interactive:</strong> The repository includes a set of notebooks with code written on Python, with commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.</li>
+<li><strong>Practical:</strong> - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anonymised version of real patient data, which you can request access on <a href="https://zenodo.org/records/14866057">Zenodo</a>, or you can use the synthetic dataset, derived from real patient data, in the <code>data-synthetic</code> folder. (Note that, if you use the synthetic dataset, you will observe articifically inflated model performance.)</li>
+<li><strong>Interactive:</strong> The repository includes a set of notebooks with code written on Python and commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.</li>
 </ul>
 <h2 id="getting-started">Getting started</h2>
 <ul>
@@ -808,7 +804,7 @@ pip install -e &quot;.[test]&quot; #this will install the code in test mode
 <h3 id="training-models-with-data-provided">Training models with data provided</h3>
 <p>The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options</p>
 <ul>
-<li>step through the notebooks (for this to work you'll either need copy the two csv files from <code>data-synthetic</code>into your <code>data-public</code> folder or contact us for real patient data)</li>
+<li>step through the notebooks (for this to work you'll either need copy the two csv files from <code>data-synthetic</code>into your <code>data-public</code> folder or request access on <a href="https://zenodo.org/records/14866057">Zenodo</a> to real patient data</li>
 <li>run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the <code>data_folder_name</code> parameter if you have the real data in <code>data-public</code>)</li>
 </ul>
 <pre><code class="language-sh">cd src
@@ -823,11 +819,10 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 <li class="task-list-item"><input type="checkbox" disabled/> Feature-Complete Release</li>
 </ul>
 <h2 id="about">About</h2>
-<p>This project was inspired by the <a href="https://github.com/health-data-science-OR/pypi-template">py-pi template</a> developed by Tom Monks, and is developed in collaboration with the
-<a href="https://ucl.ac.uk/arc">Centre for Advanced Research Computing</a>, University
-College London.</p>
+<p>This project was inspired by the <a href="https://github.com/health-data-science-OR/pypi-template">py-pi template</a> developed by Tom Monks, and is based on a template developed by the
+<a href="https://ucl.ac.uk/arc">Centre for Advanced Research Computing</a>, University College London.</p>
 <h3 id="project-team">Project Team</h3>
-<p>Dr Zella King, Clinical Operational Research Unit (CORU), UCL (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)
+<p>Dr Zella King, Clinical Operational Research Unit (CORU), University College London (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)
 Jon Gillham, Institute of Health Informatics, UCL
 Professor Sonya Crowe, CORU
 Professor Martin Utley, CORU</p>
