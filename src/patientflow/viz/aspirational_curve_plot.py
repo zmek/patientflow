@@ -2,7 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from patientflow.predict.admission_in_prediction_window import (
+from patientflow.calculate.admission_in_prediction_window import (
     create_curve,
 )
 from patientflow.viz.utils import clean_title_for_filename

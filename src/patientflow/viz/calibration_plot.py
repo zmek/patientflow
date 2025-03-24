@@ -1,6 +1,8 @@
-from patientflow.prepare import prepare_for_inference
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
+from patientflow.predict.emergency_demand import add_missing_columns
+from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.load import get_model_key, load_saved_model
 
 # Define the color scheme
 primary_color = "#1f77b4"
@@ -10,31 +12,74 @@ secondary_color = "#aec7e8"
 def plot_calibration(
     prediction_times,
     media_file_path,
-    model_file_path,
-    visits_csv_path,
-    model_name,
+    trained_models,
+    test_visits,
+    exclude_from_training_data,
     strategy="uniform",
+    model_group_name="admssions",
+    model_name_suffix=None,
+    suptitle=None,
+    model_file_path=None,
 ):
-    num_plots = len(prediction_times)
+    # Load models if not provided
+    if trained_models is None:
+        if model_file_path is None:
+            raise ValueError(
+                "model_file_path must be provided if trained_models is None"
+            )
+        trained_models = {}
+        for prediction_time in prediction_times:
+            model_name = get_model_key(model_group_name, prediction_time)
+            if model_name_suffix:
+                model_name = f"{model_name}_{model_name_suffix}"
+            trained_models[model_name] = load_saved_model(
+                model_file_path, model_group_name, prediction_time
+            )
+
+    # Sort prediction times by converting to minutes since midnight
+    prediction_times_sorted = sorted(
+        prediction_times,
+        key=lambda x: x[0] * 60
+        + x[1],  # Convert (hour, minute) to minutes since midnight
+    )
+    num_plots = len(prediction_times_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))
 
-    for i, _prediction_time in enumerate(prediction_times):
-        X_test, y_test, pipeline = prepare_for_inference(
-            model_file_path=model_file_path,
-            model_name=model_name,
-            prediction_time=_prediction_time,
-            data_path=visits_csv_path,
+    # Handle case of single prediction time
+    if num_plots == 1:
+        axs = [axs]
+
+    for i, prediction_time in enumerate(prediction_times_sorted):
+        # Get model name and pipeline for this prediction time
+        model_name = get_model_key(model_group_name, prediction_time)
+        if model_name_suffix:
+            model_name = f"{model_name}_{model_name_suffix}"
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_models[model_name], "calibrated_pipeline")
+            and trained_models[model_name].calibrated_pipeline is not None
+        ):
+            pipeline = trained_models[model_name].calibrated_pipeline
+        else:
+            pipeline = trained_models[model_name].pipeline
+
+        # Get test data for this prediction time
+        X_test, y_test = get_snapshots_at_prediction_time(
+            df=test_visits,
+            prediction_time=prediction_time,
+            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
-            model_only=False,
         )
+
+        X_test = add_missing_columns(pipeline, X_test)
 
         prob_true, prob_pred = calibration_curve(
             y_test, pipeline.predict_proba(X_test)[:, 1], n_bins=10, strategy=strategy
         )
 
         ax = axs[i]
-
-        hour, minutes = _prediction_time
+        hour, minutes = prediction_time
 
         ax.plot(
             prob_pred,
@@ -57,6 +102,10 @@ def plot_calibration(
         ax.legend()
 
     plt.tight_layout()
+
+    # Add suptitle if provided
+    if suptitle:
+        plt.suptitle(suptitle, fontsize=16, y=1.05)
 
     calib_plot_path = media_file_path / "calibration_plot"
     calib_plot_path = calib_plot_path.with_suffix(".png")

@@ -45,6 +45,7 @@ def prob_dist_plot(
     plot_min_beds_lines=True,
     plot_bed_base=None,
     xlabel="Number of beds",
+    return_figure=False,
 ):
     """
     Plot a probability distribution as a bar chart with enhanced plotting options.
@@ -103,10 +104,13 @@ def prob_dist_plot(
     xlabel : str, optional, default="Number of beds"
         A label for the x axis
 
+    return_figure : bool, optional
+        If True, returns the matplotlib figure instead of displaying it (default is False)
+
     Returns
     -------
-    None
-        The function does not return any value. It displays and optionally saves the plot.
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot
 
     Examples
     --------
@@ -159,7 +163,7 @@ def prob_dist_plot(
             index=list(prob_dist_data.keys()),
         )
 
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     if not file_name:
         file_name = (
             title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
@@ -229,4 +233,7 @@ def prob_dist_plot(
     if directory_path:
         plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
 
-    plt.show()
+    if return_figure:
+        return fig
+    else:
+        plt.show()

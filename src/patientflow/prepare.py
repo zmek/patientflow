@@ -224,42 +224,123 @@ def create_temporal_splits(
     return tuple(splits)
 
 
-def create_special_category_objects(uclh):
-    special_category_dict = {
-        "medical": 0.0,
-        "surgical": 0.0,
-        "haem/onc": 0.0,
-        "paediatric": 1.0,
-    }
+class SpecialCategoryParams:
+    """
+    A picklable implementation of special category parameters for patient classification.
 
-    # Function to determine if the patient is a child
-    def is_paediatric_uclh(row):
-        return row["age_on_arrival"] < 18
+    This class identifies pediatric patients based on available age-related columns
+    in the dataset and provides functions to categorize patients accordingly.
+    It's designed to be serializable with pickle by implementing the __reduce__ method.
 
-    def is_paediatric_non_uclh(row):
-        return row["age_group"] == "0-17"
+    Attributes:
+        columns (list): List of column names from the dataset
+        method_type (str): The method used for age detection ('age_on_arrival' or 'age_group')
+        special_category_dict (dict): Default category values mapping
+    """
 
-    if uclh:
-        special_category_func = is_paediatric_uclh
-    else:
-        special_category_func = is_paediatric_non_uclh
+    def __init__(self, columns):
+        """
+        Initialize the SpecialCategoryParams object.
 
-    # Function to return the opposite of special_category_func
-    def opposite_special_category_func(row):
-        return not special_category_func(row)
+        Parameters:
+            columns (list or pandas.Index): Column names from the dataset
+                used to determine the appropriate age identification method
 
-    special_func_map = {
-        "paediatric": special_category_func,
-        "default": opposite_special_category_func,
-    }
+        Raises:
+            ValueError: If neither 'age_on_arrival' nor 'age_group' columns are found
+        """
+        self.columns = columns
+        self.special_category_dict = {
+            "medical": 0.0,
+            "surgical": 0.0,
+            "haem/onc": 0.0,
+            "paediatric": 1.0,
+        }
 
-    special_params = {
-        "special_category_func": special_category_func,
-        "special_category_dict": special_category_dict,
-        "special_func_map": special_func_map,
-    }
+        if "age_on_arrival" in columns:
+            self.method_type = "age_on_arrival"
+        elif "age_group" in columns:
+            self.method_type = "age_group"
+        else:
+            raise ValueError("Unknown data format: could not find expected age columns")
 
-    return special_params
+    def special_category_func(self, row):
+        """
+        Identify if a patient is pediatric based on age data.
+
+        Parameters:
+            row (dict or pandas.Series): A row of patient data containing either
+                'age_on_arrival' or 'age_group'
+
+        Returns:
+            bool: True if the patient is pediatric (age < 18 or age_group is '0-17'),
+                 False otherwise
+        """
+        if self.method_type == "age_on_arrival":
+            return row["age_on_arrival"] < 18
+        else:  # age_group
+            return row["age_group"] == "0-17"
+
+    def opposite_special_category_func(self, row):
+        """
+        Identify if a patient is NOT pediatric.
+
+        Parameters:
+            row (dict or pandas.Series): A row of patient data
+
+        Returns:
+            bool: True if the patient is NOT pediatric, False if they are pediatric
+        """
+        return not self.special_category_func(row)
+
+    def get_params_dict(self):
+        """
+        Get the special parameter dictionary in the format expected by the application.
+
+        Returns:
+            dict: A dictionary containing:
+                - 'special_category_func': Function to identify pediatric patients
+                - 'special_category_dict': Default category values
+                - 'special_func_map': Mapping of category names to detection functions
+        """
+        return {
+            "special_category_func": self.special_category_func,
+            "special_category_dict": self.special_category_dict,
+            "special_func_map": {
+                "paediatric": self.special_category_func,
+                "default": self.opposite_special_category_func,
+            },
+        }
+
+    def __reduce__(self):
+        """
+        Support for pickle serialization.
+
+        Returns:
+            tuple: A tuple containing:
+                - The class itself (to be called as a function)
+                - A tuple of arguments to pass to the class constructor
+        """
+        return (self.__class__, (self.columns,))
+
+
+def create_special_category_objects(columns):
+    """
+    Creates a configuration for categorizing patients with special handling for pediatric cases.
+
+    Parameters:
+    -----------
+    columns : list or pandas.Index
+        The column names available in the dataset. Used to determine which age format is present.
+
+    Returns:
+    --------
+    dict
+        A dictionary containing special category configuration.
+    """
+    # Create the class instance and return its parameter dictionary
+    params_obj = SpecialCategoryParams(columns)
+    return params_obj.get_params_dict()
 
 
 def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
@@ -274,11 +355,41 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
         raise MissingKeysError(missing_keys)
 
 
-def create_yta_filters(uclh):
-    # Get the special category parameters
-    special_params = create_special_category_objects(uclh)
+def create_yta_filters(df):
+    """
+    Create specialty filters for categorizing patients by specialty and age group.
 
-    # Extract necessary functions and data from the special_params
+    This function generates a dictionary of filters based on specialty categories,
+    with special handling for pediatric patients. It uses the SpecialCategoryParams
+    class to determine which specialties correspond to pediatric care.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        DataFrame containing patient data with columns that include either
+        'age_on_arrival' or 'age_group' for pediatric classification
+
+    Returns:
+    --------
+    dict
+        A dictionary mapping specialty names to filter configurations.
+        Each configuration contains:
+        - For pediatric specialty: {"is_child": True}
+        - For other specialties: {"specialty": specialty_name, "is_child": False}
+
+    Examples:
+    ---------
+    >>> df = pd.DataFrame({'patient_id': [1, 2], 'age_on_arrival': [10, 40]})
+    >>> filters = create_yta_filters(df)
+    >>> print(filters['paediatric'])
+    {'is_child': True}
+    >>> print(filters['medical'])
+    {'specialty': 'medical', 'is_child': False}
+    """
+    # Get the special category parameters using the picklable implementation
+    special_params = create_special_category_objects(df.columns)
+
+    # Extract necessary data from the special_params
     special_category_dict = special_params["special_category_dict"]
 
     # Create the specialty_filters dictionary
@@ -352,7 +463,9 @@ def get_snapshots_at_prediction_time(
         return df_single, y
     else:
         # Directly modify df_tod without resetting the index
-        df_tod.drop(columns=["random_number"] + exclude_columns, inplace=True)
+        df_tod.drop(
+            columns=["random_number"] + exclude_columns, inplace=True, errors="ignore"
+        )
         y = df_tod.pop(label_col).astype(int)
         return df_tod, y
 
@@ -377,6 +490,7 @@ def prepare_for_inference(
     if requested, prepares the data required for inference. The data can be
     provided either as a DataFrame or as a file path to a CSV file. The function
     allows filtering and processing of the data to match the model's requirements.
+    If available, it will use the calibrated pipeline instead of the regular pipeline.
 
     Parameters
     ----------
@@ -411,7 +525,7 @@ def prepare_for_inference(
     Returns
     -------
     model : object
-        The loaded model.
+        The loaded model (calibrated pipeline if available, otherwise regular pipeline).
     X_test : pandas.DataFrame, optional
         The features prepared for testing, returned only if model_only is False.
     y_test : pandas.Series, optional
@@ -424,16 +538,23 @@ def prepare_for_inference(
 
     Notes
     -----
-    Either `df` or `data_path` must be provided. If neither is provided or if `df`
-    is empty, the function will print an error message and return None.
-
+    - Either `df` or `data_path` must be provided. If neither is provided or if `df`
+      is empty, the function will print an error message and return None.
+    - The function will automatically use a calibrated pipeline if one is available
+      in the model, otherwise it will fall back to the regular pipeline.
     """
 
     # retrieve model trained for this time of day
     model = load_saved_model(model_file_path, model_name, prediction_time)
 
+    # Use calibrated pipeline if available, otherwise use regular pipeline
+    if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
+        pipeline = model.calibrated_pipeline
+    else:
+        pipeline = model.pipeline
+
     if model_only:
-        return model
+        return pipeline
 
     if data_path:
         df = data_from_csv(data_path, index_column, sort_columns, eval_columns)
@@ -458,7 +579,7 @@ def prepare_for_inference(
         single_snapshot_per_visit,
     )
 
-    return X_test, y_test, model
+    return X_test, y_test, pipeline
 
 
 def prepare_snapshots_dict(df, start_dt=None, end_dt=None):

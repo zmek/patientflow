@@ -25,7 +25,7 @@ safe_literal_eval:
     Safely evaluate string literals into Python objects when loading from csv.
 load_data:
     Load and preprocess data from a CSV or pickle file.
-get_model_name:
+get_model_key:
     Generate a model name based on the time of day.
 load_saved_model:
     Load a machine learning model saved in a joblib file.
@@ -440,7 +440,12 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
 
 def load_data(
-    data_file_path, file_name, index_column=None, sort_columns=None, eval_columns=None
+    data_file_path,
+    file_name,
+    index_column=None,
+    sort_columns=None,
+    eval_columns=None,
+    home_path=None,
 ):
     """
     Loads data from CSV or pickle file with optional transformations.
@@ -457,6 +462,8 @@ def load_data(
         Columns to sort DataFrame by
     eval_columns : list of str, optional
         Columns to apply safe_literal_eval to
+    home_path : str or Path, optional
+        Base path to use instead of user's home directory
 
     Returns
     -------
@@ -465,38 +472,43 @@ def load_data(
 
     Raises
     ------
-    SystemExit
-        If file not found or error occurs during processing
+    FileNotFoundError
+        If the specified file does not exist
+    ValueError
+        If the file format is not supported or other processing errors occur
     """
-    path = os.path.join(Path().home(), data_file_path, file_name)
+    from pathlib import Path
 
-    if not os.path.exists(path):
-        print(f"Data file not found at path: {path}")
-        sys.exit(1)
+    # Use provided home_path if available, otherwise default to user's home directory
+    base_path = Path(home_path) if home_path else Path.home()
+    path = base_path / data_file_path / file_name
+
+    if not path.exists():
+        raise FileNotFoundError(f"Data file not found at path: {path}")
 
     try:
-        if file_name.endswith(".csv"):
+        if path.suffix.lower() == ".csv":
             df = pd.read_csv(path, parse_dates=True)
-        elif file_name.endswith(".pkl"):
+        elif path.suffix.lower() == ".pkl":
             df = pd.read_pickle(path)
         else:
-            print("Unsupported file format. Must be CSV or pickle")
-            sys.exit(1)
+            raise ValueError(
+                f"Unsupported file format: {path.suffix}. Must be .csv or .pkl"
+            )
     except Exception as e:
-        print(f"Error loading data: {e}")
-        sys.exit(1)
+        raise ValueError(f"Error loading data: {str(e)}")
 
     if index_column and df.index.name != index_column:
         try:
             df = df.set_index(index_column)
         except KeyError:
-            print(f"Index column '{index_column}' not found in dataframe")
+            print(f"Warning: Index column '{index_column}' not found in dataframe")
 
     if sort_columns:
         try:
             df.sort_values(sort_columns, inplace=True)
         except KeyError:
-            print("One or more sort columns not found in dataframe")
+            print("Warning: One or more sort columns not found in dataframe")
 
     if eval_columns:
         for column in eval_columns:
@@ -504,12 +516,14 @@ def load_data(
                 try:
                     df[column] = df[column].apply(safe_literal_eval)
                 except Exception as e:
-                    print(f"Error applying safe_literal_eval to column '{column}': {e}")
+                    print(
+                        f"Warning: Error applying safe_literal_eval to column '{column}': {str(e)}"
+                    )
 
     return df
 
 
-def get_model_name(model_name, prediction_time):
+def get_model_key(model_name, prediction_time):
     """
     Create a model name based on the time of day.
 
@@ -557,7 +571,7 @@ def load_saved_model(model_file_path, model_name, prediction_time=None):
     """
     if prediction_time:
         # retrieve model based on the time of day it is trained for
-        model_name = get_model_name(model_name, prediction_time)
+        model_name = get_model_key(model_name, prediction_time)
 
     full_path = model_file_path / model_name
     full_path = full_path.with_suffix(".joblib")
