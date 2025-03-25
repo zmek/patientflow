@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from patientflow.model_artifacts import TrainedClassifier
-from patientflow.load import get_model_key, load_saved_model
+from sklearn.pipeline import Pipeline
 
 
 def plot_features(
@@ -22,7 +22,8 @@ def plot_features(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
 
     num_plots = len(trained_models_sorted)
@@ -34,7 +35,7 @@ def plot_features(
 
     for i, trained_model in enumerate(trained_models_sorted):
         # Always use regular pipeline
-        pipeline = trained_model.pipeline
+        pipeline: Pipeline = trained_model.pipeline
         prediction_time = trained_model.training_results.prediction_time
 
         # Get feature names from the pipeline
@@ -46,7 +47,9 @@ def plot_features(
 
         # Get feature importances
         feature_importances = pipeline.named_steps["classifier"].feature_importances_
-        indices = np.argsort(feature_importances)[-top_n:]  # Get indices of the top N features
+        indices = np.argsort(feature_importances)[
+            -top_n:
+        ]  # Get indices of the top N features
 
         # Plot for this prediction time
         ax = axs[i]
@@ -66,6 +69,6 @@ def plot_features(
 
     # Save and display plot
     feature_plot_path = media_file_path / "feature_importance_plots.png"
-    plt.savefig(feature_plot_path, bbox_inches='tight')
+    plt.savefig(feature_plot_path, bbox_inches="tight")
     plt.show()
     plt.close(fig)
