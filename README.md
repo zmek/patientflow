@@ -29,30 +29,52 @@
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
 <!-- prettier-ignore-end -->
 
-Welcome to the PatientFlow repository, which provides predictive modelling for hospital bed management. I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) on practical tools to improve patient flow through the hospital.
+## Summary
 
-With a team from UCLH, I developed a predictive tool that is now in daily use by bed managers at the hospital. The tool generates predictions of emergency demand for beds, using real-time data from the hospital's patient record system.
+patientflow, a Python package, converts patient-level predictions into output that is useful for bed managers in hospitals.
 
-I am sharing the code I wrote for UCLH as a reusable resource because I want to make it easier for researchers to convert patient-level predictions into output that is useful for bed managers in hospitals. This repository includes a Python package, called patientflow, which converts patient-level predictions into output that is useful for bed managers. If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients.
+We developed this code originally for University College London Hospitals (UCLH) NHS Trust to predict the number of emergency admissions within the next eight hours. The methods generalise to other aspects of patient flow in hospitals, including predictions of discharge numbers, within a group of patients. It can be applied to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time.
 
-The methods generalise to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
+If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients. We show how to prepare your data and train models for these kinds of problems. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
 
-## Main features of my modelling approach
+## What patientflow is for:
 
-- **Led by what users need:** My work is the result of close collaboration with operations directors and bed managers in the Coordination Centre, University College London Hospital (UCLH), since 2020. What is modelled directly reflects how they work and what is most useful to them.
-- **Focused on short-term predictions:** The modelling is designed for predicting demand within a short time horizon eg 8 or 12 hours. I show how to use my code to predict how many beds will be needed emergency patients. (Later I plan to add modules that for elective demand, discharge and transfers between specialties.)
-- **Assumes real-time data is available:** Hospital bed managers have to deal with rapidly changing situations. My focus is on the use of real-time data (or near to real-time) to help them make informed decisions.
+- Managing patient flow in hospitals: The package can be used to predict numbers of emergency admissions, discharges or transfers between units
+- Short-term operational planning: The predictions produced by this package are designed for bed managers who need to make decisions within an 4-16 hour timeframe.
+- Working with real-time data: The design assumes that data from an electronic health record (EHR) is available in real-time, or near to real-time
+- Point-in-time analysis: The packages works by taking "snapshots" of groups of patients at a particular moment, and making projections from those specific moments.
 
-## Main Features of this repository
+## What patientflow is NOT for:
 
-- **Reproducible** - I follow the principles of [Reproducible Analytical Pipelines](https://analysisfunction.civilservice.gov.uk/support/reproducible-analytical-pipelines/). The repository can be installed as a Python package, and imported into your own code.
-- **Accessible** - All the elements are based on simple techniques and methods in Health Data Science and Operational Research. I intend that anyone with some knowledge of Python could understand and adapt the code for their use.
-- **Practical:** - I believe that it is easier to follow the steps I took if you have access to the same data I have. UCLH have released an anonymised version of real patient data, which you can request access on [Zenodo](https://zenodo.org/records/14866057), or you can use the synthetic dataset, derived from real patient data, in the `data-synthetic` folder. (Note that, if you use the synthetic dataset, you will observe articifically inflated model performance.)
-- **Interactive:** The repository includes a set of notebooks with code written on Python and commentary. If you clone the repo into your own workspace and have an environment for running Jupyter notebooks, you will be able to interact with the code and see it running.
+- Long-term capacity planning: The package focuses on immediate operational needs (hours ahead), not strategic planning over weeks or months.
+- Making decisions about individual patients: The package is not designed for clinical decision-making about specific patients. It relies on data entered into the EHR by clinical staff looking after patients, but cannot and should not be use to influence their decision-making
+- General hospital analytics: It is specifically focused on short-term bed management, not broader hospital analytics like long-term demand and capacity planning.
+- Finished/historical patient analysis: While historical data might train underlying models, the package itself focuses on patients currently in the hospital or soon to arrive
+- Replacing human judgment: It augments the information available to bed managers, but isn't meant to automate bed management decisions completely.
+
+## This package will help you if you want to:
+
+- Convert individual patient predictions to cohort-level insights: Its core purpose is the creation of aggregate bed count distributions, because bed numbers are the currencly used by bed managers.
+- Make predictions for unfinished patient visits: It is designed for making predictions when outcome at the end of the visit are as yet unknown.
+- Develop your own predictive models of emergency demand: The package includes a fully worked example of how to convert data from A&E visits into the right structure, and use that data to train models that predict numbers of emergency beds.
+
+## This package will not help you if:
+
+- You work with time series data: patientflow works with snapshots of a hospital visit summarising what is in the patient record up to that point in time
+- Your focus is on predicting clinical outcomes: the approach is designed
+
+## Mathematical assumptions underlying the conversion from individual to cohort predictions:
+
+- Independence of patient outcomes: The package assumes that individual patient outcomes are conditionally independent given the features used in prediction.
+- Symbolic probability generation: The conversion uses symbolic mathematics (via SymPy) to construct a probability generating function that represents the exact distribution of possible cohort outcomes.
+- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes the exact probability distribution for the sum of these independent trials.
+- Coefficient extraction approach: The method works by expanding a symbolic expression and extracting coefficients corresponding to each possible cohort outcome count.
+- Optional weighted aggregation: When converting individual probabilities to cohort-level predictions, the package allows for weighted importance of individual predictions, modifying the contribution of each patient to the overall distribution in specific contexts (eg admissions to different specialties).
+- Discrete outcome space: The package assumes outcomes can be represented as discrete counts (e.g., number of admissions) rather than continuous values.
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of the notebooks, and read the [patientflow README](src/patientflow/README.md) to understand my intentions for the Python package
+- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](src/patientflow/README.md) for an overview of the Python package
 - Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
 - Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
 

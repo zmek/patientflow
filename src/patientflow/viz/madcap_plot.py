@@ -26,7 +26,7 @@ generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_pat
 """
 
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Union, Optional
 
 import matplotlib.pyplot as plt
 import math
@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import get_snapshots_at_prediction_time
-from patientflow.load import get_model_key, load_saved_model
+from patientflow.model_artifacts import TrainedClassifier
 
 exclude_from_training_data = [
     "visit_number",
@@ -86,59 +86,36 @@ def classify_age(age):
 
 
 def generate_madcap_plots(
-    prediction_times: List[Tuple[int, int]],
+    trained_models: list[TrainedClassifier],
     media_file_path: Union[str, Path, None],
-    trained_models: dict,
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
-    model_group_name: str = "admissions",
-    model_name_suffix: Union[str, None] = None,
-    model_file_path: Union[str, Path, None] = None,
+    suptitle: Optional[str] = None,
 ) -> None:
     """
-    Generates MADCAP plots for a list of prediction times, comparing predicted probabilities
+    Generates MADCAP plots for a list of trained models, comparing predicted probabilities
     to actual admissions.
 
     Parameters
     ----------
-    prediction_times : list of tuple
-        List of prediction times as (hour, minute) tuples.
-    media_file_path : str or Path
-        Directory path where the generated plots will be saved.
-    trained_models : dict
-        Dictionary of trained model pipelines keyed by model name.
+    trained_models : list[TrainedClassifier]
+        List of trained classifier objects
+    media_file_path : str or Path or None
+        Directory path where the generated plots will be saved
     test_visits : pd.DataFrame
-        DataFrame containing the test visit data.
+        DataFrame containing the test visit data
     exclude_from_training_data : List[str]
-        List of columns to exclude from training data.
-    model_group_name : str, optional
-        Name of the model group (default: "admissions").
-    model_name_suffix : str or None, optional
-        Suffix to append to model names (default: None).
-    model_file_path : str or Path or None, optional
-        Path to the model file. If None, models must be provided in trained_models.
+        List of columns to exclude from training data
+    suptitle : str, optional
+        Suptitle for the plot
     """
-    # Load models if not provided
-    if trained_models is None:
-        if model_file_path is None:
-            raise ValueError(
-                "model_file_path must be provided if trained_models is None"
-            )
-        trained_models = {}
-        for prediction_time in prediction_times:
-            model_name = get_model_key(model_group_name, prediction_time)
-            if model_name_suffix:
-                model_name = f"{model_name}_{model_name_suffix}"
-            trained_models[model_name] = load_saved_model(
-                model_file_path, model_group_name, prediction_time
-            )
-
-    # Sort prediction times by converting to minutes since midnight
-    prediction_times_sorted = sorted(
-        prediction_times,
-        key=lambda x: x[0] * 60 + x[1],
+    # Sort trained_models by prediction time
+    trained_models_sorted = sorted(
+        trained_models,
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
-    num_plots = len(prediction_times_sorted)
+    num_plots = len(trained_models_sorted)
 
     # Calculate the number of rows and columns for the subplots
     num_cols = min(num_plots, 5)  # Maximum 5 columns
@@ -146,24 +123,21 @@ def generate_madcap_plots(
 
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_plots * 5, 4))
 
-    # Ensure axes is always a 2D array
-    if num_rows == 1:
-        axes = axes.reshape(1, -1)
-
-    for i, prediction_time in enumerate(prediction_times_sorted):
-        # Get model name and pipeline for this prediction time
-        model_name = get_model_key(model_group_name, prediction_time)
-        if model_name_suffix:
-            model_name = f"{model_name}_{model_name_suffix}"
+    # Handle the case of a single plot differently
+    if num_plots == 1:
+        # When there's only one plot, axes is a single Axes object, not an array
+        trained_model = trained_models_sorted[0]
 
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
-            hasattr(trained_models[model_name], "calibrated_pipeline")
-            and trained_models[model_name].calibrated_pipeline is not None
+            hasattr(trained_model, "calibrated_pipeline")
+            and trained_model.calibrated_pipeline is not None
         ):
-            pipeline = trained_models[model_name].calibrated_pipeline
+            pipeline = trained_model.calibrated_pipeline
         else:
-            pipeline = trained_models[model_name].pipeline
+            pipeline = trained_model.pipeline
+
+        prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
@@ -176,22 +150,58 @@ def generate_madcap_plots(
         X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
-        row = i // num_cols
-        col = i % num_cols
-        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
+        # Plot directly on the single axes
+        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes)
+    else:
+        # For multiple plots, ensure axes is always a 2D array
+        if num_rows == 1:
+            axes = axes.reshape(1, -1)
 
-    # Hide any unused subplots
-    for j in range(i + 1, num_rows * num_cols):
-        row = j // num_cols
-        col = j % num_cols
-        axes[row, col].axis("off")
+        for i, trained_model in enumerate(trained_models_sorted):
+            # Use calibrated pipeline if available, otherwise use regular pipeline
+            if (
+                hasattr(trained_model, "calibrated_pipeline")
+                and trained_model.calibrated_pipeline is not None
+            ):
+                pipeline = trained_model.calibrated_pipeline
+            else:
+                pipeline = trained_model.pipeline
+
+            prediction_time = trained_model.training_results.prediction_time
+
+            # Get test data for this prediction time
+            X_test, y_test = get_snapshots_at_prediction_time(
+                df=test_visits,
+                prediction_time=prediction_time,
+                exclude_columns=exclude_from_training_data,
+                single_snapshot_per_visit=False,
+            )
+
+            X_test = add_missing_columns(pipeline, X_test)
+            predict_proba = pipeline.predict_proba(X_test)[:, 1]
+
+            row = i // num_cols
+            col = i % num_cols
+            plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
+
+        # Hide any unused subplots
+        for j in range(i + 1, num_rows * num_cols):
+            row = j // num_cols
+            col = j % num_cols
+            axes[row, col].axis("off")
 
     plt.tight_layout()
+
+    # Add suptitle if provided
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=16, y=1.05)
+        # Adjust layout to accommodate suptitle
+        plt.subplots_adjust(top=0.85)
 
     if media_file_path:
         plot_name = "madcap_plot"
         madcap_plot_path = Path(media_file_path) / plot_name
-        plt.savefig(madcap_plot_path)
+        plt.savefig(madcap_plot_path, bbox_inches="tight")
 
     plt.show()
     plt.close(fig)
@@ -349,86 +359,52 @@ def plot_madcap_by_group(
 
 
 def generate_madcap_plots_by_group(
-    prediction_times: List[Tuple[int, int]],
+    trained_models: list[TrainedClassifier],
     media_file_path: Union[str, Path, None],
-    trained_models: dict,
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     grouping_var: str,
     grouping_var_name: str,
-    model_group_name: str = "admissions",
-    model_name_suffix: Union[str, None] = None,
     plot_difference: bool = False,
-    model_file_path: Union[str, Path, None] = None,
 ) -> None:
     """
     Generates MADCAP plots for different groups across multiple prediction times.
 
     Parameters
     ----------
-    prediction_times : list of tuple
-        A list of prediction times, each specified as a tuple of (hour, minute).
+    trained_models : list[TrainedClassifier]
+        List of trained classifier objects
     media_file_path : str or Path or None
-        Directory path where the generated plots will be saved. If None, plots are not saved.
-    trained_models : dict
-        Dictionary of trained model pipelines keyed by model name.
+        Directory path where the generated plots will be saved
     test_visits : pd.DataFrame
-        DataFrame containing the test visit data.
+        DataFrame containing the test visit data
     exclude_from_training_data : List[str]
-        List of columns to exclude from training data.
+        List of columns to exclude from training data
     grouping_var : str
-        The column name in the dataset that defines the grouping variable.
+        The column name in the dataset that defines the grouping variable
     grouping_var_name : str
-        A descriptive name for the grouping variable, used in plot titles.
-    model_group_name : str, optional
-        Name of the model group (default: "admissions").
-    model_name_suffix : str or None, optional
-        Suffix to append to model names (default: None).
+        A descriptive name for the grouping variable, used in plot titles
     plot_difference : bool, optional
-        If True, includes difference plot between predicted and observed admissions.
-    model_file_path : str or Path or None, optional
-        Path to the model file. If None, models must be provided in trained_models.
-
-    Raises
-    ------
-    ValueError
-        If grouping_var is not found in the columns of the test data.
+        If True, includes difference plot between predicted and observed admissions
     """
-    # Load models if not provided
-    if trained_models is None:
-        if model_file_path is None:
-            raise ValueError(
-                "model_file_path must be provided if trained_models is None"
-            )
-        trained_models = {}
-        for prediction_time in prediction_times:
-            model_name = get_model_key(model_group_name, prediction_time)
-            if model_name_suffix:
-                model_name = f"{model_name}_{model_name_suffix}"
-            trained_models[model_name] = load_saved_model(
-                model_file_path, model_group_name, prediction_time
-            )
-
-    # Sort prediction times by converting to minutes since midnight
-    prediction_times_sorted = sorted(
-        prediction_times,
-        key=lambda x: x[0] * 60 + x[1],
+    # Sort trained_models by prediction time
+    trained_models_sorted = sorted(
+        trained_models,
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
 
-    for prediction_time in prediction_times_sorted:
-        # Get model name and pipeline for this prediction time
-        model_name = get_model_key(model_group_name, prediction_time)
-        if model_name_suffix:
-            model_name = f"{model_name}_{model_name_suffix}"
-
+    for trained_model in trained_models_sorted:
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
-            hasattr(trained_models[model_name], "calibrated_pipeline")
-            and trained_models[model_name].calibrated_pipeline is not None
+            hasattr(trained_model, "calibrated_pipeline")
+            and trained_model.calibrated_pipeline is not None
         ):
-            pipeline = trained_models[model_name].calibrated_pipeline
+            pipeline = trained_model.calibrated_pipeline
         else:
-            pipeline = trained_models[model_name].pipeline
+            pipeline = trained_model.pipeline
+
+        prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(

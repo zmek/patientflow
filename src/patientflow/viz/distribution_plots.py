@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import get_snapshots_at_prediction_time
-from patientflow.load import get_model_key, load_saved_model
+from patientflow.model_artifacts import TrainedClassifier
+from typing import Optional
+from pathlib import Path
 
 # Define the color scheme
 primary_color = "#1f77b4"
@@ -9,57 +11,49 @@ secondary_color = "#ff7f0e"
 
 
 def plot_prediction_distributions(
-    prediction_times,
-    media_file_path,
-    trained_models,
+    trained_models: list[TrainedClassifier],
     test_visits,
     exclude_from_training_data,
-    model_group_name="admissions",
-    model_name_suffix=None,
     bins=30,
-    model_file_path=None,
+    media_file_path: Optional[Path] = None,
 ):
-    # Load models if not provided
-    if trained_models is None:
-        if model_file_path is None:
-            raise ValueError(
-                "model_file_path must be provided if trained_models is None"
-            )
-        trained_models = {}
-        for prediction_time in prediction_times:
-            model_name = get_model_key(model_group_name, prediction_time)
-            if model_name_suffix:
-                model_name = f"{model_name}_{model_name_suffix}"
-            trained_models[model_name] = load_saved_model(
-                model_file_path, model_group_name, prediction_time
-            )
+    """
+    Plot prediction distributions for multiple models.
 
-    # Sort prediction times by converting to minutes since midnight
-    prediction_times_sorted = sorted(
-        prediction_times,
-        key=lambda x: x[0] * 60 + x[1],
+    Args:
+        trained_models: List of TrainedClassifier objects
+        test_visits: DataFrame containing test visit data
+        exclude_from_training_data: Columns to exclude from the test data
+        bins: Number of bins for the histogram (default: 30)
+        media_file_path: Path to save the plot (default: None)
+    """
+    if media_file_path is None:
+        raise ValueError("media_file_path must be provided")
+
+    # Sort trained_models by prediction time
+    trained_models_sorted = sorted(
+        trained_models,
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
-    num_plots = len(prediction_times_sorted)
+    num_plots = len(trained_models_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))
 
     # Handle case of single prediction time
     if num_plots == 1:
         axs = [axs]
 
-    for i, prediction_time in enumerate(prediction_times_sorted):
-        # Get model name and pipeline for this prediction time
-        model_name = get_model_key(model_group_name, prediction_time)
-        if model_name_suffix:
-            model_name = f"{model_name}_{model_name_suffix}"
-
+    for i, trained_model in enumerate(trained_models_sorted):
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
-            hasattr(trained_models[model_name], "calibrated_pipeline")
-            and trained_models[model_name].calibrated_pipeline is not None
+            hasattr(trained_model, "calibrated_pipeline")
+            and trained_model.calibrated_pipeline is not None
         ):
-            pipeline = trained_models[model_name].calibrated_pipeline
+            pipeline = trained_model.calibrated_pipeline
         else:
-            pipeline = trained_models[model_name].pipeline
+            pipeline = trained_model.pipeline
+
+        prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
         X_test, y_test = get_snapshots_at_prediction_time(
