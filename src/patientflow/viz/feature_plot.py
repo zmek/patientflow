@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from patientflow.model_artifacts import TrainedClassifier
 from sklearn.pipeline import Pipeline
+from typing import Optional
 
 
 def plot_features(
     trained_models: list[TrainedClassifier],
     media_file_path,
     top_n: int = 20,
-    suptitle: str | None = None,
+    suptitle: Optional[str] = None,
 ):
     """
     Plot feature importance for multiple models.
