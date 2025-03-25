@@ -31,7 +31,8 @@ def plot_calibration(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
     num_plots = len(trained_models_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))

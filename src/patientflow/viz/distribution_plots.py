@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import get_snapshots_at_prediction_time
-from patientflow.load import get_model_key, load_saved_model
 from patientflow.model_artifacts import TrainedClassifier
+from typing import Optional
+from pathlib import Path
 
 # Define the color scheme
 primary_color = "#1f77b4"
@@ -14,8 +15,7 @@ def plot_prediction_distributions(
     test_visits,
     exclude_from_training_data,
     bins=30,
-    media_file_path: str= None
-
+    media_file_path: Optional[Path] = None,
 ):
     """
     Plot prediction distributions for multiple models.
@@ -33,7 +33,8 @@ def plot_prediction_distributions(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
     num_plots = len(trained_models_sorted)
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 5, 4))

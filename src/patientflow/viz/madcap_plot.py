@@ -26,7 +26,7 @@ generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_pat
 """
 
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Union, Optional
 
 import matplotlib.pyplot as plt
 import math
@@ -90,7 +90,7 @@ def generate_madcap_plots(
     media_file_path: Union[str, Path, None],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
-    suptitle: str = None,
+    suptitle: Optional[str] = None,
 ) -> None:
     """
     Generates MADCAP plots for a list of trained models, comparing predicted probabilities
@@ -112,7 +112,8 @@ def generate_madcap_plots(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
     num_plots = len(trained_models_sorted)
 
@@ -126,7 +127,7 @@ def generate_madcap_plots(
     if num_plots == 1:
         # When there's only one plot, axes is a single Axes object, not an array
         trained_model = trained_models_sorted[0]
-        
+
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
             hasattr(trained_model, "calibrated_pipeline")
@@ -148,7 +149,7 @@ def generate_madcap_plots(
 
         X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
-        
+
         # Plot directly on the single axes
         plot_madcap_subplot(predict_proba, y_test, prediction_time, axes)
     else:
@@ -200,10 +201,11 @@ def generate_madcap_plots(
     if media_file_path:
         plot_name = "madcap_plot"
         madcap_plot_path = Path(media_file_path) / plot_name
-        plt.savefig(madcap_plot_path, bbox_inches='tight')
+        plt.savefig(madcap_plot_path, bbox_inches="tight")
 
     plt.show()
     plt.close(fig)
+
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     """
@@ -388,7 +390,8 @@ def generate_madcap_plots_by_group(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
 
     for trained_model in trained_models_sorted:

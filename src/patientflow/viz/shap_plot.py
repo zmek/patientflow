@@ -5,6 +5,7 @@ from patientflow.model_artifacts import TrainedClassifier
 import shap
 import scipy.sparse
 import numpy as np
+from sklearn.pipeline import Pipeline
 
 
 def plot_shap(
@@ -30,13 +31,14 @@ def plot_shap(
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
-        key=lambda x: x.training_results.prediction_time[0] * 60 + x.training_results.prediction_time[1],
+        key=lambda x: x.training_results.prediction_time[0] * 60
+        + x.training_results.prediction_time[1],
     )
 
     for trained_model in trained_models_sorted:
         fig, ax = plt.subplots(figsize=(8, 12))
 
-        pipeline = trained_model.pipeline
+        pipeline: Pipeline = trained_model.pipeline
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
