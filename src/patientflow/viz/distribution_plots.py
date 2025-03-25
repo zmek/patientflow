@@ -16,6 +16,7 @@ def plot_prediction_distributions(
     exclude_from_training_data,
     bins=30,
     media_file_path: Optional[Path] = None,
+    suptitle: Optional[str] = None,
 ):
     """
     Plot prediction distributions for multiple models.
@@ -107,6 +108,10 @@ def plot_prediction_distributions(
         ax.legend()
 
     plt.tight_layout()
+
+    # Add suptitle if provided
+    if suptitle is not None:
+        plt.suptitle(suptitle, y=1.05, fontsize=16)
 
     dist_plot_path = media_file_path / "distribution_plot"
     dist_plot_path = dist_plot_path.with_suffix(".png")
