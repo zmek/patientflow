@@ -122,11 +122,11 @@ def generate_madcap_plots(
 
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(num_plots * 5, 4))
 
-    # Ensure axes is always a 2D array
-    if num_rows == 1:
-        axes = axes.reshape(1, -1)
-
-    for i, trained_model in enumerate(trained_models_sorted):
+    # Handle the case of a single plot differently
+    if num_plots == 1:
+        # When there's only one plot, axes is a single Axes object, not an array
+        trained_model = trained_models_sorted[0]
+        
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
             hasattr(trained_model, "calibrated_pipeline")
@@ -148,16 +148,46 @@ def generate_madcap_plots(
 
         X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
+        
+        # Plot directly on the single axes
+        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes)
+    else:
+        # For multiple plots, ensure axes is always a 2D array
+        if num_rows == 1:
+            axes = axes.reshape(1, -1)
 
-        row = i // num_cols
-        col = i % num_cols
-        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
+        for i, trained_model in enumerate(trained_models_sorted):
+            # Use calibrated pipeline if available, otherwise use regular pipeline
+            if (
+                hasattr(trained_model, "calibrated_pipeline")
+                and trained_model.calibrated_pipeline is not None
+            ):
+                pipeline = trained_model.calibrated_pipeline
+            else:
+                pipeline = trained_model.pipeline
 
-    # Hide any unused subplots
-    for j in range(i + 1, num_rows * num_cols):
-        row = j // num_cols
-        col = j % num_cols
-        axes[row, col].axis("off")
+            prediction_time = trained_model.training_results.prediction_time
+
+            # Get test data for this prediction time
+            X_test, y_test = get_snapshots_at_prediction_time(
+                df=test_visits,
+                prediction_time=prediction_time,
+                exclude_columns=exclude_from_training_data,
+                single_snapshot_per_visit=False,
+            )
+
+            X_test = add_missing_columns(pipeline, X_test)
+            predict_proba = pipeline.predict_proba(X_test)[:, 1]
+
+            row = i // num_cols
+            col = i % num_cols
+            plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
+
+        # Hide any unused subplots
+        for j in range(i + 1, num_rows * num_cols):
+            row = j // num_cols
+            col = j % num_cols
+            axes[row, col].axis("off")
 
     plt.tight_layout()
 
@@ -174,7 +204,6 @@ def generate_madcap_plots(
 
     plt.show()
     plt.close(fig)
-
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     """
