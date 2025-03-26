@@ -33,18 +33,25 @@
 
 `patientflow`, a Python package, converts patient-level predictions into output that is useful for bed managers in hospitals.
 
-We originally developed this code for University College London Hospitals (UCLH) to predict the number of emergency admissions they should expect within the next eight hours. Our method used real-time data from their Electronic Health Record (EHR) system. We wrote code to convert patient-level data from the EHR into predicted numbers of admissions at a snapshot in time, and code to help us evaluate these preditions over multiple snapshots.
+We originally developed this code for University College London Hospitals (UCLH) to predict the number of emergency admissions they should expect within the next eight hours. Our method used real-time data from their Electronic Health Record (EHR) system. We wrote code to convert patient-level data, extracted from the EHR at a point in time, into predicted numbers of admissions in the following 4 or 8 hours. We also wrote code to help us evaluate the predictions.
 
-This snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many patients from a clinical specialty will be discharged. We have created this python package to make it convenient for others to adopt our approach.
+We have created the `patientflow` python package to make it convenient for others to adopt our approach. Its purpose is to predict bed demand for groups of hospital patients at a point in time. The package is organised around the following concepts:
 
-If you have a a model that generates a probability of admission or discharge for each patient at a snapshot in time, you can use `patientflow` to create bed count distributions for a group of such patients, and to evaluate your predictions. We show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
+- Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
+- Patient snapshot: A summary of data from the EHR capturing is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
+- Group snaphot: A set of patients snapshots. Each group snapshot has a date and a prediction time associated with it.
+- Prediction window: A period of hours that begins at the prediction time.
+
+The modelling functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the next 8 hours. The output is a probability distribution over the number of beds needed. The package includes functions to generate predictions at both patient and group level, to visualise predicted probability distributions, and to evaluate them.
+
+This snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many patients from a clinical specialty will be discharged. A series of notebooks demonstrates the use of the package. We show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset, and an anonymised patient dataset, based on real data from UCLH is available on [Zenodo](https://zenodo.org/records/14866057). Both the synthetic and the real dataset have been prepared in a snapshot structure.
 
 ## What `patientflow` is for:
 
 - Predicting patient flow in hospitals: The package can be used by researchers or analysts who want to predict numbers of emergency admissions, discharges or transfers between units
 - Short-term operational planning: The predictions produced by this package are designed for bed managers who need to make decisions within an 4-16 hour timeframe.
 - Working with real-time data: The design assumes that data from an electronic health record (EHR) is available in real-time, or near to real-time
-- Point-in-time analysis: The packages works by taking snapshots of groups of patients who are in the hospital at a particular moment, and making predictions about whether a certain outcome will occur with a short time horizon.
+- Point-in-time analysis: The package works by taking snapshots of groups of patients who are in the hospital at a particular moment, and making predictions about whether a non-clinical outcome like admission or discharge will occur with a short time horizon.
 
 ## What `patientflow` is NOT for:
 
@@ -62,15 +69,14 @@ If you have a a model that generates a probability of admission or discharge for
 
 ## This package will NOT help you if:
 
-- You work with time series data: patientflow works with snapshots of a hospital visit summarising what is in the patient record up to that point in time
-- You want to predict clinical outcomes: the approach is designed for the management of hospital sites, not the management of patient care
+- You work with time series data: `patientflow` works with snapshots of a hospital visit summarising what is in the patient record up to that point in time. It would need modification to accept time series data formats.
+- You want to predict clinical outcomes: the approach is designed for the management of hospital sites, not the management of patient care.
 
 ## Mathematical assumptions underlying the conversion from individual to cohort predictions:
 
-- Independence of patient outcomes: The package assumes that individual patient outcomes are conditionally independent given the features used in prediction.
-- Symbolic probability generation: The conversion uses symbolic mathematics (via SymPy) to construct a probability generating function that represents the exact distribution of possible cohort outcomes.
-- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes the exact probability distribution for the sum of these independent trials.
-- Optional weighted aggregation: When converting individual probabilities to cohort-level predictions, the package allows for weighted importance of individual predictions, modifying the contribution of each patient to the overall distribution in specific contexts (eg admissions to different specialties).
+- Independence of patient requirements: The package assumes that individual patient requirements (eg for admission) are conditionally independent.
+- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.
+- Different levels of aggregation: The package can calculate probability distributions for compound scenarios (such as the probability of a patient being admitted, assigned to a specific specialty if admitted, and being admitted within the prediction window) and for patient subgroups (like distributions by age or gender). In all cases, the independence assumption between patients is maintained.
 
 ## Getting started
 
@@ -99,7 +105,7 @@ Navigate to the patientflow folder and run tests to confirm that the installatio
 pytest
 ```
 
-If you get errors running the pytest command, there may be other installations needed on your local machine. (We have found copying the error messages into ChatGPT or Claude very helpful for diagnosing and troubleshooting these errors.)
+If you get errors running the pytest command, there may be other installations needed on your local machine.
 
 ### Training models with data provided
 
@@ -129,10 +135,10 @@ This project was inspired by the [py-pi template](https://github.com/health-data
 
 ### Project Team
 
-Dr Zella King, Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
-Jon Gillham, Institute of Health Informatics, UCL
-Professor Sonya Crowe, CORU
-Professor Martin Utley, CORU
+- [Dr Zella King](https://github.com/zmek), Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+- [Jon Gillham](https://github.com/jongillham), Institute of Health Informatics, UCL
+- Professor Sonya Crowe, CORU
+- Professor Martin Utley, CORU
 
 ## Acknowledgements
 
