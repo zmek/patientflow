@@ -5,6 +5,8 @@ copyright: "Copyright © 2024 Zella King"
 repo_url: "https://github.com/zmek/patientflow/"
 repo_name: "zmek/patientflow"
 edit_uri: edit/main/docs/
+exclude_docs: |
+  *.py
 
 validation:
   omitted_files: warn
@@ -35,10 +37,8 @@ theme:
 
 nav:
   - Overview: index.md
-  - Notebooks:
-      - README: notebooks/README.md
-  - Patientflow:
-      - README: src/patientflow/README.md
+  - Notebooks: notebooks/README.md
+  - Patientflow: src/patientflow/README.md
   - API reference: api.md
   - License: LICENSE.md
 
