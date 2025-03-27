@@ -39,6 +39,7 @@ optional-dependencies = {dev = [
     "mkdocs-material",
     "mkdocstrings-python==1.7.0",
     "mkdocstrings==0.24.0",
+    "nbconvert",
 ], test = [
     "pytest",
     "pytest-cov",
@@ -119,6 +120,8 @@ legacy_tox_ini = """
 
     [testenv:docs]
     commands =
+        jupyter nbconvert {toxinidir}/notebooks/*.ipynb --to markdown --output-dir={toxinidir}/docs/notebooks
+        python {toxinidir}/docs/notebooks/update_notebook_links.py {toxinidir}/docs/notebooks
         mkdocs build
     extras =
         docs
