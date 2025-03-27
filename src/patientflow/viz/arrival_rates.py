@@ -591,7 +591,7 @@ def plot_cumulative_arrival_rates(
                     abs(centile - highlight_centile) < 0.0001
                 ):  # Use a small epsilon for floating point comparison
                     highlight_percentile_data = np.cumsum(percentiles[i])
-
+        
         # Plot percentile lines
         for i, centile in enumerate(processed_centiles):
             marker = markers[i % len(markers)]
@@ -627,7 +627,7 @@ def plot_cumulative_arrival_rates(
                 label=label_text,
             )
         # update max y
-        max_y = max(cumulative_value_at_centile)
+        max_y = max(max(cumulative_value_at_centile), max(cumsum_rates))
 
         # Draw window visualization if requested
         if draw_window:
