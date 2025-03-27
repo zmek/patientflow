@@ -12,7 +12,7 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     start_date : str or datetime
         The minimum date to sample from (format: 'YYYY-MM-DD' if string)
     end_date : str or datetime
-        The maximum date to sample from (format: 'YYYY-MM-DD' if string)
+        The maximum date to sample from (exclusive) (format: 'YYYY-MM-DD' if string)
     mean_patients_per_day : float
         The average number of patients to generate per day
 
@@ -33,8 +33,8 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     # Set random seed for reproducibility
     np.random.seed(42)  # You can change this seed value as needed
 
-    # Calculate total days in range
-    days_range = (end_date - start_date).days + 1
+    # Calculate total days in range (changed to exclusive end date)
+    days_range = (end_date - start_date).days
 
     # Generate random number of patients for each day using Poisson distribution
     daily_patients = np.random.poisson(mean_patients_per_day, days_range)
@@ -219,7 +219,7 @@ def create_snapshots(
     df, observations_df, lab_orders_df, prediction_times, start_date, end_date
 ):
     """
-    Create snapshots of patients present at specific times between start_date and end_date inclusive.
+    Create snapshots of patients present at specific times between start_date and end_date.
 
     Parameters:
     -----------
@@ -234,7 +234,7 @@ def create_snapshots(
     start_date : str or datetime
         First date to take snapshots (format: 'YYYY-MM-DD' if string)
     end_date : str or datetime
-        Last date to take snapshots (inclusive) (format: 'YYYY-MM-DD' if string)
+        Last date to take snapshots (exclusive) (format: 'YYYY-MM-DD' if string)
 
     Returns:
     --------
@@ -252,10 +252,10 @@ def create_snapshots(
     elif isinstance(end_date, datetime):
         end_date = end_date.date()
 
-    # Create date range
+    # Create date range (changed to exclusive end date)
     snapshot_dates = []
     current_date = start_date
-    while current_date <= end_date:
+    while current_date < end_date:  # Changed from <= to <
         snapshot_dates.append(current_date)
         current_date += timedelta(days=1)
 
@@ -331,15 +331,19 @@ def create_snapshots(
             # Add snapshot information columns
             snapshot_df["snapshot_date"] = date
             snapshot_df["prediction_time"] = [(hour, minute)] * len(snapshot_df)
-            snapshot_df["snapshot_datetime"] = snapshot_datetime
 
-            # Merge with valid observations to get triage scores
-            snapshot_df = pd.merge(
-                snapshot_df,
-                valid_observations[["visit_number", "latest_triage_score"]],
-                on="visit_number",
-                how="left",
-            )
+            # Merge with valid observations to get triage scores, handling empty case
+            if not valid_observations.empty:
+                snapshot_df = pd.merge(
+                    snapshot_df,
+                    valid_observations[["visit_number", "latest_triage_score"]],
+                    on="visit_number",
+                    how="left",
+                )
+            else:
+                snapshot_df["latest_triage_score"] = pd.Series(
+                    [np.nan], dtype="float64", index=snapshot_df.index
+                )
 
             # Merge with lab counts
             snapshot_df = pd.merge(
@@ -350,21 +354,37 @@ def create_snapshots(
             for col in snapshot_df.columns:
                 if col.endswith("_orders"):
                     snapshot_df[col] = snapshot_df[col].fillna(0)
+            if not snapshot_df.empty:
+                # Optionally check for all-NA in key columns
+                snapshot_cols = [
+                    "snapshot_date",
+                    "prediction_time",
+                    "snapshot_datetime",
+                ]
+                # Only check columns that exist in the DataFrame
+                check_cols = [
+                    col for col in snapshot_cols if col in snapshot_df.columns
+                ]
 
-            # Append to results list
-            all_results.append(snapshot_df)
+                if not check_cols or not snapshot_df[check_cols].isna().all().any():
+                    all_results.append(snapshot_df)
+                else:
+                    print(
+                        f"Skipping DataFrame with all-NA values in key columns: {check_cols}"
+                    )
+            else:
+                print("Skipping empty DataFrame")
 
     # Combine all results into single dataframe
     if all_results:
         final_df = pd.concat(all_results, ignore_index=True)
 
         # Define column order
-        snapshot_cols = ["snapshot_date", "prediction_time", "snapshot_datetime"]
+        snapshot_cols = ["snapshot_date", "prediction_time"]
         visit_cols = [
             "visit_number",
-            "arrival_datetime",
-            "departure_datetime",
             "is_admitted",
+            "age",
             "latest_triage_score",
         ]
         lab_cols = [col for col in final_df.columns if col.endswith("_orders")]
@@ -385,12 +405,10 @@ def create_snapshots(
         columns = [
             "snapshot_date",
             "prediction_time",
-            "snapshot_datetime",
             "visit_number",
-            "arrival_datetime",
-            "departure_datetime",
-            "latest_triage_score",
             "is_admitted",
+            "age",
+            "latest_triage_score",
         ] + lab_cols
         final_df = pd.DataFrame(columns=columns)
 

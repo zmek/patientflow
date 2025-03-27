@@ -64,7 +64,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 ## This package will help you if you want to:
 
 - Make predictions for unfinished patient visits: The package is designed for making predictions when outcomes at the end of the visit are as yet unknown, and evaluating those predictions against what actually happened.
-- Convert individual patient predictions to cohort-level insights: As bed numbers are the currency used by bed managers, the package generates bed count distributions; you may find this kind of output will help you interest hospital site and operations managers in your predictions.
+- Convert individual patient predictions to group-level insights: As bed numbers are the currency used by bed managers, the package generates bed count distributions; you may find this kind of output will help you interest hospital site and operations managers in your predictions.
 - Develop your own predictive models of emergency demand: The repository includes a fully worked example of how to convert historical data from Emergency Department visits into snapshots, and use the snapshots to train models that predict numbers of emergency beds.
 
 ## This package will NOT help you if:
@@ -72,7 +72,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 - You work with time series data: `patientflow` works with snapshots of a hospital visit summarising what is in the patient record up to that point in time. It would need modification to accept time series data formats.
 - You want to predict clinical outcomes: the approach is designed for the management of hospital sites, not the management of patient care.
 
-## Mathematical assumptions underlying the conversion from individual to cohort predictions:
+## Mathematical assumptions underlying the conversion from individual to group predictions:
 
 - Independence of patient requirements: The package assumes that individual patient requirements (eg for admission) are conditionally independent.
 - Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.
@@ -130,8 +130,7 @@ The data_folder_name specifies the name of the folder containing data. The funct
 
 ## About
 
-This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is based on a template developed by the
-[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London.
+This idea to create a Python package was inspired by , and
 
 ### Project Team
 
@@ -142,4 +141,11 @@ This project was inspired by the [py-pi template](https://github.com/health-data
 
 ## Acknowledgements
 
-This work was funded by a grant from the UCL Impact Funding. We are grateful to the Information Governance team and the Caldicott Guardian at UCLH for agreeing that we can release real patient data.
+The [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by [Tom Monks](https://github.com/TomMonks) inspired us to create a Python package. This repository is based on a template developed by the [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London. We are grateful to [Lawrence Lai](https://github.com/lawrencelai) for creation of the synthetic dataset. MAPS QR Policy Funding from by University College London contributed to the construction of the repository.
+
+The underlying academic work was funded by grants from
+
+- the Wellcome Institutional Strategic Support Fund (ISSF) UCL and Partner Hospitals: AI in Healthcare Funding Call 2019 (award number BRC717/HI/RW/101440),
+- the National Institute for Health Research UCLH Biomedical Research Centre HIGODS Theme (award number BRC824/HG/ZK/110420)
+- the National Institute for Health Research (Artificial Intelligence, Digitally adapted, hyper-local realtime bed forecasting to manage flow for NHS wards, AI_AWARD01786) and NHSX
+- University College London Hospitals NHS Trust (Zetetic Benefits-Enhancing Data Science)
