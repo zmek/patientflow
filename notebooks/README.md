@@ -10,30 +10,36 @@ The notebooks in this folder demonstrate how you can use the PatientFlow reposit
 
 ## Outline of the notebooks
 
-I begin with two introductory notebooks to explain who and what the predictive modelling is for.
+The first notebook explains how to set up your environment to run the notebooks that follow. Instructions are also provided at the bottom of this page.
 
-- **[1_Meet_the_users_of_our_predictions](/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of emergency demand predictions in acute hospitals.
-- **[2_Specify_emergency_demand_model](/notebooks/2_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
+- **[0_Set_up_your_environment](/notebooks/0_Set_up_your_environment.ipynb):** Shows how to set things up if you want to run these notebooks in a Jupyter environment
 
-A set of notebooks show how to get started with this repository:
+I then explain who are the users of predictive models of patient flow.
 
-- **[3a_Set_up_your_environment](/notebooks/3a_Set_up_your_environment.ipynb):** Shows how to set things up if you want to run these notebooks in a Jupyter environment
-- **[3b_Explore_the_datasets](/notebooks/3b_Explore_the_datasets.ipynb):** Introduces the two synthetic datasets created to accompany this repository
-- **[3c_Convert_your_EHR_data_to_snapshots](/notebooks/3c_Convert_your_EHR_data_to_snapshots.ipynb):** Shows an example of how you could convert Electronic Health Record data from a relational database into the data structure used here.
+- **[1_Meet_the_users_of_our_predictions](/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
 
-A set of notebooks show three models I have developed for predicting number of beds needed for emergency demand.
+A series of notebooks explain the snapshot approach
 
+- **[2a_Create_patient_snapshots](/notebooks/2a_Create_patient_snapshots.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
+- **[2b_Create_group_snapshots](/notebooks/2b_Create_group_snapshots.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
+
+One notebook introduces the synthetic dataset provided for the fully worked example:
+
+- **[3_Explore_the_datasets](/notebooks/3_Explore_the_datasets.ipynb):** Introduces the two synthetic datasets created to accompany this repository
+
+A set of notebooks follow, to show how we have used the functions in patientflow to predict number of beds needed for emergency demand.
+
+- **[4_Specify_emergency_demand_model](/notebooks/4_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
 - **[4a_Predict_probability_of_admission_from_ED](/notebooks/4a_Predict_probability_of_admission_from_ED.ipynb):** Shows how to train a machine learning model to predict a patient's probability of admission using patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.
 - **[4b_Predict_demand_from_patients_in_ED](/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb)** Shows how to convert patient-level admission probabilities into a predictions of overall bed demand
 - **[4c_Predict_probability_of_admission_to_specialty](/notebooks/4c_Predict_probability_of_admission_to_specialty.ipynb):** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently
 - **[4d_Predict_demand_from_patients_yet_to_arrive](/notebooks/4d_Predict_demand_from_patients_yet_to_arrive.ipynb):** Shows the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours). Demonstrates the use of a function that will assume ED performance targets are met when predicting the number admitted by the end of the prediction window
+- **[4e_Predict_probabiity_of_admission_using_minimal_data](/notebooks/4e_Predict_probabiity_of_admission_using_minimal_data.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
+- **[4f_Bring_it_all_together](/notebooks/4f_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
 
 Two notebooks show how I evaluate the performance of the models, and how they are used for real-time prediction.
 
 - **[5_Evaluate_model_performance](/notebooks/5_Evaluate_model_performance.ipynb)**: Discusses how to evaluate the models' predictions
-- **[6_Bring_it_all_together](/notebooks/6_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
-
-Ignore the instructions below if you are just browsing. You can view the notebooks without going through these steps.
 
 ## Preparing your notebook environment
 

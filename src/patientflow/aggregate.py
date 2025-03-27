@@ -123,9 +123,10 @@ get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_ti
     ----------
     X_test : DataFrame or array-like
         Input test data to be passed to the model for prediction.
-    model : object
-        A predictive model object that implements `predict_proba`.
-    weights : array-like
+    model : object or TrainedClassifier
+        Either a predictive model which provides a `predict_proba` method,
+        or a TrainedClassifier object containing a pipeline.
+    weights : array-like, optional
         Weights for aggregating the predicted probabilities.
     y_test : array-like
         Observed target values corresponding to the test data (optional for inference).
@@ -148,15 +149,22 @@ get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
         Input test data to be passed to the model.
     y_test : array-like
         Observed target values.
-    model : object
-        A predictive model object that implements `predict_proba`.
-    weights : array-like
-        Weights for aggregating the predicted probabilities.
+    model : object or TrainedClassifier
+        Either a predictive model which provides a `predict_proba` method,
+        or a TrainedClassifier object containing a pipeline.
+    weights : pandas.Series, optional
+        A Series containing weights for the test data points, which may influence the prediction,
+        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
 
     Returns
     -------
     dict
         A dictionary where each key is a snapshot date and the value is the corresponding probability distribution.
+
+    Raises
+    ------
+    ValueError
+        If model has no predict_proba method and is not a TrainedClassifier.
 
     Example Usage
     -------------
@@ -356,8 +364,9 @@ def get_prob_dist_for_prediction_moment(
     ----------
     X_test : array-like
         Test features for a specific snapshot date.
-    model : object
-        A predictive model which should provide a `predict_proba` method.
+    model : object or TrainedClassifier
+        Either a predictive model which provides a `predict_proba` method,
+        or a TrainedClassifier object containing a pipeline.
     weights : array-like, optional
         Weights to apply to the predictions for aggregate calculation.
     inference_time : bool, optional (default=False)
@@ -368,17 +377,27 @@ def get_prob_dist_for_prediction_moment(
     Returns
     -------
     dict
-        A dictionary with keys 'agg_predicted' and, if inference_time is False, 'agg_observed' containing the
-        predicted and observed respectively for the snapshot date. Each is presented as a DataFrame or an integer.
+        A dictionary with keys 'agg_predicted' and, if inference_time is False, 'agg_observed'.
 
     Raises
     ------
     ValueError
         If y_test is not provided when inference_time is False.
-
+        If model has no predict_proba method and is not a TrainedClassifier.
     """
     if not inference_time and y_test is None:
         raise ValueError("y_test must be provided if inference_time is False.")
+
+    # Extract pipeline if model is a TrainedClassifier
+    if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
+        model = model.calibrated_pipeline
+    elif hasattr(model, "pipeline"):
+        model = model.pipeline
+    # Validate that model has predict_proba method
+    elif not hasattr(model, "predict_proba"):
+        raise ValueError(
+            "Model must either be a TrainedClassifier or have a predict_proba method"
+        )
 
     prediction_moment_dict = {}
 
@@ -406,33 +425,38 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     Parameters
     ----------
     snapshots_dict : dict
-        A dictionary mapping snapshot dates (as datetime objects) to indices in `X_test` and `y_test`
-        that correspond to the snapshots to be tested for each date.
+        A dictionary mapping snapshot dates to indices in `X_test` and `y_test`.
     X_test : pandas.DataFrame
         A DataFrame containing the test features for prediction.
     y_test : pandas.Series
-        A Series containing the true outcome values corresponding to the test features in `X_test`.
-    model : any
-        A predictive model object with a `predict_proba` method that takes features from `X_test` and
-        optionally weights, and returns a probability distribution over possible outcomes.
+        A Series containing the true outcome values.
+    model : object or TrainedClassifier
+        Either a predictive model which provides a `predict_proba` method,
+        or a TrainedClassifier object containing a pipeline.
     weights : pandas.Series, optional
-        A Series containing weights for the test data points, which may influence the prediction,
-        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
+        A Series containing weights for the test data points.
 
     Returns
     -------
     dict
-        A dictionary where each key is a snapshot date and each value is the resulting probability
-        distribution for that date, obtained by applying the model on the corresponding test snapshots.
+        A dictionary mapping snapshot dates to probability distributions.
 
-    Notes
-    -----
-    - The function asserts that the length of the test features and outcomes are equal for each
-      snapshot before proceeding with predictions.
-    - It notifies the user of progress in processing snapshot dates, especially if there are more
-      than 10 snapshot dates.
-
+    Raises
+    ------
+    ValueError
+        If model has no predict_proba method and is not a TrainedClassifier.
     """
+    # Extract pipeline if model is a TrainedClassifier
+    if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
+        model = model.calibrated_pipeline
+    elif hasattr(model, "pipeline"):
+        model = model.pipeline
+    # Validate that model has predict_proba method
+    elif not hasattr(model, "predict_proba"):
+        raise ValueError(
+            "Model must either be a TrainedClassifier or have a predict_proba method"
+        )
+
     prob_dist_dict = {}
     print(
         f"Calculating probability distributions for {len(snapshots_dict)} snapshot dates"

@@ -21,7 +21,7 @@ select_one_snapshot_per_visit(df, visit_col, seed=42)
 get_snapshots_at_prediction_time(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
     Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
 
-prepare_snapshots_dict(df, start_dt=None, end_dt=None)
+prepare_group_snapshot_dict(df, start_dt=None, end_dt=None)
     Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
 
 calculate_time_varying_arrival_rates(df, yta_time_interval)
@@ -582,7 +582,7 @@ def prepare_for_inference(
     return X_test, y_test, pipeline
 
 
-def prepare_snapshots_dict(df, start_dt=None, end_dt=None):
+def prepare_group_snapshot_dict(df, start_dt=None, end_dt=None):
     """
     Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
 
