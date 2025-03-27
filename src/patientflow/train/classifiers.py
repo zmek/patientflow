@@ -256,7 +256,7 @@ def train_classifier(
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
-    calibration_method: str = "sigmoid",
+    calibration_method: str = "isotonic",
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.

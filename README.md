@@ -31,46 +31,52 @@
 
 ## Summary
 
-patientflow, a Python package, converts patient-level predictions into output that is useful for bed managers in hospitals.
+`patientflow`, a Python package, converts patient-level predictions into output that is useful for bed managers in hospitals.
 
-We developed this code originally for University College London Hospitals (UCLH) NHS Trust to predict the number of emergency admissions within the next eight hours. The methods generalise to other aspects of patient flow in hospitals, including predictions of discharge numbers, within a group of patients. It can be applied to any problem where it is useful to convert patient-level predictions into outcomes for a whole cohort of patients at a point in time.
+We originally developed this code for University College London Hospitals (UCLH) to predict the number of emergency admissions they should expect within the next eight hours. Our method used real-time data from their Electronic Health Record (EHR) system. We wrote code to convert patient-level data, extracted from the EHR at a point in time, into predicted numbers of admissions in the following 4 or 8 hours. We also wrote code to help us evaluate the predictions.
 
-If you have a predictive model of some outcome for a patient, like admission or discharge from hospital, you can use patientflow to create bed count distributions for a cohort of patients. We show how to prepare your data and train models for these kinds of problems. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
+We have created the `patientflow` python package to make it convenient for others to adopt our approach. Its purpose is to predict bed demand for groups of hospital patients at a point in time. The package is organised around the following concepts:
 
-## What patientflow is for:
+- Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
+- Patient snapshot: A summary of data from the EHR capturing is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
+- Group snaphot: A set of patients snapshots. Each group snapshot has a date and a prediction time associated with it.
+- Prediction window: A period of hours that begins at the prediction time.
 
-- Managing patient flow in hospitals: The package can be used to predict numbers of emergency admissions, discharges or transfers between units
+The modelling functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the next 8 hours. The output is a probability distribution over the number of beds needed. The package includes functions to generate predictions at both patient and group level, to visualise predicted probability distributions, and to evaluate them.
+
+This snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many patients from a clinical specialty will be discharged. A series of notebooks demonstrates the use of the package. We show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset, and an anonymised patient dataset, based on real data from UCLH is available on [Zenodo](https://zenodo.org/records/14866057). Both the synthetic and the real dataset have been prepared in a snapshot structure.
+
+## What `patientflow` is for:
+
+- Predicting patient flow in hospitals: The package can be used by researchers or analysts who want to predict numbers of emergency admissions, discharges or transfers between units
 - Short-term operational planning: The predictions produced by this package are designed for bed managers who need to make decisions within an 4-16 hour timeframe.
 - Working with real-time data: The design assumes that data from an electronic health record (EHR) is available in real-time, or near to real-time
-- Point-in-time analysis: The packages works by taking "snapshots" of groups of patients at a particular moment, and making projections from those specific moments.
+- Point-in-time analysis: The package works by taking snapshots of groups of patients who are in the hospital at a particular moment, and making predictions about whether a non-clinical outcome like admission or discharge will occur with a short time horizon.
 
-## What patientflow is NOT for:
+## What `patientflow` is NOT for:
 
-- Long-term capacity planning: The package focuses on immediate operational needs (hours ahead), not strategic planning over weeks or months.
-- Making decisions about individual patients: The package is not designed for clinical decision-making about specific patients. It relies on data entered into the EHR by clinical staff looking after patients, but cannot and should not be use to influence their decision-making
-- General hospital analytics: It is specifically focused on short-term bed management, not broader hospital analytics like long-term demand and capacity planning.
-- Finished/historical patient analysis: While historical data might train underlying models, the package itself focuses on patients currently in the hospital or soon to arrive
-- Replacing human judgment: It augments the information available to bed managers, but isn't meant to automate bed management decisions completely.
+- Long-term capacity planning: The package focuses on immediate operational demand (hours ahead), not strategic planning over weeks or months.
+- Making decisions about individual patients: The package relies on data entered into the EHR by clinical staff looking after patients, but the patient-level predictions it generates should not be used to influence their decision-making
+- General hospital analytics: The package is designed for short-term bed management, not broader hospital analytics like long-term demand and capacity planning.
+- Predicting what happens _after_ a hospital visit: While historical data might train underlying models, the package itself focuses on patients currently in the hospital or soon to arrive
+- Replacing human judgment: The predictions are meant to augment the information available to bed managers, but not to automate bed management decisions.
 
 ## This package will help you if you want to:
 
-- Convert individual patient predictions to cohort-level insights: Its core purpose is the creation of aggregate bed count distributions, because bed numbers are the currencly used by bed managers.
-- Make predictions for unfinished patient visits: It is designed for making predictions when outcome at the end of the visit are as yet unknown.
-- Develop your own predictive models of emergency demand: The package includes a fully worked example of how to convert data from A&E visits into the right structure, and use that data to train models that predict numbers of emergency beds.
+- Make predictions for unfinished patient visits: The package is designed for making predictions when outcomes at the end of the visit are as yet unknown, and evaluating those predictions against what actually happened.
+- Convert individual patient predictions to group-level insights: As bed numbers are the currency used by bed managers, the package generates bed count distributions; you may find this kind of output will help you interest hospital site and operations managers in your predictions.
+- Develop your own predictive models of emergency demand: The repository includes a fully worked example of how to convert historical data from Emergency Department visits into snapshots, and use the snapshots to train models that predict numbers of emergency beds.
 
-## This package will not help you if:
+## This package will NOT help you if:
 
-- You work with time series data: patientflow works with snapshots of a hospital visit summarising what is in the patient record up to that point in time
-- Your focus is on predicting clinical outcomes: the approach is designed
+- You work with time series data: `patientflow` works with snapshots of a hospital visit summarising what is in the patient record up to that point in time. It would need modification to accept time series data formats.
+- You want to predict clinical outcomes: the approach is designed for the management of hospital sites, not the management of patient care.
 
-## Mathematical assumptions underlying the conversion from individual to cohort predictions:
+## Mathematical assumptions underlying the conversion from individual to group predictions:
 
-- Independence of patient outcomes: The package assumes that individual patient outcomes are conditionally independent given the features used in prediction.
-- Symbolic probability generation: The conversion uses symbolic mathematics (via SymPy) to construct a probability generating function that represents the exact distribution of possible cohort outcomes.
-- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes the exact probability distribution for the sum of these independent trials.
-- Coefficient extraction approach: The method works by expanding a symbolic expression and extracting coefficients corresponding to each possible cohort outcome count.
-- Optional weighted aggregation: When converting individual probabilities to cohort-level predictions, the package allows for weighted importance of individual predictions, modifying the contribution of each patient to the overall distribution in specific contexts (eg admissions to different specialties).
-- Discrete outcome space: The package assumes outcomes can be represented as discrete counts (e.g., number of admissions) rather than continuous values.
+- Independence of patient requirements: The package assumes that individual patient requirements (eg for admission) are conditionally independent.
+- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.
+- Different levels of aggregation: The package can calculate probability distributions for compound scenarios (such as the probability of a patient being admitted, assigned to a specific specialty if admitted, and being admitted within the prediction window) and for patient subgroups (like distributions by age or gender). In all cases, the independence assumption between patients is maintained.
 
 ## Getting started
 
@@ -99,7 +105,7 @@ Navigate to the patientflow folder and run tests to confirm that the installatio
 pytest
 ```
 
-If you get errors running the pytest command, there may be other installations needed on your local machine. (We have found copying the error messages into ChatGPT or Claude very helpful for diagnosing and troubleshooting these errors.)
+If you get errors running the pytest command, there may be other installations needed on your local machine.
 
 ### Training models with data provided
 
@@ -124,16 +130,22 @@ The data_folder_name specifies the name of the folder containing data. The funct
 
 ## About
 
-This project was inspired by the [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by Tom Monks, and is based on a template developed by the
-[Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London.
+This idea to create a Python package was inspired by , and
 
 ### Project Team
 
-Dr Zella King, Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
-Jon Gillham, Institute of Health Informatics, UCL
-Professor Sonya Crowe, CORU
-Professor Martin Utley, CORU
+- [Dr Zella King](https://github.com/zmek), Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+- [Jon Gillham](https://github.com/jongillham), Institute of Health Informatics, UCL
+- Professor Sonya Crowe, CORU
+- Professor Martin Utley, CORU
 
 ## Acknowledgements
 
-This work was funded by a grant from the UCL Impact Funding. We are grateful to the Information Governance team and the Caldicott Guardian at UCLH for agreeing that we can release real patient data.
+The [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by [Tom Monks](https://github.com/TomMonks) inspired us to create a Python package. This repository is based on a template developed by the [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London. We are grateful to [Lawrence Lai](https://github.com/lawrencelai) for creation of the synthetic dataset. MAPS QR Policy Funding from by University College London contributed to the construction of the repository.
+
+The underlying academic work was funded by grants from
+
+- the Wellcome Institutional Strategic Support Fund (ISSF) UCL and Partner Hospitals: AI in Healthcare Funding Call 2019 (award number BRC717/HI/RW/101440),
+- the National Institute for Health Research UCLH Biomedical Research Centre HIGODS Theme (award number BRC824/HG/ZK/110420)
+- the National Institute for Health Research (Artificial Intelligence, Digitally adapted, hyper-local realtime bed forecasting to manage flow for NHS wards, AI_AWARD01786) and NHSX
+- University College London Hospitals NHS Trust (Zetetic Benefits-Enhancing Data Science)
