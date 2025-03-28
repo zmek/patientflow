@@ -251,12 +251,13 @@ def train_classifier(
     exclude_from_training_data: List[str],
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
-    visit_col: str,
+    visit_col: Optional[str] = None,
     model_class: Type = XGBClassifier,
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
     calibration_method: str = "isotonic",
+    single_snapshot_per_visit: bool = True,
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
@@ -277,8 +278,8 @@ def train_classifier(
         Parameter grid for hyperparameter tuning
     ordinal_mappings : Dict[str, List[Any]]
         Mappings for ordinal categorical features
-    visit_col : str
-        Name of the visit column
+    visit_col : str, optional
+        Name of the visit column. Required if single_snapshot_per_visit is True.
     model_class : Type, optional
         The classifier class to use. Must be sklearn-compatible with fit() and predict_proba().
         Defaults to XGBClassifier.
@@ -290,21 +291,40 @@ def train_classifier(
         Whether to apply probability calibration to the best model
     calibration_method : str, default='isotonic'
         Method for probability calibration ('isotonic' or 'sigmoid')
+    single_snapshot_per_visit : bool, default=True
+        Whether to select only one snapshot per visit. If True, visit_col must be provided.
 
     Returns:
     --------
     TrainedClassifier
         Trained model, including metrics, and feature information
     """
+    if single_snapshot_per_visit and visit_col is None:
+        raise ValueError(
+            "visit_col must be provided when single_snapshot_per_visit is True"
+        )
+
     # Get snapshots for each set
     X_train, y_train = get_snapshots_at_prediction_time(
-        train_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+        train_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
     X_valid, y_valid = get_snapshots_at_prediction_time(
-        valid_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+        valid_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
     X_test, y_test = get_snapshots_at_prediction_time(
-        test_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+        test_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
 
     # Get dataset metadata before any balancing
