@@ -18,10 +18,15 @@ I then explain who are the users of predictive models of patient flow.
 
 - **[1_Meet_the_users_of_our_predictions](/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
 
-A series of notebooks explain the snapshot approach
+A series of notebooks explaining patient snapshots
 
-- **[2a_Create_patient_snapshots](/notebooks/2a_Create_patient_snapshots.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
-- **[2b_Create_group_snapshots](/notebooks/2b_Create_group_snapshots.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
+- **[2a_Create_patient_snapshots](/notebooks/2a_Create_patient_snapshots.ipynb):** Shows how to convert finished hospital visits into patient snapshots.
+- **[2b_Predict_using_patient_snapshots](/notebooks/2b_Predict_using_patient_snapshots.ipynb):** Shows how to make predictions using patient snapshots, handling multiple visits for a single patient, and multiple snapshots in a single visit.
+- **[2c_Evaluate_patient_snapshot_models](/notebooks/2c_Evaluate_patient_snapshot_models.ipynb):** Demonstrates the use of convenient function to help you evaluate predictive models trained on patient snapshots.
+
+A series of notebooks explaining group snapshots
+
+- **[3a_Create_group_snapshots](/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
 
 One notebook introduces the synthetic dataset provided for the fully worked example:
 

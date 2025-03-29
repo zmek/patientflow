@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 
-from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import (
     HyperParameterTrial,
@@ -237,9 +237,9 @@ def evaluate_model(
     """Evaluate model on test set."""
     y_test_pred = pipeline.predict_proba(X_test)[:, 1]
     return {
-        "test_auc": roc_auc_score(y_test, y_test_pred),
-        "test_logloss": log_loss(y_test, y_test_pred),
-        "test_auprc": average_precision_score(y_test, y_test_pred),
+        "test_auc": float(roc_auc_score(y_test, y_test_pred)),
+        "test_logloss": float(log_loss(y_test, y_test_pred)),
+        "test_auprc": float(average_precision_score(y_test, y_test_pred)),
     }
 
 
@@ -256,7 +256,7 @@ def train_classifier(
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
-    calibration_method: str = "isotonic",
+    calibration_method: str = "sigmoid",
     single_snapshot_per_visit: bool = True,
 ) -> TrainedClassifier:
     """
@@ -289,7 +289,7 @@ def train_classifier(
         Ratio of majority to minority class samples
     calibrate_probabilities : bool, default=True
         Whether to apply probability calibration to the best model
-    calibration_method : str, default='isotonic'
+    calibration_method : str, default='sigmoid'
         Method for probability calibration ('isotonic' or 'sigmoid')
     single_snapshot_per_visit : bool, default=True
         Whether to select only one snapshot per visit. If True, visit_col must be provided.
@@ -305,21 +305,21 @@ def train_classifier(
         )
 
     # Get snapshots for each set
-    X_train, y_train = get_snapshots_at_prediction_time(
+    X_train, y_train = prepare_patient_snapshots(
         train_visits,
         prediction_time,
         exclude_from_training_data,
         visit_col=visit_col,
         single_snapshot_per_visit=single_snapshot_per_visit,
     )
-    X_valid, y_valid = get_snapshots_at_prediction_time(
+    X_valid, y_valid = prepare_patient_snapshots(
         valid_visits,
         prediction_time,
         exclude_from_training_data,
         visit_col=visit_col,
         single_snapshot_per_visit=single_snapshot_per_visit,
     )
-    X_test, y_test = get_snapshots_at_prediction_time(
+    X_test, y_test = prepare_patient_snapshots(
         test_visits,
         prediction_time,
         exclude_from_training_data,

@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta, time
 
 
-def patient_visits(start_date, end_date, mean_patients_per_day):
+def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
     """
     Generate fake patient visit data with random arrival and departure times.
 
@@ -260,32 +260,50 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     return visits_df, observations_df, lab_orders_df
 
 
-def create_snapshots(
-    df, observations_df, lab_orders_df, prediction_times, start_date, end_date
+def create_fake_snapshots(
+    prediction_times,
+    start_date,
+    end_date,
+    df=None,
+    observations_df=None,
+    lab_orders_df=None,
+    mean_patients_per_day=50,
 ):
     """
     Create snapshots of patients present at specific times between start_date and end_date.
 
     Parameters:
     -----------
-    df : pandas.DataFrame
-        DataFrame with patient visit data, must have 'arrival_datetime' and 'departure_datetime' columns
-    observations_df : pandas.DataFrame
-        DataFrame with triage observations, must have 'visit_number', 'observation_datetime', 'triage_score' columns
-    lab_orders_df : pandas.DataFrame
-        DataFrame with lab orders, must have 'visit_number', 'order_datetime', 'lab_name' columns
     prediction_times : list of tuples
         List of (hour, minute) tuples representing times to take snapshots
     start_date : str or datetime
         First date to take snapshots (format: 'YYYY-MM-DD' if string)
     end_date : str or datetime
         Last date to take snapshots (exclusive) (format: 'YYYY-MM-DD' if string)
+    df : pandas.DataFrame, optional
+        DataFrame with patient visit data, must have 'arrival_datetime' and 'departure_datetime' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    observations_df : pandas.DataFrame, optional
+        DataFrame with triage observations, must have 'visit_number', 'observation_datetime', 'triage_score' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    lab_orders_df : pandas.DataFrame, optional
+        DataFrame with lab orders, must have 'visit_number', 'order_datetime', 'lab_name' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    mean_patients_per_day : float, optional
+        The average number of patients to generate per day if generating fake data.
+        Only used if df, observations_df, and lab_orders_df are not provided.
 
     Returns:
     --------
     pandas.DataFrame
         DataFrame with snapshot information and patient data, including lab order counts
     """
+    # Generate fake data if not provided
+    if df is None or observations_df is None or lab_orders_df is None:
+        df, observations_df, lab_orders_df = create_fake_finished_visits(
+            start_date, end_date, mean_patients_per_day
+        )
+
     # Add date conversion at the start
     if isinstance(start_date, str):
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()

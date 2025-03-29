@@ -18,7 +18,7 @@ prepare_for_inference(model_file_path, model_name, prediction_time=None,
 select_one_snapshot_per_visit(df, visit_col, seed=42)
     Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
 
-get_snapshots_at_prediction_time(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
+prepare_patient_snapshots(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
     Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
 
 prepare_group_snapshot_dict(df, start_dt=None, end_dt=None)
@@ -457,7 +457,7 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
     return df.loc[max_indices].drop(columns=["random_number"])
 
 
-def get_snapshots_at_prediction_time(
+def prepare_patient_snapshots(
     df,
     prediction_time,
     exclude_columns=[],
@@ -620,7 +620,7 @@ def prepare_for_inference(
         print("Column training_validation_test not found in dataframe")
         return None
 
-    X_test, y_test = get_snapshots_at_prediction_time(
+    X_test, y_test = prepare_patient_snapshots(
         test_df,
         prediction_time,
         exclude_from_training_data,
