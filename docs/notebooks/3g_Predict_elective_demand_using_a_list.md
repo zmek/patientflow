@@ -470,7 +470,7 @@ day_list['service'].value_counts()
 
 At the prediction time, some listed patients have already arrived. The model drops them, and predicts only for those still pending. For each pending patient, the probability of arriving in the window is
 
-```text
+```
 q = sum of p_k over the part of the window on the day
     / (1 - sum of (p_k + r_k) from 00:00 to the prediction time)
 ```
