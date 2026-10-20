@@ -31,6 +31,12 @@ EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions; implemented via generating functions.
 
+See Also
+--------
+patientflow.predictors.list_based_admission_predictor.ListBasedAdmissionPredictor :
+    Subclass of DirectAdmissionPredictor that can condition on a booked list of
+    elective patients.
+
 Notes
 -----
 The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
