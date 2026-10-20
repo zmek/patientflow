@@ -261,7 +261,7 @@ def time_varying_arrival_rates_by_weekday(
     date_span : tuple of (date, date), optional
         Inclusive ``(first_date, last_date)`` used to count weekday
         occurrences instead of the span of ``df.index``. Use it when ``df`` is a
-        subset of a larger frame (for example residual arrivals) and the rates
+        subset of a larger frame (for example off-list arrivals) and the rates
         must share divisors with the larger frame's profile. When ``None``
         (default) the span of ``df.index`` is used, as before.
 

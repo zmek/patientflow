@@ -12,7 +12,9 @@ The predicted count has two independent parts, which are convolved:
   arrives in the window with probability ``q_i`` or does not. In this version
   ``q_i`` is estimated per service, so within a service the count is
   ``Binomial(n, q)``.
-- **Residual** (Poisson). Arrivals not on the list, modelled as a rate.
+- **Off-list electives** (Poisson). Electives who were not on that day's list for
+  that service, modelled as a rate. They include patients who were never listed,
+  and patients who were listed for another day or under another service.
 
 What is learned at fit time
 ---------------------------
@@ -26,16 +28,16 @@ day:
   of day *D*. ``sum_k (p_k + r_k) <= 1``.
 - ``list_count``: the number of listed patients in the denominator of ``p_k``
   and ``r_k``.
-- ``residual_arrival_rates_dict`` and ``residual_arrival_rates_by_weekday``:
-  arrival rates for arrivals that were not on the list.
+- ``off_list_arrival_rates_dict`` and ``off_list_arrival_rates_by_weekday``:
+  arrival rates for off-list electives (the *off-list rates*).
 
-The usual ``arrival_rates_dict`` and ``arrival_rates_by_weekday`` (the *full
-profile*, identical to ``DirectAdmissionPredictor``) are kept and are used when
-no ``day_list`` is supplied.
+The usual ``arrival_rates_dict`` and ``arrival_rates_by_weekday`` (the
+*all-elective rates*, identical to ``DirectAdmissionPredictor``) are kept and are
+used when no ``day_list`` is supplied.
 
 The denominator is every listed patient who had not arrived before 00:00 on day
 *D*, whether or not they later arrive. Patients who arrived earlier are dropped,
-and count as residual arrivals on the day they arrived.
+and count as off-list arrivals on the day they arrived.
 
 Inference
 ---------
@@ -47,13 +49,14 @@ q = sum(p_k over the part of the window on day D)
     / (1 - sum(p_k + r_k from 00:00 to the prediction time))
 ```
 
-The listed count is Poisson-binomial over the ``q_i`` values. The residual rate
-is the residual profile over the part of the window on day *D*, plus the full
-profile for the next weekday over any part of the window after midnight (the next
-day's list is not known). The predicted PMF is the convolution of the two.
+The listed count is Poisson-binomial over the ``q_i`` values. The off-list rate
+is the off-list rates summed over the part of the window on day *D*, plus the
+all-elective rates for the next weekday summed over any part of the window after
+midnight (the next day's list is not known). The predicted PMF is the convolution
+of the two.
 
 Services with fewer than ``min_list_count`` listed patients have no list
-probabilities and give the Poisson result from the full profile.
+probabilities and give the Poisson result from the all-elective rates.
 
 Boundary convention: a patient whose arrival is stamped exactly at the prediction
 moment counts as already arrived (``arrival_datetime <= moment``), although the
@@ -101,7 +104,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
     Attributes
     ----------
     weights : dict
-        Per service: the full profile, the residual profile, and (for services
+        Per service: the all-elective rates, the off-list rates, and (for services
         with enough listed patients) ``list_interval_probs``,
         ``list_other_service_probs`` and ``list_count``.
     min_list_count : int
@@ -135,7 +138,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         encounter_col: str = "encounter",
         intended_date_col: str = "intended_date",
     ) -> "ListBasedAdmissionPredictor":
-        """Fit the full profile and, when ``list_df`` is given, the list quantities.
+        """Fit the all-elective rates and, when ``list_df`` is given, the list quantities.
 
         The positional parameters are the same as
         ``IncomingAdmissionPredictor.fit``. The list parameters are
@@ -270,25 +273,25 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 else:
                     other_service_counts[interval_index] += 1
 
-            residual_arrivals = service_arrivals[
+            off_list_arrivals = service_arrivals[
                 ~service_arrivals[encounter_col].isin(listed_arrival_encounters)
             ]
             weights = self.weights[service]
 
             if n_listed >= max(self.min_list_count, 1):
                 weights.update(
-                    self._residual_parameters(
-                        residual_arrivals, service_arrivals, yta_time_interval, num_days
+                    self._off_list_parameters(
+                        off_list_arrivals, service_arrivals, yta_time_interval, num_days
                     )
                 )
                 weights["list_interval_probs"] = same_service_counts / n_listed
                 weights["list_other_service_probs"] = other_service_counts / n_listed
                 weights["list_count"] = n_listed
             else:
-                # Fall back: residual equals the full profile; no list probabilities.
-                weights["residual_arrival_rates_dict"] = weights["arrival_rates_dict"]
+                # Fall back: off-list rates equal the all-elective rates; no list probabilities.
+                weights["off_list_arrival_rates_dict"] = weights["arrival_rates_dict"]
                 if "arrival_rates_by_weekday" in weights:
-                    weights["residual_arrival_rates_by_weekday"] = weights[
+                    weights["off_list_arrival_rates_by_weekday"] = weights[
                         "arrival_rates_by_weekday"
                     ]
                 weights["list_count"] = n_listed
@@ -342,17 +345,17 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 mask &= (df[column] == criteria).to_numpy()
         return mask
 
-    def _residual_parameters(
+    def _off_list_parameters(
         self,
-        residual_arrivals: pd.DataFrame,
+        off_list_arrivals: pd.DataFrame,
         service_arrivals: pd.DataFrame,
         yta_time_interval,
         num_days: Optional[int],
     ) -> Dict:
-        """Residual rates using the divisors of the service's full profile."""
-        if len(residual_arrivals.index) == 0 or len(service_arrivals.index) == 0:
+        """Off-list rates using the divisors of the service's all-elective rates."""
+        if len(off_list_arrivals.index) == 0 or len(service_arrivals.index) == 0:
             params = self._calculate_parameters(
-                residual_arrivals.iloc[0:0],
+                off_list_arrivals.iloc[0:0],
                 yta_time_interval,
                 num_days,
                 stratify_by_weekday=self.stratify_by_weekday,
@@ -361,13 +364,13 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             effective_days = self._resolve_num_days(service_arrivals, num_days)
             params = {
                 "arrival_rates_dict": time_varying_arrival_rates(
-                    residual_arrivals, yta_time_interval, effective_days
+                    off_list_arrivals, yta_time_interval, effective_days
                 )
             }
             if self.stratify_by_weekday:
                 params["arrival_rates_by_weekday"] = (
                     time_varying_arrival_rates_by_weekday(
-                        residual_arrivals,
+                        off_list_arrivals,
                         yta_time_interval,
                         num_days,
                         date_span=(
@@ -376,7 +379,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                         ),
                     )
                 )
-        return {f"residual_{name}": rates for name, rates in params.items()}
+        return {f"off_list_{name}": rates for name, rates in params.items()}
 
     # -------------------------------------------------------------- predict
     def predict(
@@ -423,7 +426,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             column). Required when ``day_list`` is given. It must reach back to the
             day the list was produced. Rows after the prediction moment are ignored.
         **kwargs
-            ``max_value`` : int, optional, maximum PMF support for the residual.
+            ``max_value`` : int, optional, maximum PMF support for the off-list part.
 
         Returns
         -------
@@ -463,7 +466,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                     **kwargs,
                 )[service]
                 continue
-            q_values, residual_rate = self._list_components(
+            q_values, off_list_rate = self._list_components(
                 service,
                 snapped_time,
                 window,
@@ -473,7 +476,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 strict_prediction_date,
             )
             predictions[service] = self._pmf_to_dataframe(
-                self._combine(q_values, residual_rate, max_value).probabilities
+                self._combine(q_values, off_list_rate, max_value).probabilities
             )
         return predictions
 
@@ -494,7 +497,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
 
         Without ``day_list``, or for a service with no list probabilities, this is
         ``DirectAdmissionPredictor.predict_mean``. Otherwise it is the sum of
-        ``q_i`` over pending listed patients plus the residual rate.
+        ``q_i`` over pending listed patients plus the off-list rate.
         Arguments are as for ``predict``.
         """
         if day_list is None:
@@ -526,7 +529,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 strict_prediction_date=strict_prediction_date,
                 **kwargs,
             )
-        q_values, residual_rate = self._list_components(
+        q_values, off_list_rate = self._list_components(
             service,
             snapped_time,
             window,
@@ -535,7 +538,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             arrivals,
             strict_prediction_date,
         )
-        return float(np.sum(q_values) + residual_rate)
+        return float(np.sum(q_values) + off_list_rate)
 
     # ------------------------------------------------------------- internals
     def uses_list(self, key: Optional[str]) -> bool:
@@ -585,7 +588,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         arrivals: pd.DataFrame,
         strict: bool,
     ) -> Tuple[np.ndarray, float]:
-        """Return per-patient ``q_i`` for pending listed patients and the residual rate."""
+        """Return per-patient ``q_i`` for pending listed patients and the off-list rate."""
         weights = self.weights[service]
         hour, minute = snapped_time
         moment = datetime.combine(prediction_date, dt_time(hour, minute))
@@ -629,10 +632,10 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         q = float(min(1.0, max(0.0, p_window / p_still_pending)))
         q_values = np.full(n_pending, q)
 
-        # Residual rate: residual profile on day D, full profile after midnight.
-        residual_rates_by_weekday = weights.get("residual_arrival_rates_by_weekday")
-        full_rates_by_weekday = weights.get("arrival_rates_by_weekday")
-        if residual_rates_by_weekday is None or full_rates_by_weekday is None:
+        # Off-list rate: off-list rates on day D, all-elective rates after midnight.
+        off_list_rates_by_weekday = weights.get("off_list_arrival_rates_by_weekday")
+        all_elective_rates_by_weekday = weights.get("arrival_rates_by_weekday")
+        if off_list_rates_by_weekday is None or all_elective_rates_by_weekday is None:
             message = (
                 "prediction_date was provided but no weekday-stratified rates were "
                 f"found for filter '{service}'. Fit with stratify_by_weekday=True to "
@@ -645,39 +648,39 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 UserWarning,
                 stacklevel=4,
             )
-        residual_rate = 0.0
+        off_list_rate = 0.0
         for i in range(n_window_intervals):
             interval_start = moment + i * self.yta_time_interval
             interval_time = interval_start.time()
             if interval_start.date() == prediction_date:
                 profile = (
-                    residual_rates_by_weekday[interval_start.weekday()]
-                    if residual_rates_by_weekday is not None
-                    else weights["residual_arrival_rates_dict"]
+                    off_list_rates_by_weekday[interval_start.weekday()]
+                    if off_list_rates_by_weekday is not None
+                    else weights["off_list_arrival_rates_dict"]
                 )
             else:
                 profile = (
-                    full_rates_by_weekday[interval_start.weekday()]
-                    if full_rates_by_weekday is not None
+                    all_elective_rates_by_weekday[interval_start.weekday()]
+                    if all_elective_rates_by_weekday is not None
                     else weights["arrival_rates_dict"]
                 )
-            residual_rate += float(profile[interval_time])
-        return q_values, residual_rate
+            off_list_rate += float(profile[interval_time])
+        return q_values, off_list_rate
 
     def _combine(
-        self, q_values: np.ndarray, residual_rate: float, max_value: Optional[int]
+        self, q_values: np.ndarray, off_list_rate: float, max_value: Optional[int]
     ) -> Distribution:
-        """Convolve the listed Poisson-binomial with the residual Poisson."""
+        """Convolve the listed Poisson-binomial with the off-list Poisson."""
         listed = Distribution.from_bernoulli_probs(q_values)
         if max_value is not None:
-            residual_max_count = int(max_value) - 1
+            off_list_max_count = int(max_value) - 1
         else:
-            residual_max_count = (
-                int(poisson.ppf(1 - self.epsilon, residual_rate))
-                if residual_rate > 0
+            off_list_max_count = (
+                int(poisson.ppf(1 - self.epsilon, off_list_rate))
+                if off_list_rate > 0
                 else 0
             )
-        residual = Distribution.from_poisson_with_cap(
-            residual_rate, max(residual_max_count, 0)
+        off_list = Distribution.from_poisson_with_cap(
+            off_list_rate, max(off_list_max_count, 0)
         )
-        return listed.convolve(residual)
+        return listed.convolve(off_list)

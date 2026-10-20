@@ -181,13 +181,13 @@ class TestFit(unittest.TestCase):
         self.assertLessEqual(float(np.sum(p + r)), 1.0)
         self.assertTrue(np.all((p >= 0) & (p <= 1)))
 
-    def test_residual_excludes_listed_arrivals(self):
-        res = self.model.weights["A"]["residual_arrival_rates_dict"]
+    def test_off_list_rates_exclude_listed_arrivals(self):
+        res = self.model.weights["A"]["off_list_arrival_rates_dict"]
         expected = {time(9): 1.0, time(12): 1.0, time(20): 1.0}
         for t, rate in res.items():
             self.assertAlmostEqual(rate, expected.get(t, 0.0), msg=str(t))
 
-    def test_full_profile_matches_direct(self):
+    def test_all_elective_rates_match_direct(self):
         direct = DirectAdmissionPredictor(filters=FILTERS).fit(
             self.train_df, yta_time_interval=timedelta(hours=1), num_days=30
         )
@@ -201,12 +201,12 @@ class TestFit(unittest.TestCase):
                 direct.weights[key]["arrival_rates_by_weekday"],
             )
 
-    def test_weekday_residual_uses_full_span(self):
+    def test_weekday_off_list_rates_use_full_span(self):
         full_df = self.train_df[self.train_df["service"] == "A"]
         occ = weekday_occurrences_in_span(
             full_df.index.date.min(), full_df.index.date.max()
         )
-        by_weekday = self.model.weights["A"]["residual_arrival_rates_by_weekday"]
+        by_weekday = self.model.weights["A"]["off_list_arrival_rates_by_weekday"]
         unlisted_days = pd.to_datetime(
             [d for d in full_df.index[full_df.index.hour == 12].date]
         )
@@ -217,7 +217,7 @@ class TestFit(unittest.TestCase):
     def test_service_without_list_falls_back(self):
         w = self.model.weights["B"]
         self.assertNotIn("list_interval_probs", w)
-        self.assertEqual(w["residual_arrival_rates_dict"], w["arrival_rates_dict"])
+        self.assertEqual(w["off_list_arrival_rates_dict"], w["arrival_rates_dict"])
         # B has no listed patients at all: counted, but no warning.
         self.assertEqual(self.model.no_list_services, ["B"])
         self.assertEqual(self.model.no_list_filter_count, 1)
@@ -273,13 +273,13 @@ class TestPredict(unittest.TestCase):
         cls.day_list, cls.arrivals = _day_inputs(cls.train_df, cls.list_df, cls.day)
         cls.day_list = cls.day_list[cls.day_list["service"] == "A"]
 
-    def _residual_lambda(self, key, day, start_hour, n_hours):
+    def _off_list_rate(self, key, day, start_hour, n_hours):
         w = self.model.weights[key]
         lam = 0.0
         for i in range(n_hours):
             h = start_hour + i
             if h < 24:
-                lam += w["residual_arrival_rates_by_weekday"][day.weekday()][time(h)]
+                lam += w["off_list_arrival_rates_by_weekday"][day.weekday()][time(h)]
             else:
                 nxt = day + timedelta(days=1)
                 lam += w["arrival_rates_by_weekday"][nxt.weekday()][time(h - 24)]
@@ -303,9 +303,9 @@ class TestPredict(unittest.TestCase):
                 direct.predict_mean(filter_key=key, **kwargs),
             )
 
-    def test_empty_day_list_equals_residual_poisson(self):
+    def test_empty_day_list_equals_off_list_poisson(self):
         empty = self.day_list.iloc[0:0]
-        lam = self._residual_lambda("A", self.day, 9, 8)
+        lam = self._off_list_rate("A", self.day, 9, 8)
         pmf = self.model.predict(
             prediction_time=(9, 0),
             prediction_window=timedelta(hours=8),
@@ -317,9 +317,9 @@ class TestPredict(unittest.TestCase):
         np.testing.assert_allclose(pmf.sum(), 1.0)
         np.testing.assert_allclose(pmf[:5], poisson.pmf(np.arange(5), lam), atol=1e-12)
 
-    def test_everyone_arrived_equals_residual_poisson(self):
+    def test_everyone_arrived_equals_off_list_poisson(self):
         arrived = self.day_list[self.day_list["encounter"].str.endswith(("-0", "-1"))]
-        lam = self._residual_lambda("A", self.day, 15, 12)  # past midnight
+        lam = self._off_list_rate("A", self.day, 15, 12)  # past midnight
         pmf = self.model.predict(
             prediction_time=(15, 0),
             prediction_window=timedelta(hours=12),
@@ -330,9 +330,9 @@ class TestPredict(unittest.TestCase):
         )["A"]["agg_proba"].to_numpy()
         np.testing.assert_allclose(pmf[:5], poisson.pmf(np.arange(5), lam), atol=1e-12)
 
-    def test_midnight_crossing_uses_full_profile_after_midnight(self):
+    def test_midnight_crossing_uses_all_elective_rates_after_midnight(self):
         empty = self.day_list.iloc[0:0]
-        expected = self._residual_lambda("A", self.day, 20, 16)
+        expected = self._off_list_rate("A", self.day, 20, 16)
         mean = self.model.predict_mean(
             prediction_time=(20, 0),
             prediction_window=timedelta(hours=16),
@@ -342,13 +342,13 @@ class TestPredict(unittest.TestCase):
             arrivals=self.arrivals,
         )
         self.assertAlmostEqual(mean, expected)
-        # Listed arrivals sit in the full profile only, so using the residual
-        # profile after midnight would give a smaller number.
+        # Listed arrivals are only in the all-elective rates, so using the
+        # off-list rates after midnight would give a smaller number.
         w = self.model.weights["A"]
         tue = (self.day + timedelta(days=1)).weekday()
         self.assertGreater(
             w["arrival_rates_by_weekday"][tue][time(8)],
-            w["residual_arrival_rates_by_weekday"][tue][time(8)],
+            w["off_list_arrival_rates_by_weekday"][tue][time(8)],
         )
 
     def test_mean_is_sum_of_q_plus_lambda(self):
@@ -364,7 +364,7 @@ class TestPredict(unittest.TestCase):
             ]
         )
         n_pending = int((~self.day_list["encounter"].isin(arrived)).sum())
-        lam = self._residual_lambda("A", self.day, 7, 8)
+        lam = self._off_list_rate("A", self.day, 7, 8)
         mean = self.model.predict_mean(
             prediction_time=(7, 0),
             prediction_window=timedelta(hours=8),
@@ -398,7 +398,7 @@ class TestPredict(unittest.TestCase):
             day_list=self.day_list,
             arrivals=self.arrivals,
         )
-        lam = self._residual_lambda("A", self.day, 0, 12)
+        lam = self._off_list_rate("A", self.day, 0, 12)
         self.assertAlmostEqual(mean, n * p[:12].sum() + lam)
 
     def test_q_is_capped_when_denominator_is_zero(self):
@@ -422,7 +422,7 @@ class TestPredict(unittest.TestCase):
             day_list=day_list,
             arrivals=empty_arrivals,
         )
-        lam = model.weights["A"]["residual_arrival_rates_by_weekday"][0]
+        lam = model.weights["A"]["off_list_arrival_rates_by_weekday"][0]
         lam = sum(lam[time(h)] for h in range(12, 16))
         self.assertGreaterEqual(mean, lam)
         self.assertLessEqual(mean, lam + 1.0)
