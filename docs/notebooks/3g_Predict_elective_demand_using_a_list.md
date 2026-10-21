@@ -270,7 +270,7 @@ I use January and February for training, and March for testing. As in notebook 3
 
 The list for the first day of the training period is left out. Some patients on that list arrived the evening before, which falls outside the training period, so they would look as if they never arrived. Starting the list one day in avoids that.
 
-The training arrivals are split in two: those who needed a bed, and listed patients who arrived without needing one. The model uses them in different ways (see below).
+The training arrivals are split in two. Arrivals that needed a bed give the arrival rates and the probabilities of arriving at each service. Listed patients who arrived without needing a bed are only used to tell the model when they stopped being pending.
 
 ```python
 from datetime import date
@@ -309,10 +309,12 @@ Three things to note about the inputs:
 - `train_df` must contain those arrivals at **all** services, not a slice for one service. The model needs to see listed patients who arrived at a different service.
 - The columns used in `filters` (here `service`) must be present in both `train_df` and `list_df`, so that listed patients can be assigned to services. `arrivals_not_admitted` only needs `encounter`.
 
+Why pass patients who did not need a bed at all? At inference time, the model drops every listed patient who has already arrived, because nobody knows yet which of them will need a bed. Training and inference must agree on who is still pending, so training has to see the same arrivals. For the same reason, `arrivals_not_admitted` at fit and the `arrivals` passed at inference time should define "did not need a bed" in the same way. The conditioning section below shows what goes wrong if they disagree.
+
 At fit time, the model learns, for each service and each 15-minute interval of the day:
 
-- `p_k`, the probability that a listed patient arrives at the listed service in that interval. It is stored as `list_interval_probs`.
-- `r_k`, the probability that a listed patient arrives at a different service in that interval. It is stored as `list_other_service_probs`.
+- `p_k`, the probability that a listed patient arrives at the listed service in that interval and needs a bed. It is stored as `list_interval_probs`.
+- `r_k`, the probability that a listed patient arrives at a different service in that interval and needs a bed. It is stored as `list_other_service_probs`.
 - `s_k`, the probability that a listed patient arrives in that interval but does not need a bed. It is stored as `list_not_admitted_probs`.
 - Arrival rates for off-list electives (the _off-list rates_).
 
@@ -346,22 +348,22 @@ for warning in caught:
 
     Warning: 1 service(s) have fewer than min_list_count=50 listed patients and will ignore day_list: ['paediatric'].
 
-The table below summarises what was learned for each service. `list_count` is the number of listed patients in the denominator of `p_k`, `r_k` and `s_k`. Summing `p_k` over the day gives the share of listed patients who arrive at the listed service on the day and need a bed. Summing `r_k` gives the share who arrive at a different service, and summing `s_k` the share who arrive without needing a bed.
+The table below summarises what was learned for each service. `list_count` is the number of listed patients in the denominator of `p_k`, `r_k` and `s_k`. Summing `p_k` over the day gives the share of listed patients who arrived at the listed service on the day and needed a bed. Summing `r_k` gives the share who arrived at a different service and needed a bed, and summing `s_k` the share who arrived without needing a bed.
 
 ```python
-rows = []
+share = 'Share of listed patients arriving on the day'
+rows = {}
 for service in services:
     service_weights = list_model.weights[service]
     uses_list = list_model.uses_list(service)
-    rows.append({
-        'service': service,
-        'list_count': service_weights['list_count'],
-        'uses list': uses_list,
-        'arrive at listed service (sum of p_k)': service_weights['list_interval_probs'].sum() if uses_list else None,
-        'arrive at other service (sum of r_k)': service_weights['list_other_service_probs'].sum() if uses_list else None,
-        'arrive without a bed (sum of s_k)': service_weights['list_not_admitted_probs'].sum() if uses_list else None,
-    })
-pd.DataFrame(rows).set_index('service').round(3)
+    rows[service] = {
+        ('', 'list_count'): service_weights['list_count'],
+        ('', 'uses list'): uses_list,
+        (share, 'needed a bed, listed service (p_k)'): service_weights['list_interval_probs'].sum() if uses_list else None,
+        (share, 'needed a bed, other service (r_k)'): service_weights['list_other_service_probs'].sum() if uses_list else None,
+        (share, 'did not need a bed (s_k)'): service_weights['list_not_admitted_probs'].sum() if uses_list else None,
+    }
+pd.DataFrame.from_dict(rows, orient='index').rename_axis('service').round(3)
 ```
 
 <div>
@@ -374,20 +376,29 @@ pd.DataFrame(rows).set_index('service').round(3)
         vertical-align: top;
     }
 
-    .dataframe thead th {
+    .dataframe thead tr th {
+        text-align: left;
+    }
+
+    .dataframe thead tr:last-of-type th {
         text-align: right;
     }
 
 </style>
 <table border="1" class="dataframe">
   <thead>
-    <tr style="text-align: right;">
+    <tr>
+      <th></th>
+      <th colspan="2" halign="left"></th>
+      <th colspan="3" halign="left">Share of listed patients arriving on the day</th>
+    </tr>
+    <tr>
       <th></th>
       <th>list_count</th>
       <th>uses list</th>
-      <th>arrive at listed service (sum of p_k)</th>
-      <th>arrive at other service (sum of r_k)</th>
-      <th>arrive without a bed (sum of s_k)</th>
+      <th>needed a bed, listed service (p_k)</th>
+      <th>needed a bed, other service (r_k)</th>
+      <th>did not need a bed (s_k)</th>
     </tr>
     <tr>
       <th>service</th>
@@ -431,7 +442,7 @@ pd.DataFrame(rows).set_index('service').round(3)
 
 ### When do listed patients arrive?
 
-The chart below shows `p_k`, `r_k` and `s_k` for the surgical list, summed to hourly values. Listed patients arrive mainly in the morning.
+The chart below shows `p_k`, `r_k` and `s_k` for the surgical list, summed to hourly values. The first two are patients who needed a bed, split by where they arrived. The third is patients who did not need a bed, at any service. Listed patients arrive mainly in the morning.
 
 ```python
 import matplotlib.pyplot as plt
@@ -445,14 +456,15 @@ other_service_by_hour = surgical_weights['list_other_service_probs'].reshape(24,
 not_admitted_by_hour = surgical_weights['list_not_admitted_probs'].reshape(24, intervals_per_hour).sum(axis=1)
 
 fig, ax = plt.subplots(figsize=(10, 4))
-ax.bar(range(24), same_service_by_hour, label='Arrives at the listed service (p_k)')
-ax.bar(range(24), other_service_by_hour, bottom=same_service_by_hour, label='Arrives at a different service (r_k)')
+ax.bar(range(24), same_service_by_hour, label='Needed a bed, at the listed service (p_k)')
+ax.bar(range(24), other_service_by_hour, bottom=same_service_by_hour, label='Needed a bed, at a different service (r_k)')
 ax.bar(range(24), not_admitted_by_hour, bottom=same_service_by_hour + other_service_by_hour,
-       label='Arrives without needing a bed (s_k)')
+       label='Did not need a bed, at any service (s_k)')
 ax.set_xticks(range(24))
 ax.set_xlabel('Hour of day')
-ax.set_ylabel('Probability per listed patient')
-ax.set_title('When listed surgical patients arrive on the day they were booked for')
+ax.set_ylabel('Share of listed patients')
+ax.set_title('Share of listed surgical patients arriving in each hour of their booked day\n'
+             '(training data, January and February 2023)')
 ax.legend()
 plt.show()
 ```
@@ -485,7 +497,7 @@ plt.show()
 To make a prediction, the model needs three things in addition to the usual `prediction_time` and `prediction_window`:
 
 - `day_list`: the list for the prediction date, including patients who may already have arrived. The same list can be passed for every service. Services without enough list data at fit, such as `paediatric` and `haem/onc` here, ignore it and give the Poisson-only result.
-- `arrivals`: elective arrivals at all services. The model uses them to drop listed patients who have already arrived by the prediction time, at any service. They must include listed patients who arrived without needing a bed, because at the prediction time nobody knows yet which arrivals will need one. Arrivals after the prediction time are ignored. This means that when predicting for a past day, as here, you can pass all the arrivals you have, and the prediction will not use any arrival that happened after the prediction time.
+- `arrivals`: elective arrivals at all services. The model uses them to drop listed patients who have already arrived by the prediction time, at any service. They must include listed patients who arrived without needing a bed, because at the prediction time nobody knows yet which arrivals will need one. If those patients are left out, for example because only a feed of admissions is used, they stay on the pending list and the prediction is too high. Arrivals after the prediction time are ignored. This means that when predicting for a past day, as here, you can pass all the arrivals you have, and the prediction will not use any arrival that happened after the prediction time.
 - `prediction_date`: the date, which anchors the prediction time and selects the arrival rates for that day of the week.
 
 I use Monday 6 March 2023 from the test period. I chose it because its surgical list was shorter than usual for a Monday, which shows the difference the list makes.
@@ -523,9 +535,11 @@ q = sum of p_k over the part of the window on the day
 
 `q` is the _conditioned probability_: the probability that a patient who is still pending arrives in the window. For example, if a third of everyone on the list arrives in the window, and half of the list is still pending at the prediction time, then a pending patient arrives in the window with probability (1/3) / (1/2) = 2/3. At 00:00 nobody has arrived, the denominator is 1, and the two probabilities are the same.
 
-The denominator counts every way a listed patient can already have arrived: at the listed service (`p_k`), at a different service (`r_k`), or without needing a bed (`s_k`). This matches prediction, which drops every listed patient who has arrived, because nobody knows yet which of them will need a bed. Without `arrivals_not_admitted`, training would treat patients who arrived without needing a bed as never having arrived, and keep them in the pending pool all day. `q` would then be too low.
+This only works if training and inference agree on who is still pending. At inference time, the model drops every listed patient who has arrived, at any service, because nobody knows yet which of them will need a bed. So the denominator counts every way a listed patient can already have arrived: needing a bed at the listed service (`p_k`), needing a bed at a different service (`r_k`), or not needing a bed (`s_k`).
 
-The model does this calculation itself. The code below works it through for the surgical list at 09:30.
+If `s_k` were left out, which is what happens when the model is fitted without `arrivals_not_admitted`, training would treat patients who arrived without needing a bed as never having arrived. It would keep them in the pending pool all day, while inference drops them as they arrive. The pending share would be too high, so `q`, and the listed part of the prediction, would be too low. The opposite mistake, leaving those patients out of `arrivals` at inference time, keeps them on the pending list and makes the prediction too high.
+
+The model does this calculation itself. The code below works it through for the surgical list at 09:30, and shows what `q` would be without `s_k`.
 
 ```python
 from datetime import datetime
@@ -551,14 +565,19 @@ print(f'Probability of arriving in the window, for a patient from the whole list
 print(f'Share of the list still pending at 09:30: {share_pending:.2f}')
 print(f'q = {whole_list_prob:.2f} / {share_pending:.2f} = {q:.2f}')
 print(f'Listed part of the prediction: Binomial({n_pending}, {q:.2f})')
+
+# Fitting without arrivals_not_admitted gives the same p_k and r_k, but no s_k
+q_without_s_k = whole_list_prob / (share_pending + s_k[:start].sum())
+print(f'q without s_k: {q_without_s_k:.2f}')
 ```
 
     Probability of arriving in the window, for a patient from the whole list: 0.21
     Share of the list still pending at 09:30: 0.53
     q = 0.21 / 0.53 = 0.40
     Listed part of the prediction: Binomial(8, 0.40)
+    q without s_k: 0.32
 
-Conditioning nearly doubles the probability for each pending patient.
+Conditioning nearly doubles the probability for each pending patient. Without `s_k`, `q` would be a fifth lower, and so would the expected number of listed arrivals.
 
 ### Off-list arrivals
 
@@ -605,11 +624,16 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 3.5), sharey=True)
 for ax, pmf, title in zip(
     axes,
     [listed_pmf, off_list_pmf, combined_pmf],
-    [f'Listed: Binomial({n_pending}, {q:.2f})', f'Off-list: Poisson({off_list_mean:.2f})', 'Combined'],
+    [f'Pending listed patients: Binomial({n_pending}, {q:.2f})',
+     f'Off-list electives: Poisson({off_list_mean:.2f})',
+     'Total (convolution of the two)'],
 ):
     plot_prob_dist(pmf, title, include_titles=True, truncate_at_beds=20,
                    bar_colour=colour_dict['single']['surgical'],
                    xlabel='Number of elective arrivals', ax=ax)
+window_end = prediction_moment + prediction_window
+fig.suptitle(f'Surgical arrivals needing a bed between {prediction_moment:%H:%M} and {window_end:%H:%M}, '
+             f'{prediction_date:%A} {prediction_date.day} {prediction_date:%B}')
 plt.tight_layout()
 plt.show()
 ```
@@ -642,12 +666,19 @@ observed_arrivals = ((elective_arrivals['service'] == 'surgical')
                      & (elective_arrivals['arrival_datetime'] <= prediction_moment + prediction_window)).sum()
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 3.5), sharey=True)
-for ax, pmf, label in zip(axes, [pmf_without_list, pmf_with_list], ['Poisson only (no list)', 'Using the list']):
+for ax, pmf, label in zip(
+    axes,
+    [pmf_without_list, pmf_with_list],
+    ['Without the list: Poisson from past arrival rates', 'With the list: pending listed patients and off-list'],
+):
     plot_prob_dist(pmf, label, include_titles=True, truncate_at_beds=30,
                    bar_colour=colour_dict['single']['surgical'],
                    xlabel='Number of elective arrivals', ax=ax)
     ax.axvline(observed_arrivals, color='red', linestyle='--', label=f'Observed ({observed_arrivals})')
     ax.legend()
+window_end = prediction_moment + prediction_window
+fig.suptitle(f'Surgical arrivals needing a bed between {prediction_moment:%H:%M} and {window_end:%H:%M}, '
+             f'{prediction_date:%A} {prediction_date.day} {prediction_date:%B}')
 plt.tight_layout()
 plt.show()
 ```
@@ -667,6 +698,7 @@ The list only covers the day it was made for. If the prediction window runs past
 Here I have shown how to use a list of planned admissions to predict elective demand with `ListBasedAdmissionPredictor`:
 
 - At fit time, the model learns when listed patients arrive (`p_k`), how often they arrive at a different service (`r_k`) or without needing a bed (`s_k`), and the arrival rates of off-list electives.
-- At prediction time, it drops every listed patient who has already arrived, at any service, because it is not yet known which of them will need a bed. It predicts for those still pending. The probability for each pending patient is conditioned on them not having arrived yet.
+- At inference time, it drops every listed patient who has already arrived, at any service, because it is not yet known which of them will need a bed. It predicts for those still pending. The probability for each pending patient is conditioned on them not having arrived yet.
+- Training and inference must agree on who is still pending. Pass listed patients who arrived without needing a bed as `arrivals_not_admitted` at fit, and include the same patients in `arrivals` at inference time.
 - The listed and off-list parts are combined into a single distribution. Because the number of listed patients is known rather than estimated from past days, this distribution is usually narrower than a Poisson-only prediction. How much the list helps depends on how closely it matches who actually arrives. A list on which many patients do not arrive, or a service with many off-list electives, gains less.
 - Without a list, or for services with too few listed patients, the model gives exactly the Poisson-only result of `DirectAdmissionPredictor`.

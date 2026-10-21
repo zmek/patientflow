@@ -482,7 +482,7 @@ class TestBuildServiceData(unittest.TestCase):
                 y2=self.y2,
             )
 
-        # With the prediction_window now supplied at predict() time, YTA models
+        # With the prediction_window now supplied at inference time, YTA models
         # trained for a different window should still be usable against any
         # caller-supplied window. Verify a previously "mismatched" elective YTA
         # model does not raise.

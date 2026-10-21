@@ -108,7 +108,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
     filters : dict, optional
         As for ``DirectAdmissionPredictor``. Keys are service names. The
         columns named in the filter values must also be present in ``list_df``
-        at fit and in ``day_list`` at predict time.
+        at fit and in ``day_list`` at inference time.
     verbose : bool, default=False
         Whether to enable verbose logging.
 
@@ -181,7 +181,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             Ignored, present for compatibility with scikit-learn's fit method.
         stratify_by_weekday : bool or None, default=None
             Whether to fit weekday arrival profiles. ``None`` fits them silently,
-            ``True`` also warns at predict time when ``prediction_date`` is
+            ``True`` also warns at inference time when ``prediction_date`` is
             omitted, and ``False`` opts out. See ``IncomingAdmissionPredictor.fit``.
         list_df : pandas.DataFrame, optional
             One row per listed patient with ``encounter_col``,
