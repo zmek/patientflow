@@ -51,7 +51,7 @@ q = sum(p_k over the part of the window on day D)
 
 The listed count is Poisson-binomial over the ``q_i`` values. The off-list rate
 is the off-list rates summed over the part of the window on day *D*, plus the
-all-elective rates for the next weekday summed over any part of the window after
+all-elective rates for the next day of the week summed over any part of the window after
 midnight (the next day's list is not known). The predicted PMF is the convolution
 of the two.
 
