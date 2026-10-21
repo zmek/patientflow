@@ -1348,7 +1348,9 @@ def build_service_data(
     elective_arrivals : pandas.DataFrame, optional
         Elective arrivals at all services (encounter and ``arrival_datetime``),
         reaching back to the day the list was produced. The predictor drops listed
-        patients who have arrived by the prediction moment.
+        patients who have arrived by the prediction moment, so include every
+        listed patient who arrived, including those who did not need a bed
+        (for example day cases).
 
     Returns
     -------

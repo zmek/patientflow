@@ -25,9 +25,13 @@ day:
   day *D* arrives at the listed service in interval *k* of day *D*.
 - ``list_other_service_probs`` (``r_k``): the probability that a patient listed
   for day *D* at this service arrives at a **different** service in interval *k*
-  of day *D*. ``sum_k (p_k + r_k) <= 1``.
-- ``list_count``: the number of listed patients in the denominator of ``p_k``
-  and ``r_k``.
+  of day *D*.
+- ``list_not_admitted_probs`` (``s_k``): the probability that a patient listed
+  for day *D* at this service arrives in interval *k* of day *D* but does not
+  need a bed (for example a day case). Learned from ``arrivals_not_admitted`` at
+  fit, and all zeros without it. ``sum_k (p_k + r_k + s_k) <= 1``.
+- ``list_count``: the number of listed patients in the denominator of ``p_k``,
+  ``r_k`` and ``s_k``.
 - ``off_list_arrival_rates_dict`` and ``off_list_arrival_rates_by_weekday``:
   arrival rates for off-list electives (the *off-list rates*).
 
@@ -36,17 +40,19 @@ The usual ``arrival_rates_dict`` and ``arrival_rates_by_weekday`` (the
 used when no ``day_list`` is supplied.
 
 The denominator is every listed patient who had not arrived before 00:00 on day
-*D*, whether or not they later arrive. Patients who arrived earlier are dropped,
-and count as off-list arrivals on the day they arrived.
+*D*, whether or not they later arrive. Patients who arrived earlier are dropped.
+If they needed a bed, they count as off-list arrivals on the day they arrived.
 
 Inference
 ---------
 For a pending patient at a service (listed, and not yet arrived at *any*
-service by the prediction moment):
+service by the prediction moment). Every arrival counts, because at the
+prediction moment it is not yet known which patients will need a bed. ``s_k``
+in the denominator makes training drop patients in the same way:
 
 ```text
 q = sum(p_k over the part of the window on day D)
-    / (1 - sum(p_k + r_k from 00:00 to the prediction time))
+    / (1 - sum(p_k + r_k + s_k from 00:00 to the prediction time))
 ```
 
 The listed count is Poisson-binomial over the ``q_i`` values. The off-list rate
@@ -81,7 +87,12 @@ from patientflow.predictors.incoming_admission_predictors import (
     DirectAdmissionPredictor,
 )
 
-_LIST_KEYS = ("list_interval_probs", "list_other_service_probs", "list_count")
+_LIST_KEYS = (
+    "list_interval_probs",
+    "list_other_service_probs",
+    "list_not_admitted_probs",
+    "list_count",
+)
 _MIN_DENOMINATOR = 1e-12
 
 
@@ -106,7 +117,8 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
     weights : dict
         Per service: the all-elective rates, the off-list rates, and (for services
         with enough listed patients) ``list_interval_probs``,
-        ``list_other_service_probs`` and ``list_count``.
+        ``list_other_service_probs``, ``list_not_admitted_probs`` and
+        ``list_count``.
     min_list_count : int
         Minimum ``list_count`` for a service to use the list.
     list_fallback_services : list of str
@@ -134,6 +146,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         stratify_by_weekday: Optional[bool] = None,
         *,
         list_df: Optional[pd.DataFrame] = None,
+        arrivals_not_admitted: Optional[pd.DataFrame] = None,
         min_list_count: int = 50,
         encounter_col: str = "encounter",
         intended_date_col: str = "intended_date",
@@ -147,10 +160,10 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         Parameters
         ----------
         train_df : pandas.DataFrame
-            Elective arrivals at **all** services, indexed by ``arrival_datetime``,
-            with ``encounter_col`` and the columns used in ``filters``. It must not
-            be a per-service slice, because listed patients who arrived at another
-            service feed ``r_k``.
+            Elective arrivals that needed a bed, at **all** services, indexed by
+            ``arrival_datetime``, with ``encounter_col`` and the columns used in
+            ``filters``. It must not be a per-service slice, because listed
+            patients who arrived at another service feed ``r_k``.
         prediction_window : timedelta, optional
             Deprecated. Pass ``prediction_window`` to ``predict()`` /
             ``predict_mean()`` instead.
@@ -175,6 +188,13 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             ``intended_date_col`` and the columns used in ``filters``. The caller
             decides which list snapshot qualifies. If omitted, the fit is the same
             as ``DirectAdmissionPredictor.fit``.
+        arrivals_not_admitted : pandas.DataFrame, optional
+            Arrivals of listed patients who did not need a bed (for example day
+            cases), indexed by ``arrival_datetime``, with ``encounter_col``. No
+            filter columns are needed. Used only for listed patients whose
+            encounter is not in ``train_df``. An arrival on the intended date
+            feeds ``s_k``, and an arrival before it removes the patient from the
+            denominator. Without it, ``s_k`` is all zeros. Requires ``list_df``.
         min_list_count : int, default=50
             A service with fewer listed patients (pooled over training days, in
             the denominator of ``p_k``) gets no list probabilities and falls back
@@ -182,7 +202,8 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             listed patients but too few. Services with none are not warned about
             (see ``no_list_services``).
         encounter_col : str, default="encounter"
-            Encounter identifier column in ``train_df`` and ``list_df``.
+            Encounter identifier column in ``train_df``, ``list_df`` and
+            ``arrivals_not_admitted``.
         intended_date_col : str, default="intended_date"
             Column in ``list_df`` holding the day the patient is booked for.
 
@@ -192,7 +213,11 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             The fitted instance.
         """
         if min_list_count < 0:
-            raise ValueError("min_list_count must be non-negative")
+            raise ValueError(
+                f"min_list_count must be non-negative, got {min_list_count}"
+            )
+        if arrivals_not_admitted is not None and list_df is None:
+            raise ValueError("arrivals_not_admitted is only used with list_df")
 
         super().fit(
             train_df,
@@ -217,21 +242,21 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         if list_df is None:
             return self
 
-        self._validate_fit_inputs(train_df, list_df)
+        self._validate_fit_inputs(train_df, list_df, arrivals_not_admitted)
 
         service_filters: Dict[str, Dict] = (
             dict(self.filters) if self.filters else {"unfiltered": {}}
         )
 
-        train_encounters = train_df[encounter_col].to_numpy()
         arrival_times = train_df.index
+        first_arrival_row = self._first_arrival_rows(train_df)
 
-        rows_by_arrival_time = np.argsort(arrival_times.values, kind="stable")
-        first_arrival_row: Dict = {}
-        for arrival_row in rows_by_arrival_time:
-            first_arrival_row.setdefault(
-                train_encounters[arrival_row], int(arrival_row)
-            )
+        if arrivals_not_admitted is None:
+            not_admitted_times = pd.DatetimeIndex([])
+            first_not_admitted_row: Dict = {}
+        else:
+            not_admitted_times = arrivals_not_admitted.index
+            first_not_admitted_row = self._first_arrival_rows(arrivals_not_admitted)
 
         listed_dates = pd.to_datetime(list_df[intended_date_col]).dt.date.to_numpy()
         listed_encounters = list_df[encounter_col].to_numpy()
@@ -242,9 +267,10 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             service_arrivals = train_df[service_arrival_mask]
             service_listed_mask = self._filter_mask(list_df, filters)
 
-            # Numerators of p_k and r_k, and their shared denominator.
+            # Numerators of p_k, r_k and s_k, and their shared denominator.
             same_service_counts = np.zeros(self._n_intervals)
             other_service_counts = np.zeros(self._n_intervals)
+            not_admitted_counts = np.zeros(self._n_intervals)
             n_listed = 0
             listed_arrival_encounters = set()
 
@@ -252,11 +278,21 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 listed_encounters[service_listed_mask],
                 listed_dates[service_listed_mask],
             ):
+                # An arrival in train_df takes precedence over one without a bed.
                 arrival_row = first_arrival_row.get(encounter)
-                if arrival_row is None:
-                    n_listed += 1  # never arrived: missing mass
-                    continue
-                arrival_time = arrival_times[arrival_row]
+                if arrival_row is not None:
+                    arrival_time = arrival_times[arrival_row]
+                    if service_arrival_mask[arrival_row]:
+                        counts = same_service_counts
+                    else:
+                        counts = other_service_counts
+                else:
+                    arrival_row = first_not_admitted_row.get(encounter)
+                    if arrival_row is None:
+                        n_listed += 1  # never arrived: missing mass
+                        continue
+                    arrival_time = not_admitted_times[arrival_row]
+                    counts = not_admitted_counts
                 if arrival_time.date() < intended_date:
                     continue  # arrived before the day; dropped from denominator
                 n_listed += 1
@@ -267,11 +303,9 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                     + arrival_time.minute * 60
                     + arrival_time.second
                 ) // interval_seconds
-                if service_arrival_mask[arrival_row]:
-                    same_service_counts[interval_index] += 1
+                counts[interval_index] += 1
+                if counts is same_service_counts:
                     listed_arrival_encounters.add(encounter)
-                else:
-                    other_service_counts[interval_index] += 1
 
             off_list_arrivals = service_arrivals[
                 ~service_arrivals[encounter_col].isin(listed_arrival_encounters)
@@ -286,6 +320,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 )
                 weights["list_interval_probs"] = same_service_counts / n_listed
                 weights["list_other_service_probs"] = other_service_counts / n_listed
+                weights["list_not_admitted_probs"] = not_admitted_counts / n_listed
                 weights["list_count"] = n_listed
             else:
                 # Fall back: off-list rates equal the all-elective rates; no list probabilities.
@@ -305,34 +340,59 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         if self.list_fallback_services:
             warnings.warn(
                 f"{self.low_list_count_filter_count} service(s) have fewer than "
-                f"min_list_count={self.min_list_count} listed patients and will use "
-                f"the Poisson result: {sorted(self.list_fallback_services)}.",
+                f"min_list_count={self.min_list_count} listed patients and will "
+                f"ignore day_list: {sorted(self.list_fallback_services)}.",
                 UserWarning,
                 stacklevel=2,
             )
         return self
 
-    def _validate_fit_inputs(self, train_df: pd.DataFrame, list_df: pd.DataFrame):
-        if not isinstance(train_df.index, pd.DatetimeIndex):
-            raise TypeError("train_df must be indexed by arrival_datetime")
-        filter_cols = {
+    def _validate_fit_inputs(
+        self,
+        train_df: pd.DataFrame,
+        list_df: pd.DataFrame,
+        arrivals_not_admitted: Optional[pd.DataFrame],
+    ):
+        frames = [("train_df", train_df)]
+        if arrivals_not_admitted is not None:
+            frames.append(("arrivals_not_admitted", arrivals_not_admitted))
+        for name, df in frames:
+            if not isinstance(df.index, pd.DatetimeIndex):
+                raise TypeError(
+                    f"{name} must be indexed by arrival_datetime, "
+                    f"got a {type(df.index).__name__}"
+                )
+        filter_cols = self._filter_columns()
+        self._check_columns("train_df", train_df, {self.encounter_col} | filter_cols)
+        self._check_columns(
+            "list_df",
+            list_df,
+            {self.encounter_col, self.intended_date_col} | filter_cols,
+        )
+        if arrivals_not_admitted is not None:
+            self._check_columns(
+                "arrivals_not_admitted", arrivals_not_admitted, {self.encounter_col}
+            )
+
+    def _filter_columns(self) -> set:
+        return {
             column
             for service_filter in (self.filters or {}).values()
             for column in service_filter
         }
-        for name, df, needed in (
-            ("train_df", train_df, {self.encounter_col} | filter_cols),
-            (
-                "list_df",
-                list_df,
-                {self.encounter_col, self.intended_date_col} | filter_cols,
-            ),
-        ):
-            missing = needed - set(df.columns)
-            if missing:
-                raise ValueError(
-                    f"{name} is missing required columns: {sorted(missing)}"
-                )
+
+    def _check_columns(self, name: str, df: pd.DataFrame, needed: set) -> None:
+        missing = needed - set(df.columns)
+        if missing:
+            raise ValueError(f"{name} is missing required columns: {sorted(missing)}")
+
+    def _first_arrival_rows(self, df: pd.DataFrame) -> Dict:
+        """Map each encounter to the position of its earliest arrival in ``df``."""
+        encounters = df[self.encounter_col].to_numpy()
+        first_row: Dict = {}
+        for row in np.argsort(df.index.values, kind="stable"):
+            first_row.setdefault(encounters[row], int(row))
+        return first_row
 
     @staticmethod
     def _filter_mask(df: pd.DataFrame, filters: Dict) -> np.ndarray:
@@ -425,6 +485,9 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             ``arrival_datetime`` (column, or ``DatetimeIndex`` if there is no such
             column). Required when ``day_list`` is given. It must reach back to the
             day the list was produced. Rows after the prediction moment are ignored.
+            It must include listed patients who arrived without needing a bed,
+            defined as for ``arrivals_not_admitted`` at fit, so that the pending
+            list matches the pending pool used in training.
         **kwargs
             ``max_value`` : int, optional, maximum PMF support for the off-list part.
 
@@ -549,12 +612,12 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             and "list_interval_probs" in self.weights[key]
         )
 
-    @staticmethod
-    def _validate_list_call(args, prediction_context, prediction_date, arrivals):
+    def _validate_list_call(self, args, prediction_context, prediction_date, arrivals):
         """Check the arguments that a call with ``day_list`` requires."""
         if args or prediction_context is not None:
             raise ValueError(
-                "day_list cannot be combined with the deprecated prediction_context API."
+                "day_list cannot be combined with positional arguments or the "
+                "deprecated prediction_context API; use keyword arguments."
             )
         if prediction_date is None:
             raise ValueError("prediction_date is required when day_list is supplied.")
@@ -565,8 +628,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
             )
 
     def _arrived_encounters(self, arrivals: pd.DataFrame, moment: datetime) -> set:
-        if self.encounter_col not in arrivals.columns:
-            raise ValueError(f"arrivals is missing column '{self.encounter_col}'")
+        self._check_columns("arrivals", arrivals, {self.encounter_col})
         if "arrival_datetime" in arrivals.columns:
             arrival_times = pd.to_datetime(arrivals["arrival_datetime"])
         elif isinstance(arrivals.index, pd.DatetimeIndex):
@@ -597,10 +659,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
 
         # Pending listed patients at this service.
         filters = self.filters.get(service, {}) if self.filters else {}
-        needed = {self.encounter_col} | set(filters)
-        missing = needed - set(day_list.columns)
-        if missing:
-            raise ValueError(f"day_list is missing required columns: {sorted(missing)}")
+        self._check_columns("day_list", day_list, {self.encounter_col} | set(filters))
         listed = day_list[self._filter_mask(day_list, filters)]
         listed_encounters = pd.unique(listed[self.encounter_col])
         arrived = self._arrived_encounters(arrivals, moment)
@@ -609,11 +668,12 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
         )
 
         # Service-level q (same for every pending patient in this version):
-        # q = sum p_k over the window on day D / (1 - sum (p_k + r_k) before t).
+        # q = sum p_k over the window on day D / (1 - sum (p_k + r_k + s_k) before t).
         same_service_probs = np.asarray(weights["list_interval_probs"], dtype=float)
         other_service_probs = np.asarray(
             weights["list_other_service_probs"], dtype=float
         )
+        not_admitted_probs = np.asarray(weights["list_not_admitted_probs"], dtype=float)
         start_interval = (hour * 3600 + minute * 60) // int(
             self.yta_time_interval.total_seconds()
         )
@@ -625,6 +685,7 @@ class ListBasedAdmissionPredictor(DirectAdmissionPredictor):
                 (
                     same_service_probs[:start_interval]
                     + other_service_probs[:start_interval]
+                    + not_admitted_probs[:start_interval]
                 ).sum()
             ),
             _MIN_DENOMINATOR,

@@ -86,6 +86,40 @@ def _fixture_worked_example():
     return _rows_to_frames(arrivals, listed)
 
 
+def _not_admitted_frame(rows):
+    return (
+        pd.DataFrame(rows, columns=["arrival_datetime", "encounter"])
+        .sort_values("arrival_datetime")
+        .set_index("arrival_datetime")
+    )
+
+
+def _fixture_not_admitted_example():
+    """Worked example from the s_k comment on issue 249 (30-minute grid)."""
+    day = date(2024, 1, 10)  # a Wednesday
+    at = lambda h, m=0: datetime.combine(day, time(h, m))  # noqa: E731
+    arrivals, not_admitted, listed = [], [], []
+    spec = [
+        (40, "A", at(8)),  # at A, needing a bed, before 09:30
+        (20, "A", at(12)),  # at A, needing a bed, inside the window
+        (25, None, at(8)),  # without needing a bed, before 09:30
+        (5, None, at(11)),  # without needing a bed, after 09:30
+        (10, None, None),  # never
+    ]
+    n = 0
+    for count, svc, ts in spec:
+        for _ in range(count):
+            enc = f"N{n}"
+            n += 1
+            listed.append((enc, "A", day))
+            if svc is not None:
+                arrivals.append((ts, enc, svc))
+            elif ts is not None:
+                not_admitted.append((ts, enc))
+    train_df, list_df = _rows_to_frames(arrivals, listed)
+    return train_df, list_df, _not_admitted_frame(not_admitted)
+
+
 def _fit(train_df, list_df, **kwargs):
     kwargs.setdefault("yta_time_interval", timedelta(hours=1))
     with warnings.catch_warnings():
@@ -178,6 +212,8 @@ class TestFit(unittest.TestCase):
         expected_r[10] = 1 / 9
         np.testing.assert_allclose(p, expected_p)
         np.testing.assert_allclose(r, expected_r)
+        # Without arrivals_not_admitted, s_k is all zeros.
+        np.testing.assert_array_equal(w["list_not_admitted_probs"], np.zeros(24))
         self.assertLessEqual(float(np.sum(p + r)), 1.0)
         self.assertTrue(np.all((p >= 0) & (p <= 1)))
 
@@ -584,6 +620,149 @@ class TestWorkedExample(unittest.TestCase):
         # With no one dropped, all 100 are pending and the same q applies.
         self.assertAlmostEqual(mean_later, 100 * 0.2 / 0.55)
         self.assertLess(mean_all, mean_later)
+
+
+class TestNotAdmittedWorkedExample(unittest.TestCase):
+    """Listed patients arriving without needing a bed (issue 249 s_k comment)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.train_df, cls.list_df, cls.not_admitted = _fixture_not_admitted_example()
+        cls.model = _fit(
+            cls.train_df,
+            cls.list_df,
+            arrivals_not_admitted=cls.not_admitted,
+            yta_time_interval=timedelta(minutes=30),
+        )
+        cls.day = date(2024, 1, 10)
+        # At live inference, arrivals include patients who did not need a bed.
+        cls.arrivals = pd.concat(
+            [cls.train_df.reset_index(), cls.not_admitted.reset_index()],
+            ignore_index=True,
+        )
+        cls.kwargs = dict(
+            prediction_time=(9, 30),
+            prediction_window=timedelta(hours=8),
+            prediction_date=cls.day,
+            day_list=cls.list_df,
+            arrivals=cls.arrivals,
+        )
+
+    def test_stored_probabilities(self):
+        w = self.model.weights["A"]
+        p, r, s = (
+            w["list_interval_probs"],
+            w["list_other_service_probs"],
+            w["list_not_admitted_probs"],
+        )
+        self.assertEqual(w["list_count"], 100)
+        self.assertEqual(len(s), len(p))
+        self.assertAlmostEqual(p.sum(), 0.60)
+        self.assertAlmostEqual(r.sum(), 0.0)
+        self.assertAlmostEqual(s[16], 0.25)  # 08:00
+        self.assertAlmostEqual(s[22], 0.05)  # 11:00
+        self.assertLessEqual((p + r + s).sum(), 1.0)
+
+    def test_expected_arrivals_match_truth(self):
+        # 35 patients pending at 09:30 and 20 of them arrive at A in the window.
+        self.assertAlmostEqual(
+            self.model.predict_mean(filter_key="A", **self.kwargs), 20.0
+        )
+        pmf = self.model.predict(filter_keys="A", **self.kwargs)["A"][
+            "agg_proba"
+        ].to_numpy()
+        np.testing.assert_allclose(
+            pmf[:36], binom(35, 0.20 / 0.35).pmf(np.arange(36)), atol=1e-12
+        )
+
+    def test_without_arrivals_not_admitted_q_is_too_low(self):
+        model = _fit(
+            self.train_df, self.list_df, yta_time_interval=timedelta(minutes=30)
+        )
+        np.testing.assert_array_equal(
+            model.weights["A"]["list_not_admitted_probs"], np.zeros(48)
+        )
+        self.assertAlmostEqual(
+            model.predict_mean(filter_key="A", **self.kwargs), 35 * 0.20 / 0.60
+        )
+
+
+class TestNotAdmittedFit(unittest.TestCase):
+    """Precedence, arrivals before the day, and rates unchanged by s_k."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.train_df, cls.list_df = _fixture_hourly()
+        start = date(2024, 1, 1)
+        rows = []
+        for d in range(30):
+            day = start + timedelta(days=d)
+            if d < 15:
+                # i7 (never in train_df) arrives without needing a bed on the day.
+                rows.append((datetime.combine(day, time(7)), f"L{d}-7"))
+            else:
+                # ... or the evening before.
+                rows.append(
+                    (datetime.combine(day - timedelta(days=1), time(20)), f"L{d}-7")
+                )
+            # i0 is in train_df at 08:30, so this row is ignored.
+            rows.append((datetime.combine(day, time(6)), f"L{d}-0"))
+            # Not on any list, so this row is ignored.
+            rows.append((datetime.combine(day, time(10)), f"X{d}"))
+        cls.not_admitted = _not_admitted_frame(rows)
+        cls.model = _fit(
+            cls.train_df,
+            cls.list_df,
+            arrivals_not_admitted=cls.not_admitted,
+            num_days=30,
+        )
+        cls.baseline = _fit(cls.train_df, cls.list_df, num_days=30)
+
+    def test_list_probabilities(self):
+        w = self.model.weights["A"]
+        n = 270 - 15  # i7 arriving the evening before leaves the denominator
+        self.assertEqual(w["list_count"], n)
+        expected_p = np.zeros(24)
+        expected_p[8], expected_p[14] = 120 / n, 60 / n
+        expected_r = np.zeros(24)
+        expected_r[10] = 30 / n
+        expected_s = np.zeros(24)
+        expected_s[7] = 15 / n
+        np.testing.assert_allclose(w["list_interval_probs"], expected_p)
+        np.testing.assert_allclose(w["list_other_service_probs"], expected_r)
+        np.testing.assert_allclose(w["list_not_admitted_probs"], expected_s)
+
+    def test_rates_unchanged(self):
+        for key in ("A", "B"):
+            for rates in (
+                "arrival_rates_dict",
+                "arrival_rates_by_weekday",
+                "off_list_arrival_rates_dict",
+                "off_list_arrival_rates_by_weekday",
+            ):
+                self.assertEqual(
+                    self.model.weights[key][rates],
+                    self.baseline.weights[key][rates],
+                    msg=f"{key} {rates}",
+                )
+
+    def test_invalid_inputs_raise(self):
+        with self.assertRaises(ValueError):
+            _fit(self.train_df, None, arrivals_not_admitted=self.not_admitted)
+        with self.assertRaises(TypeError):
+            _fit(
+                self.train_df,
+                self.list_df,
+                arrivals_not_admitted=self.not_admitted.reset_index(),
+            )
+        with self.assertRaises(ValueError):
+            _fit(
+                self.train_df,
+                self.list_df,
+                arrivals_not_admitted=self.not_admitted.rename(
+                    columns={"encounter": "id"}
+                ),
+            )
 
 
 if __name__ == "__main__":

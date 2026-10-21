@@ -802,7 +802,10 @@ def get_prob_dist_by_service(
     elective_arrivals : pandas.DataFrame, optional
         Elective arrivals at all services (encounter and ``arrival_datetime``)
         covering the evaluation period and the day before the first list. The
-        predictor ignores rows after each prediction moment.
+        predictor ignores rows after each prediction moment. Include every
+        listed patient who arrived, including those who did not need a bed
+        (for example day cases), because the predictor uses this frame to
+        drop listed patients who have already arrived.
 
     Returns
     -------
