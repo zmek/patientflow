@@ -660,6 +660,7 @@ def create_fake_elective_lists(
     unlisted_per_day: Optional[Dict[str, float]] = None,
     weekend_fraction: float = 0.1,
     outcome_probs: Optional[Dict[str, float]] = None,
+    not_admitted_share: float = 0.0,
     seed: int = 42,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Generate daily lists of planned elective admissions and the arrivals that follow.
@@ -667,9 +668,10 @@ def create_fake_elective_lists(
     Each day has a list of patients booked for admission that day, by service.
     Each listed patient has one outcome: they arrive at the listed service on the
     day, arrive at a different service on the day, arrive the evening before,
-    are deferred to the next day, or do not arrive. Electives who were never on a
-    list also arrive at each service. The output is used to demonstrate
-    ``ListBasedAdmissionPredictor``.
+    are deferred to the next day, or do not arrive. Some of those who arrive at
+    the listed service on the day can be marked as not needing a bed (for
+    example day cases). Electives who were never on a list also arrive at each
+    service. The output is used to demonstrate ``ListBasedAdmissionPredictor``.
 
     Parameters
     ----------
@@ -691,6 +693,10 @@ def create_fake_elective_lists(
         ``arrives_at_listed_service``, ``arrives_at_other_service``,
         ``arrives_evening_before``, ``deferred_to_next_day`` and
         ``does_not_arrive``. Must sum to 1.
+    not_admitted_share : float, default=0.0
+        Share of listed patients arriving at the listed service on the day who
+        do not need a bed. Drawn from a separate random stream, so changing it
+        does not change the lists, the outcomes or the arrival times.
     seed : int, default=42
         NumPy RNG seed for reproducibility.
 
@@ -698,7 +704,8 @@ def create_fake_elective_lists(
     -------
     arrivals : pandas.DataFrame
         One row per elective arrival, sorted by time, with columns
-        ``arrival_datetime``, ``encounter`` and ``service``.
+        ``arrival_datetime``, ``encounter``, ``service`` and ``is_admitted``
+        (``False`` for listed patients who arrived without needing a bed).
     list_df : pandas.DataFrame
         One row per listed patient, with columns ``encounter``, ``service`` and
         ``intended_date``.
@@ -733,8 +740,13 @@ def create_fake_elective_lists(
         )
     if not np.isclose(sum(outcome_probs.values()), 1.0):
         raise ValueError("outcome_probs must sum to 1")
+    if not 0.0 <= not_admitted_share <= 1.0:
+        raise ValueError(
+            f"not_admitted_share must be between 0 and 1, got {not_admitted_share}"
+        )
 
     rng = np.random.default_rng(seed)
+    admission_rng = np.random.default_rng([seed, 1])
     services = sorted(set(listed_per_weekday) | set(unlisted_per_day))
     outcomes = list(outcome_probs)
     outcome_weights = np.array([outcome_probs[o] for o in outcomes])
@@ -770,7 +782,10 @@ def create_fake_elective_lists(
                 )
                 outcome = rng.choice(outcomes, p=outcome_weights)
                 if outcome == "arrives_at_listed_service":
-                    arrivals.append((at_hour(day, morning_hour()), encounter, service))
+                    is_admitted = bool(admission_rng.random() >= not_admitted_share)
+                    arrivals.append(
+                        (at_hour(day, morning_hour()), encounter, service, is_admitted)
+                    )
                 elif outcome == "arrives_at_other_service":
                     others = [s for s in services if s != service]
                     if others:
@@ -779,17 +794,19 @@ def create_fake_elective_lists(
                                 at_hour(day, morning_hour()),
                                 encounter,
                                 str(rng.choice(others)),
+                                True,
                             )
                         )
                 elif outcome == "arrives_evening_before":
                     evening = at_hour(day - timedelta(days=1), rng.uniform(17.0, 21.0))
-                    arrivals.append((evening, encounter, service))
+                    arrivals.append((evening, encounter, service, True))
                 elif outcome == "deferred_to_next_day":
                     arrivals.append(
                         (
                             at_hour(day + timedelta(days=1), morning_hour()),
                             encounter,
                             service,
+                            True,
                         )
                     )
 
@@ -797,12 +814,15 @@ def create_fake_elective_lists(
                 encounter_number += 1
                 hour = float(np.clip(rng.normal(13.0, 3.0), 0.0, 23.99))
                 arrivals.append(
-                    (at_hour(day, hour), f"E{encounter_number:07d}", service)
+                    (at_hour(day, hour), f"E{encounter_number:07d}", service, True)
                 )
         day += timedelta(days=1)
 
     arrivals_df = (
-        pd.DataFrame(arrivals, columns=["arrival_datetime", "encounter", "service"])
+        pd.DataFrame(
+            arrivals,
+            columns=["arrival_datetime", "encounter", "service", "is_admitted"],
+        )
         .sort_values("arrival_datetime")
         .reset_index(drop=True)
     )

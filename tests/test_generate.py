@@ -33,7 +33,13 @@ def test_synthesise_departure_times_inpatient_arrivals():
 
 def test_create_fake_elective_lists_shapes_and_outcomes():
     arrivals, list_df = create_fake_elective_lists("2024-01-01", "2024-03-01", seed=1)
-    assert list(arrivals.columns) == ["arrival_datetime", "encounter", "service"]
+    assert list(arrivals.columns) == [
+        "arrival_datetime",
+        "encounter",
+        "service",
+        "is_admitted",
+    ]
+    assert arrivals["is_admitted"].all()
     assert list(list_df.columns) == ["encounter", "service", "intended_date"]
     assert arrivals["arrival_datetime"].is_monotonic_increasing
     assert set(list_df["service"]) == {"surgical", "paediatric"}
@@ -50,6 +56,35 @@ def test_create_fake_elective_lists_shapes_and_outcomes():
     assert (arrival_dates < arrived["intended_date"]).any()
     assert (arrival_dates > arrived["intended_date"]).any()
     assert other_service.any()
+
+
+def test_create_fake_elective_lists_not_admitted_share():
+    base, base_list = create_fake_elective_lists("2024-01-01", "2024-03-01", seed=1)
+    arrivals, list_df = create_fake_elective_lists(
+        "2024-01-01", "2024-03-01", not_admitted_share=0.3, seed=1
+    )
+    # Only is_admitted changes.
+    pd.testing.assert_frame_equal(list_df, base_list)
+    pd.testing.assert_frame_equal(
+        arrivals.drop(columns="is_admitted"), base.drop(columns="is_admitted")
+    )
+
+    not_admitted = arrivals[~arrivals["is_admitted"]].merge(
+        list_df, on="encounter", suffixes=("", "_listed")
+    )
+    # About 0.3 of the 70% who arrive at the listed service on the day.
+    assert 0.15 < len(not_admitted) / len(list_df) < 0.27
+    assert (not_admitted["service"] == not_admitted["service_listed"]).all()
+    assert (
+        not_admitted["arrival_datetime"].dt.date == not_admitted["intended_date"]
+    ).all()
+
+
+def test_create_fake_elective_lists_rejects_bad_not_admitted_share():
+    import pytest
+
+    with pytest.raises(ValueError):
+        create_fake_elective_lists("2024-01-01", "2024-01-08", not_admitted_share=1.5)
 
 
 def test_create_fake_elective_lists_rejects_bad_outcome_probs():
