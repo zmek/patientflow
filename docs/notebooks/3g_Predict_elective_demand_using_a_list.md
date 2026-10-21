@@ -560,38 +560,63 @@ print(f'Listed part of the prediction: Binomial({n_pending}, {q:.2f})')
 
 Conditioning nearly doubles the probability for each pending patient.
 
-`predict()` returns the full probability distribution. Below are the distributions for the surgical service at 06:00, when nobody on the list has arrived yet, and at 09:30.
+### Off-list arrivals
+
+Off-list electives have no known count, so they are modelled with a Poisson distribution, as in notebook 3e. Its mean is the off-list rates for that day of the week, summed over the window. (Windows that run past midnight are covered below.)
 
 ```python
+# Off-list rates for this day of the week: one value per 15-minute interval of the day
+off_list_rates = list(surgical_weights['off_list_arrival_rates_by_weekday'][prediction_date.weekday()].values())
+off_list_mean = sum(off_list_rates[start:end])
+
+print(f'Off-list part of the prediction: Poisson({off_list_mean:.2f})')
+```
+
+    Off-list part of the prediction: Poisson(2.11)
+
+### Combining the two parts
+
+The listed and off-list parts are independent, so the distribution of their total is the convolution of the two distributions. The code below builds each part, convolves them, and checks the result against `predict()`, which returns the full probability distribution.
+
+```python
+from scipy.stats import binom, poisson
 from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.viz.pipeline_plots import create_colour_dict
 
 colour_dict = create_colour_dict()
 
-fig, axes = plt.subplots(1, 2, figsize=(12, 3.5))
-for ax, prediction_time in zip(axes, [(6, 0), (9, 30)]):
-    predicted_pmf = list_model.predict(
-        prediction_time=prediction_time,
-        prediction_window=prediction_window,
-        filter_keys='surgical',
-        prediction_date=prediction_date,
-        day_list=elective_list_for_day,
-        arrivals=elective_arrivals,
-    )['surgical']
-    plot_prob_dist(
-        predicted_pmf,
-        f'Prediction at {prediction_time[0]:02d}:{prediction_time[1]:02d} for the next 8 hours',
-        include_titles=True,
-        truncate_at_beds=25,
-        bar_colour=colour_dict['single']['surgical'],
-        xlabel='Number of elective arrivals',
-        ax=ax,
-    )
+counts = np.arange(25)
+listed_pmf = binom.pmf(counts, n_pending, q)
+off_list_pmf = poisson.pmf(counts, off_list_mean)
+combined_pmf = np.convolve(listed_pmf, off_list_pmf)
+
+model_pmf = list_model.predict(
+    prediction_time=(9, 30),
+    prediction_window=prediction_window,
+    filter_keys='surgical',
+    prediction_date=prediction_date,
+    day_list=elective_list_for_day,
+    arrivals=elective_arrivals,
+)['surgical']['agg_proba'].to_numpy()
+n = min(len(combined_pmf), len(model_pmf))
+print(f'Largest difference from predict(): {np.abs(combined_pmf[:n] - model_pmf[:n]).max():.1e}')
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 3.5), sharey=True)
+for ax, pmf, title in zip(
+    axes,
+    [listed_pmf, off_list_pmf, combined_pmf],
+    [f'Listed: Binomial({n_pending}, {q:.2f})', f'Off-list: Poisson({off_list_mean:.2f})', 'Combined'],
+):
+    plot_prob_dist(pmf, title, include_titles=True, truncate_at_beds=20,
+                   bar_colour=colour_dict['single']['surgical'],
+                   xlabel='Number of elective arrivals', ax=ax)
 plt.tight_layout()
 plt.show()
 ```
 
-![png](3g_Predict_elective_demand_using_a_list_files/3g_Predict_elective_demand_using_a_list_22_0.png)
+    Largest difference from predict(): 7.2e-09
+
+![png](3g_Predict_elective_demand_using_a_list_files/3g_Predict_elective_demand_using_a_list_24_1.png)
 
 ## Compare with the Poisson-only prediction
 
@@ -627,7 +652,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-![png](3g_Predict_elective_demand_using_a_list_files/3g_Predict_elective_demand_using_a_list_24_0.png)
+![png](3g_Predict_elective_demand_using_a_list_files/3g_Predict_elective_demand_using_a_list_26_0.png)
 
 Using the list moves the prediction towards what happened on this day, and narrows it, because the size of the list is known rather than estimated.
 
